@@ -40,6 +40,9 @@ public class OrderAssistantSession {
     public String messagesJson = "[]";
 
     @Column(nullable = false, columnDefinition = "text")
+    public String attachmentsJson = "[]";
+
+    @Column(nullable = false, columnDefinition = "text")
     public String pendingRemovalsJson = "[]";
 
     @Column(nullable = false, columnDefinition = "text")

@@ -79,13 +79,18 @@ public class OpenAiGptProvider implements GptProvider {
             String instructions,
             Object input,
             Integer maxOutputTokens) {
+        boolean orderPhotos =
+                "order-assistant-photo-reading".equals(feature)
+                        || "order-assistant-photos".equals(feature);
+        String effectiveModel =
+                orderPhotos ? properties.getOrderPhotoModel() : properties.getModel();
         if (!properties.isEnabled()) {
             throw new GptProviderException("GPT provider is disabled");
         }
         if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
             throw new GptProviderException("GPT API key is not configured");
         }
-        if (properties.getModel() == null || properties.getModel().isBlank()) {
+        if (effectiveModel == null || effectiveModel.isBlank()) {
             throw new GptProviderException("GPT model is not configured");
         }
         if (input == null || input instanceof String text && text.isBlank()) {
@@ -99,10 +104,13 @@ public class OpenAiGptProvider implements GptProvider {
         }
 
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("model", properties.getModel());
+        body.put("model", effectiveModel);
         body.put("input", input);
         body.put("store", false);
-        if (properties.getReasoningEffort() != null && !properties.getReasoningEffort().isBlank()) {
+        if (orderPhotos) {
+            body.put("reasoning", Map.of("effort", "high"));
+        } else if (properties.getReasoningEffort() != null
+                && !properties.getReasoningEffort().isBlank()) {
             body.put("reasoning", Map.of("effort", properties.getReasoningEffort()));
         }
         if (instructions != null && !instructions.isBlank()) {
@@ -130,7 +138,7 @@ public class OpenAiGptProvider implements GptProvider {
                     new GptUsage(
                             null,
                             feature,
-                            properties.getModel(),
+                            effectiveModel,
                             "http_error",
                             ex.getStatusCode().value(),
                             null,
@@ -146,7 +154,7 @@ public class OpenAiGptProvider implements GptProvider {
                     new GptUsage(
                             null,
                             feature,
-                            properties.getModel(),
+                            effectiveModel,
                             "request_failed",
                             null,
                             null,
@@ -179,8 +187,8 @@ public class OpenAiGptProvider implements GptProvider {
                         response == null ? null : response.path("id").asText(null),
                         feature,
                         response == null
-                                ? properties.getModel()
-                                : response.path("model").asText(properties.getModel()),
+                                ? effectiveModel
+                                : response.path("model").asText(effectiveModel),
                         status,
                         200,
                         tokenCount(usage, "input_tokens"),

@@ -34,6 +34,12 @@ public class OrderAssistantController {
         return ApiResponse.ok(service.message(id, request));
     }
 
+    @PatchMapping("/{id}/items")
+    public ApiResponse<OrderAssistantDto.Session> editItems(
+            @PathVariable UUID id, @RequestBody @Valid OrderAssistantDto.EditItems request) {
+        return ApiResponse.ok(service.editItems(id, request));
+    }
+
     @PostMapping("/{id}/apply")
     public ApiResponse<OrderAssistantDto.Session> apply(
             @PathVariable UUID id, @RequestBody @Valid OrderAssistantDto.Apply request) {

@@ -24,6 +24,66 @@ class OpenAiGptProviderTest {
     private final ObjectMapper mapper = new ObjectMapper();
 
     @Test
+    void orderPhotoFeaturesUseDedicatedModelHighReasoningAndActualUsageModel() throws Exception {
+        for (String feature : List.of("order-assistant-photo-reading", "order-assistant-photos")) {
+            GptUsageRecorder recorder = mock(GptUsageRecorder.class);
+            AtomicReference<JsonNode> sent = new AtomicReference<>();
+            HttpServer server =
+                    server(
+                            200,
+                            "{\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"{}\"}]}]}",
+                            sent,
+                            null);
+            try {
+                GptProperties configured = properties(server);
+                assertEquals("gpt-6.1-sol", configured.getOrderPhotoModel());
+                configured.setOrderPhotoModel("dedicated-vision-model");
+                new OpenAiGptProvider(configured, recorder)
+                        .generateImages(
+                                new GptImageRequest(
+                                        feature,
+                                        "Read",
+                                        "page",
+                                        List.of("data:image/jpeg;base64,/9j/"),
+                                        100));
+                assertEquals("dedicated-vision-model", sent.get().path("model").asText());
+                assertEquals("high", sent.get().path("reasoning").path("effort").asText());
+                ArgumentCaptor<GptUsage> usage = ArgumentCaptor.forClass(GptUsage.class);
+                verify(recorder).record(usage.capture());
+                assertEquals("dedicated-vision-model", usage.getValue().model());
+            } finally {
+                server.stop(0);
+            }
+        }
+    }
+
+    @Test
+    void photoHttpFailureRecordsDedicatedModel() throws Exception {
+        GptUsageRecorder recorder = mock(GptUsageRecorder.class);
+        AtomicReference<JsonNode> sent = new AtomicReference<>();
+        HttpServer server = server(503, "{}", sent, null);
+        try {
+            assertThrows(
+                    GptProviderException.class,
+                    () ->
+                            new OpenAiGptProvider(properties(server), recorder)
+                                    .generateImages(
+                                            new GptImageRequest(
+                                                    "order-assistant-photos",
+                                                    "Read",
+                                                    "page",
+                                                    List.of("data:image/jpeg;base64,/9j/"),
+                                                    100)));
+            ArgumentCaptor<GptUsage> usage = ArgumentCaptor.forClass(GptUsage.class);
+            verify(recorder).record(usage.capture());
+            assertEquals("gpt-6.1-sol", usage.getValue().model());
+            assertEquals("http_error", usage.getValue().status());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
     void sendsConfiguredRequestAndCollectsTextAcrossOutputItems() throws Exception {
         GptUsageRecorder recorder = mock(GptUsageRecorder.class);
         AtomicReference<JsonNode> sent = new AtomicReference<>();
@@ -96,6 +156,8 @@ class OpenAiGptProviderTest {
                                             List.of("data:image/jpeg;base64,/9j/"),
                                             100));
             assertEquals("{}", result.text());
+            assertEquals("gpt-6-luna", sent.get().path("model").asText());
+            assertEquals("medium", sent.get().path("reasoning").path("effort").asText());
             JsonNode content = sent.get().path("input").get(0).path("content");
             assertEquals("input_text", content.get(0).path("type").asText());
             assertEquals("page 1", content.get(0).path("text").asText());

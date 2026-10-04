@@ -62,6 +62,7 @@ app:
     api-key: ${OPENAI_API_KEY:}
     base-url: ${APP_GPT_BASE_URL:https://api.openai.com/v1}
     model: ${APP_GPT_MODEL:gpt-6-luna}
+    order-photo-model: ${APP_GPT_ORDER_PHOTO_MODEL:gpt-6.1-sol}
     reasoning-effort: ${APP_GPT_REASONING_EFFORT:medium}
     connect-timeout: ${APP_GPT_CONNECT_TIMEOUT:5s}
     read-timeout: ${APP_GPT_READ_TIMEOUT:60s}

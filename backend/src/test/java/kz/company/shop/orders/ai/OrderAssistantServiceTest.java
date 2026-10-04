@@ -143,6 +143,327 @@ class OrderAssistantServiceTest {
                 OrderDto.class);
     }
 
+    String photo() throws Exception {
+        var out = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(
+                new java.awt.image.BufferedImage(2, 2, java.awt.image.BufferedImage.TYPE_INT_RGB),
+                "png",
+                out);
+        return "data:image/png;base64," + Base64.getEncoder().encodeToString(out.toByteArray());
+    }
+
+    @Test
+    void textAdditionInExistingPhotoSessionDoesNotRequirePhotoLineReference() throws Exception {
+        Session initial = start(Mode.CREATE, List.of());
+        when(gpt.generateImages(any()))
+                .thenReturn(
+                        new GptResult(
+                                "{\"lines\":[],\"items\":[],\"questions\":[]}", null, null, null));
+        Session photographed =
+                service.message(
+                        initial.id(),
+                        new Message(
+                                null,
+                                0,
+                                null,
+                                null,
+                                false,
+                                List.of(new AttachmentInput("order.png", photo()))));
+        when(gpt.generateImages(any()))
+                .thenAnswer(
+                        invocation -> {
+                            GptImageRequest request = invocation.getArgument(0);
+                            return new GptResult(
+                                    request.feature().equals("order-assistant-photo-reading")
+                                            ? "{\"lines\":[]}"
+                                            : "{\"items\":[{\"source\":\"Добавь лук 2 кг\",\"productId\":1,\"quantity\":2,\"measurementUnit\":\"KG\"}],\"questions\":[]}",
+                                    null,
+                                    null,
+                                    null);
+                        });
+        Session result =
+                service.message(
+                        photographed.id(), new Message("Добавь лук 2 кг", photographed.revision()));
+        assertThat(result.proposal().items()).hasSize(1);
+        assertThat(result.proposal().items().get(0).issue()).isNull();
+        assertThat(result.ready()).isTrue();
+    }
+
+    @Test
+    void independentLineOmittedByMatchingIsRetainedAsUnresolved() throws Exception {
+        Session s = start(Mode.CREATE, List.of());
+        when(gpt.generateImages(any()))
+                .thenAnswer(
+                        invocation -> {
+                            GptImageRequest request = invocation.getArgument(0);
+                            return new GptResult(
+                                    request.feature().equals("order-assistant-photo-reading")
+                                            ? "{\"lines\":[{\"id\":\"p1-1\",\"photoNumber\":1,\"rawName\":\"Укроп\",\"rawQuantity\":\"0,5\",\"unit\":\"UNKNOWN\"}]}"
+                                            : "{\"items\":[],\"questions\":[]}",
+                                    null,
+                                    null,
+                                    null);
+                        });
+        Session result =
+                service.message(
+                        s.id(),
+                        new Message(
+                                null,
+                                0,
+                                null,
+                                null,
+                                false,
+                                List.of(new AttachmentInput("order.png", photo()))));
+        assertThat(result.proposal().items()).hasSize(1);
+        assertThat(result.proposal().items().get(0).source()).contains("Укроп");
+        assertThat(result.proposal().items().get(0).issue()).contains("не перенесена");
+        assertThat(result.ready()).isFalse();
+    }
+
+    @Test
+    void independentReadingBlocksInventedCatalogKilogramsAndKeepsLiteralSource() throws Exception {
+        Session s = start(Mode.CREATE, List.of());
+        when(gpt.generateImages(any()))
+                .thenAnswer(
+                        invocation -> {
+                            GptImageRequest request = invocation.getArgument(0);
+                            String output =
+                                    request.feature().equals("order-assistant-photo-reading")
+                                            ? "{\"lines\":[{\"id\":\"p1-left-1\",\"photoNumber\":1,\"column\":\"левый\",\"rawName\":\"Лук\",\"rawQuantity\":\"1 меш\",\"quantity\":1,\"unit\":\"BAG\"}]}"
+                                            : "{\"items\":[{\"photoLineId\":\"p1-left-1\",\"source\":\"Лук 1кг\",\"productId\":1,\"quantity\":1,\"measurementUnit\":\"KG\"}],\"questions\":[]}";
+                            return new GptResult(output, null, null, null);
+                        });
+        Session result =
+                service.message(
+                        s.id(),
+                        new Message(
+                                null,
+                                0,
+                                null,
+                                null,
+                                false,
+                                List.of(new AttachmentInput("order.png", photo()))));
+        assertThat(result.ready()).isFalse();
+        assertThat(result.proposal().items().get(0).issue()).contains("упаковка");
+        assertThat(result.proposal().items().get(0).source()).contains("1 меш");
+    }
+
+    @Test
+    void editingOneRowKeepsOtherUncertaintyAndIndependentQuestions() throws Exception {
+        Session s = start(Mode.CREATE, List.of(seed(1), seed(2)));
+        Proposal old = s.proposal();
+        stored.get(s.id()).proposalJson =
+                json.writeValueAsString(
+                        new Proposal(
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                old.items(),
+                                List.of("Уточните количество Картофель", "Укажите поставщика"),
+                                null,
+                                null));
+        Session edited =
+                service.editItems(
+                        s.id(),
+                        new EditItems(
+                                0,
+                                List.of(
+                                        new EditItem(
+                                                "Лук",
+                                                1L,
+                                                "Лук",
+                                                new BigDecimal("2"),
+                                                MeasurementUnit.KG,
+                                                null,
+                                                null),
+                                        new EditItem(
+                                                "Картофель",
+                                                2L,
+                                                "Картофель",
+                                                null,
+                                                MeasurementUnit.KG,
+                                                null,
+                                                "Уточните количество Картофель"))));
+        assertThat(edited.ready()).isFalse();
+        assertThat(edited.proposal().questions())
+                .contains("Уточните количество Картофель", "Укажите поставщика");
+        assertThat(edited.proposal().items().get(1).issue())
+                .contains("Уточните количество Картофель");
+        assertThat(edited.messages()).noneMatch(m -> m.content().contains("\"productId\""));
+    }
+
+    @Test
+    void photoCountAndSessionOwnershipAreEnforcedBeforeModel() throws Exception {
+        Session s = start(Mode.CREATE, List.of());
+        AttachmentInput image = new AttachmentInput("order.png", photo());
+        assertThatThrownBy(
+                        () ->
+                                service.message(
+                                        s.id(),
+                                        new Message(
+                                                null,
+                                                0,
+                                                null,
+                                                null,
+                                                false,
+                                                Collections.nCopies(9, image))))
+                .isInstanceOf(AppExceptions.BadRequest.class);
+        UUID foreign = UUID.randomUUID();
+        assertThatThrownBy(
+                        () ->
+                                service.message(
+                                        foreign,
+                                        new Message(null, 0, null, null, false, List.of(image))))
+                .isInstanceOf(AppExceptions.NotFound.class);
+        assertThatThrownBy(() -> service.editItems(foreign, new EditItems(0, List.of())))
+                .isInstanceOf(AppExceptions.NotFound.class);
+        verifyNoInteractions(gpt);
+    }
+
+    @Test
+    void manualUncertaintyRemainsBlocking() {
+        Session s = start(Mode.CREATE, List.of(seed(1)));
+        Session edited =
+                service.editItems(
+                        s.id(),
+                        new EditItems(
+                                0,
+                                List.of(
+                                        new EditItem(
+                                                "Фото 1 · Лук",
+                                                1L,
+                                                "Лук",
+                                                BigDecimal.ONE,
+                                                MeasurementUnit.KG,
+                                                null,
+                                                "Неясно исправление"))));
+        assertThat(edited.ready()).isFalse();
+        assertThat(edited.proposal().items().get(0).issue()).contains("Неясно исправление");
+    }
+
+    @Test
+    void photoOnlyMessagePersistsNumberAndReusesImageForFollowup() throws Exception {
+        Session s = start(Mode.CREATE, List.of());
+        when(gpt.generateImages(any()))
+                .thenReturn(
+                        new GptResult(
+                                "{\"lines\":[],\"items\":[],\"questions\":[]}", null, null, null));
+        s =
+                service.message(
+                        s.id(),
+                        new Message(
+                                null,
+                                0,
+                                null,
+                                null,
+                                false,
+                                List.of(new AttachmentInput("order.png", photo()))));
+        assertThat(s.attachments()).hasSize(1);
+        assertThat(s.attachments().get(0).number()).isEqualTo(1);
+        assertThat(s.messages().get(1).content()).contains("фотографии: 1");
+        service.message(s.id(), new Message("На 1 фото только левый столбец", s.revision()));
+        var captured = ArgumentCaptor.forClass(GptImageRequest.class);
+        verify(gpt, times(4)).generateImages(captured.capture());
+        assertThat(captured.getValue().imageDataUrls()).containsExactly(photo());
+        assertThat(captured.getValue().input()).contains("левый столбец", "attachments");
+        verify(gpt, never()).generate(any());
+    }
+
+    @Test
+    void rejectsSpoofedPhotosBeforeCallingModel() {
+        Session s = start(Mode.CREATE, List.of());
+        assertThatThrownBy(
+                        () ->
+                                service.message(
+                                        s.id(),
+                                        new Message(
+                                                null,
+                                                0,
+                                                null,
+                                                null,
+                                                false,
+                                                List.of(
+                                                        new AttachmentInput(
+                                                                "fake.png",
+                                                                "data:image/png;base64,"
+                                                                        + Base64.getEncoder()
+                                                                                .encodeToString(
+                                                                                        new byte
+                                                                                                [30]))))))
+                .isInstanceOf(AppExceptions.BadRequest.class);
+        verifyNoInteractions(gpt);
+        assertThat(service.get(s.id()).attachments()).isEmpty();
+    }
+
+    @Test
+    void manualChangesValidateRevisionAndPreserveDeletionInHistoryWithoutModel() {
+        Session s = start(Mode.CREATE, List.of(seed(1), seed(2)));
+        Session edited =
+                service.editItems(
+                        s.id(),
+                        new EditItems(
+                                0,
+                                List.of(
+                                        new EditItem(
+                                                "Лук",
+                                                1L,
+                                                "Лук",
+                                                new BigDecimal("2"),
+                                                MeasurementUnit.KG,
+                                                new BigDecimal("20.00"),
+                                                null))));
+        assertThat(edited.proposal().items()).hasSize(1);
+        assertThat(edited.proposal().items().get(0).quantity()).isEqualByComparingTo("2");
+        assertThat(edited.ready()).isTrue();
+        assertThat(edited.messages())
+                .anyMatch(m -> m.content().contains("отсутствующие строки удалены"));
+        assertThatThrownBy(() -> service.editItems(s.id(), new EditItems(0, List.of())))
+                .isInstanceOf(AppExceptions.BadRequest.class);
+        verifyNoInteractions(gpt);
+    }
+
+    @Test
+    void manualEditorRejectsNegativePriceAndFlagsUnitMismatch() {
+        Session s = start(Mode.CREATE, List.of(seed(1)));
+        assertThatThrownBy(
+                        () ->
+                                service.editItems(
+                                        s.id(),
+                                        new EditItems(
+                                                0,
+                                                List.of(
+                                                        new EditItem(
+                                                                "Лук",
+                                                                1L,
+                                                                "Лук",
+                                                                BigDecimal.ONE,
+                                                                MeasurementUnit.KG,
+                                                                new BigDecimal("-1"),
+                                                                null)))))
+                .isInstanceOf(AppExceptions.BadRequest.class);
+        Session edited =
+                service.editItems(
+                        s.id(),
+                        new EditItems(
+                                0,
+                                List.of(
+                                        new EditItem(
+                                                "Лук",
+                                                1L,
+                                                "Лук",
+                                                BigDecimal.ONE,
+                                                MeasurementUnit.PIECE,
+                                                null,
+                                                null))));
+        assertThat(edited.ready()).isFalse();
+        assertThat(edited.proposal().items().get(0).issue()).contains("единице каталога");
+    }
+
     @Test
     void foreignSessionIsNotFoundBeforeProviderOrMutation() {
         assertThatThrownBy(() -> service.message(UUID.randomUUID(), new Message("заявка", 0)))

@@ -39,7 +39,9 @@ export type OrderAssistantClarification = {
   question: string;
   options: Array<{ id: string; label: string }>;
 };
+export type OrderAssistantPhoto = { id: string; number: number; name: string; dataUrl: string };
 export type OrderAssistantSession = {
+  attachments?: OrderAssistantPhoto[];
   id: string;
   mode: "CREATE" | "DRAFT";
   revision: number;
@@ -68,10 +70,15 @@ export const createOrderAssistantSession = (context: OrderAssistantContext) =>
   api<OrderAssistantSession>(base, { method: "POST", body: JSON.stringify(context) });
 export const getOrderAssistantSession = (id: string) =>
   api<OrderAssistantSession>(`${base}/${encodeURIComponent(id)}`);
-export const sendOrderAssistantMessage = (id: string, message: string, revision: number) =>
+export const sendOrderAssistantMessage = (
+  id: string,
+  message: string,
+  revision: number,
+  attachments: Array<{ name: string; dataUrl: string }> = [],
+) =>
   api<OrderAssistantSession>(`${base}/${encodeURIComponent(id)}/messages`, {
     method: "POST",
-    body: JSON.stringify({ message, revision }),
+    body: JSON.stringify({ message, revision, attachments }),
   });
 export const applyOrderAssistant = (id: string, revision: number, allowStockShortage = false) =>
   api<OrderAssistantSession>(`${base}/${encodeURIComponent(id)}/apply`, {
@@ -102,4 +109,14 @@ export const checkoutOrderAssistant = (
   api<CreatedBarcodeOrder>(`${base}/${encodeURIComponent(id)}/checkout`, {
     method: "POST",
     body: JSON.stringify({ revision, order }),
+  });
+
+export const updateOrderAssistantItems = (
+  id: string,
+  revision: number,
+  items: OrderAssistantItem[],
+) =>
+  api<OrderAssistantSession>(`${base}/${encodeURIComponent(id)}/items`, {
+    method: "PATCH",
+    body: JSON.stringify({ revision, items: items.map(({ product: _product, ...item }) => item) }),
   });

@@ -41,11 +41,39 @@ public final class OrderAssistantDto {
             @Min(0) long revision,
             @Size(max = 160) String answerId,
             UUID regularBuyerId,
-            boolean selectBuyer) {
+            boolean selectBuyer,
+            @Size(max = 8) List<@Valid AttachmentInput> attachments) {
+        public Message(
+                String message,
+                long revision,
+                String answerId,
+                UUID regularBuyerId,
+                boolean selectBuyer) {
+            this(message, revision, answerId, regularBuyerId, selectBuyer, List.of());
+        }
+
         public Message(String message, long revision) {
             this(message, revision, null, null, false);
         }
     }
+
+    public record AttachmentInput(
+            @NotBlank @Size(max = 200) String name, @NotBlank String dataUrl) {}
+
+    public record Attachment(UUID id, int number, String name, String dataUrl) {}
+
+    public record EditItem(
+            @Size(max = 2000) String source,
+            Long productId,
+            @Size(max = 500) String name,
+            BigDecimal quantity,
+            MeasurementUnit measurementUnit,
+            BigDecimal unitPrice,
+            @Size(max = 2000) String issue) {}
+
+    public record EditItems(
+            @Min(0) long revision,
+            @NotNull @Size(max = 200) List<@NotNull @Valid EditItem> items) {}
 
     public enum ClarificationKind {
         BUYER,
@@ -172,5 +200,31 @@ public final class OrderAssistantDto {
             LocalDate orderDate,
             List<Chat> messages,
             Proposal proposal,
-            boolean ready) {}
+            boolean ready,
+            List<Attachment> attachments) {
+        public Session(
+                UUID id,
+                Mode mode,
+                long revision,
+                long appliedRevision,
+                UUID orderId,
+                PriceTier priceTier,
+                LocalDate orderDate,
+                List<Chat> messages,
+                Proposal proposal,
+                boolean ready) {
+            this(
+                    id,
+                    mode,
+                    revision,
+                    appliedRevision,
+                    orderId,
+                    priceTier,
+                    orderDate,
+                    messages,
+                    proposal,
+                    ready,
+                    List.of());
+        }
+    }
 }

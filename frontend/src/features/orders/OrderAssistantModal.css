@@ -1,5 +1,5 @@
 .order-assistant {
-  width: min(1080px, calc(100vw - 32px));
+  width: min(1440px, calc(100vw - 32px));
 }
 .order-assistant__body {
   display: grid;
@@ -298,8 +298,11 @@
   .order-assistant__send > span {
     display: none;
   }
-  .order-assistant__send > button {
+  .order-assistant__send-actions {
     width: 100%;
+  }
+  .order-assistant__send-actions > .app-button:last-child {
+    flex: 1;
   }
   .order-assistant__actions {
     flex-direction: column-reverse;
@@ -312,4 +315,24 @@
   margin-top: 4px;
   font-size: 11px;
   color: var(--muted, #64748b);
+}
+.order-assistant__conversation > .order-assistant-photos {
+  margin: 10px 0;
+}
+
+.order-assistant__composer {
+  gap: 12px;
+}
+
+.order-assistant__send-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.order-assistant__send-actions .order-assistant__attach {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  padding: 0;
 }

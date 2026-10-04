@@ -1,7 +1,15 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useCommerce } from "@/features/commerce/CommerceProvider";
-import { ArrowUpRight, Check, ClipboardPen, LoaderCircle, Send, Sparkles } from "lucide-react";
+import {
+  ArrowUpRight,
+  Check,
+  ClipboardPen,
+  ImagePlus,
+  LoaderCircle,
+  Send,
+  Sparkles,
+} from "lucide-react";
 import {
   answerOrderAssistantQuestion,
   selectOrderAssistantBuyer,
@@ -9,16 +17,25 @@ import {
   createOrderAssistantSession,
   getOrderAssistantSession,
   sendOrderAssistantMessage,
+  updateOrderAssistantItems,
+  type OrderAssistantItem,
   type OrderAssistantContext,
   type OrderAssistantSession,
 } from "@/shared/api/orderAssistant";
 import { AppCheckbox } from "@/shared/ui/AppControls";
 import { AppButton } from "@/shared/ui/AppButton";
-import { AppAlert, AppModal } from "@/shared/ui/AppFeedback";
+import { AppAlert, AppModal, AppTooltip } from "@/shared/ui/AppFeedback";
 import { AppInput, AppSelect, AppTextarea } from "@/shared/ui/AppField";
 import { measurementUnitLabel } from "@/shared/lib/measurementUnit";
 import { RegularBuyerSelect } from "./RegularBuyerSelect";
 import { PRICE_TIER_LABELS } from "./price-tier";
+import {
+  OrderAssistantPhotos,
+  prepareOrderPhoto,
+  MAX_ASSISTANT_PHOTOS,
+  type PendingOrderPhoto,
+} from "./OrderAssistantPhotos";
+import { OrderAssistantItemsEditor } from "./OrderAssistantItemsEditor";
 import "./OrderAssistantModal.css";
 
 type ControlAnswer =
@@ -61,10 +78,17 @@ export function OrderAssistantModal({
   const [session, setSession] = useState<OrderAssistantSession | null>(null);
   const [previousSessions, setPreviousSessions] = useState<OrderAssistantSession[]>([]);
   const [allowStockShortage, setAllowStockShortage] = useState(false);
+  const [photosReviewed, setPhotosReviewed] = useState(false);
+  useEffect(() => setPhotosReviewed(false), [session?.id, session?.revision]);
   useEffect(() => setAllowStockShortage(false), [session?.id, session?.revision]);
   const [message, setMessage] = useState("");
+  const [photos, setPhotos] = useState<PendingOrderPhoto[]>([]);
+  const [preparingPhotos, setPreparingPhotos] = useState(false);
+  const preparingPhotosRef = useRef(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [editing, setEditing] = useState(false);
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"send" | "apply" | "reload" | "answer" | null>(null);
+  const [busy, setBusy] = useState<"send" | "apply" | "reload" | "answer" | "edit" | null>(null);
   const busyRef = useRef(false);
   const [pendingAnswer, setPendingAnswer] = useState<PendingAnswer | null>(null);
   const [failedAnswer, setFailedAnswer] = useState<PendingAnswer | null>(null);
@@ -80,7 +104,8 @@ export function OrderAssistantModal({
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "nearest" });
+    const messages = endRef.current?.parentElement;
+    if (messages) messages.scrollTop = messages.scrollHeight;
   }, [session?.messages.length, pendingMessage, busy]);
 
   useEffect(() => {
@@ -130,6 +155,8 @@ export function OrderAssistantModal({
       setSession(selected);
       persistSession(selected.id);
       setMessage("");
+      setPhotos([]);
+      setEditing(false);
       setSuccess(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Не удалось открыть диалог");
@@ -181,8 +208,61 @@ export function OrderAssistantModal({
     }
   }
 
+  async function addPhotos(files: File[]) {
+    if (busyRef.current || preparingPhotosRef.current || editing) return;
+    const count = (session?.attachments?.length ?? 0) + photos.length;
+    if (count + files.length > MAX_ASSISTANT_PHOTOS) {
+      setError(`В одном диалоге можно использовать до ${MAX_ASSISTANT_PHOTOS} фотографий.`);
+      return;
+    }
+    preparingPhotosRef.current = true;
+    setPreparingPhotos(true);
+    setError(null);
+    try {
+      const prepared = [] as PendingOrderPhoto[];
+      for (const file of files) prepared.push(await prepareOrderPhoto(file));
+      const all = [...(session?.attachments ?? []), ...photos, ...prepared];
+      if (all.reduce((total, photo) => total + photo.dataUrl.length * 0.75, 0) > 24 * 1024 * 1024)
+        throw new Error(
+          "Суммарный размер фотографий превышает 24 МБ. Загрузите меньшие изображения.",
+        );
+      setPhotos((current) => [...current, ...prepared]);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Не удалось прочитать фотографию");
+    } finally {
+      preparingPhotosRef.current = false;
+      setPreparingPhotos(false);
+    }
+  }
+
+  async function saveItems(items: OrderAssistantItem[]) {
+    if (!session || busyRef.current) return false;
+    busyRef.current = true;
+    setBusy("edit");
+    setError(null);
+    setSuccess(null);
+    try {
+      setSession(await updateOrderAssistantItems(session.id, session.revision, items));
+      setSuccess("Состав исправлен. Помощник учтёт эти изменения в следующих сообщениях.");
+      return true;
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Не удалось сохранить состав");
+      return false;
+    } finally {
+      busyRef.current = false;
+      setBusy(null);
+    }
+  }
+
   async function run(action: "send" | "apply" | "reload") {
-    if (busyRef.current || (action === "send" && !message.trim())) return;
+    if (
+      busyRef.current ||
+      preparingPhotosRef.current ||
+      editing ||
+      (action === "apply" && Boolean(session?.attachments?.length) && !photosReviewed) ||
+      (action === "send" && !message.trim() && !photos.length)
+    )
+      return;
     busyRef.current = true;
     setBusy(action);
     setError(null);
@@ -192,7 +272,7 @@ export function OrderAssistantModal({
     const outgoingMessage = action === "send" ? message.trim() : null;
     let sentFrom: OrderAssistantSession | null = null;
     if (outgoingMessage !== null) {
-      setPendingMessage(outgoingMessage);
+      setPendingMessage(outgoingMessage || `Отправлены фотографии: ${photos.length}`);
       setMessage("");
     }
     try {
@@ -209,7 +289,9 @@ export function OrderAssistantModal({
           current.id,
           outgoingMessage!,
           current.revision,
+          photos.map(({ name, dataUrl }) => ({ name, dataUrl })),
         );
+        setPhotos([]);
         setSession(next);
         setPendingMessage(null);
         void queryClient.invalidateQueries({ queryKey: ["regular-buyers"] });
@@ -240,8 +322,17 @@ export function OrderAssistantModal({
           if (
             latest.revision > sentFrom.revision &&
             savedMessage?.role.toLowerCase() === "user" &&
-            savedMessage.content === outgoingMessage
+            (photos.length > 0
+              ? (latest.attachments?.length ?? 0) ===
+                  (sentFrom.attachments?.length ?? 0) + photos.length &&
+                photos.every(
+                  (photo, index) =>
+                    latest.attachments?.[(sentFrom!.attachments?.length ?? 0) + index]?.dataUrl ===
+                    photo.dataUrl,
+                )
+              : savedMessage.content === outgoingMessage)
           ) {
+            setPhotos([]);
             void queryClient.invalidateQueries({ queryKey: ["regular-buyers"] });
             return;
           }
@@ -274,10 +365,10 @@ export function OrderAssistantModal({
     <AppModal
       open={open}
       onOpenChange={(value) => {
-        if (!busyRef.current) onOpenChange(value);
+        if (!busyRef.current && !preparingPhotosRef.current && !editing) onOpenChange(value);
       }}
       title={session?.orderId ? "Помощник · созданный заказ" : "Помощник по заказам"}
-      description="Вставьте заявку. Помощник подберёт товары и поставщика, задаст вопросы и запомнит ваши исправления."
+      description="Прикрепите фотографии или вставьте заявку. Помощник учтёт количество, зачёркивания и ваши уточнения. Состав можно исправить вручную."
       contentClassName="order-assistant"
     >
       <div className="order-assistant__body">
@@ -288,7 +379,7 @@ export function OrderAssistantModal({
                 label="Диалог"
                 value={session?.id || "new"}
                 clearable={false}
-                disabled={Boolean(busy)}
+                disabled={Boolean(busy) || preparingPhotos || editing}
                 options={[
                   ...previousSessions.filter((item) => item.id !== session?.id),
                   ...(session ? [session] : []),
@@ -312,13 +403,15 @@ export function OrderAssistantModal({
             <AppButton
               type="button"
               variant="secondary"
-              disabled={Boolean(busy) || !session}
+              disabled={Boolean(busy) || preparingPhotos || editing || !session}
               onClick={() => {
                 if (session)
                   setPreviousSessions((current) => [
                     ...current.filter((item) => item.id !== session.id),
                     session,
                   ]);
+                setPhotos([]);
+                setEditing(false);
                 setSession(null);
                 persistSession(null);
                 setMessage("");
@@ -342,14 +435,14 @@ export function OrderAssistantModal({
                 label,
               }))}
               onValueChange={(value) => setPriceTier(value as typeof priceTier)}
-              disabled={Boolean(busy)}
+              disabled={Boolean(busy) || preparingPhotos || editing}
             />
             <AppInput
               label="Дата заказа"
               type="date"
               value={orderDate}
               required
-              disabled={Boolean(busy)}
+              disabled={Boolean(busy) || preparingPhotos || editing}
               onChange={(event) => setOrderDate(event.target.value)}
             />
           </div>
@@ -365,7 +458,7 @@ export function OrderAssistantModal({
               {!session?.messages.length && pendingMessage === null && (
                 <div className="order-assistant__welcome">
                   <Sparkles size={24} />
-                  <strong>Соберём заказ из сообщения</strong>
+                  <strong>Соберём заказ из текста или фотографий</strong>
                   <p>
                     Например: «Викинг, картофель 10 кг, яйца 60 шт». Укажите поставщика, если он
                     известен. Неоднозначные товары и единицы уточним перед добавлением.
@@ -389,7 +482,7 @@ export function OrderAssistantModal({
               {pendingMessage !== null && (
                 <article className="order-assistant__message is-user">
                   <strong>Вы</strong>
-                  <p>{pendingMessage}</p>
+                  <p>{pendingMessage || `Прикреплено фото: ${photos.length}`}</p>
                 </article>
               )}
               {busy === "send" && (
@@ -397,20 +490,60 @@ export function OrderAssistantModal({
                   <strong>Помощник</strong>
                   <p className="order-assistant__pending">
                     <LoaderCircle size={16} className="app-spinner" aria-hidden="true" />
-                    <span>Готовлю ответ…</span>
+                    <span>
+                      {photos.length || session?.attachments?.length
+                        ? "Читаю фотографии и перепроверяю позиции…"
+                        : "Готовлю ответ…"}
+                    </span>
                   </p>
                 </article>
               )}
               <div ref={endRef} />
             </div>
-            <div className="order-assistant__composer">
+            <OrderAssistantPhotos photos={session?.attachments ?? []} />
+            <div
+              className="order-assistant__composer"
+              onPaste={(event) => {
+                const files = Array.from(event.clipboardData.files).filter((file) =>
+                  file.type.startsWith("image/"),
+                );
+                if (files.length) {
+                  event.preventDefault();
+                  void addPhotos(files);
+                }
+              }}
+            >
+              <OrderAssistantPhotos
+                photos={photos.map((photo, index) => ({
+                  ...photo,
+                  number: (session?.attachments?.length ?? 0) + index + 1,
+                }))}
+                pending
+                disabled={Boolean(busy) || preparingPhotos || editing}
+                onRemove={(id) =>
+                  setPhotos((current) => current.filter((photo) => photo.id !== id))
+                }
+              />
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                hidden
+                onChange={(event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  event.target.value = "";
+                  void addPhotos(files);
+                }}
+              />
               <AppTextarea
                 ref={inputRef}
                 label="Сообщение помощнику"
-                rows={5}
+                rows={4}
+                hint="Например: «На 1 фотографии возьми только левый столбец». Фото остаются в диалоге — прикреплять их повторно не нужно."
                 value={message}
                 maxLength={20000}
-                disabled={Boolean(busy)}
+                disabled={Boolean(busy) || preparingPhotos || editing}
                 placeholder={
                   session
                     ? "Уточните выбор или напишите правки…"
@@ -426,16 +559,43 @@ export function OrderAssistantModal({
               />
               <div className="order-assistant__send">
                 <span>Ctrl / ⌘ + Enter — отправить</span>
-                <AppButton
-                  type="button"
-                  disabled={!message.trim() || !orderDate || Boolean(busy)}
-                  loading={busy === "send"}
-                  loadingText="Ожидание ответа"
-                  onClick={() => void run("send")}
-                >
-                  <Send size={16} />
-                  Отправить
-                </AppButton>
+                <div className="order-assistant__send-actions">
+                  <AppTooltip content="Прикрепить фотографии · JPEG, PNG, WebP · до 8 фото. Можно вставить через Ctrl / ⌘ + V.">
+                    <AppButton
+                      type="button"
+                      variant="secondary"
+                      className="order-assistant__attach"
+                      aria-label="Прикрепить фотографии"
+                      disabled={
+                        Boolean(busy) ||
+                        preparingPhotos ||
+                        editing ||
+                        (session?.attachments?.length ?? 0) + photos.length >= MAX_ASSISTANT_PHOTOS
+                      }
+                      loading={preparingPhotos}
+                      loadingMode="spinner-only"
+                      onClick={() => fileRef.current?.click()}
+                    >
+                      <ImagePlus size={19} aria-hidden="true" />
+                    </AppButton>
+                  </AppTooltip>
+                  <AppButton
+                    type="button"
+                    disabled={
+                      (!message.trim() && !photos.length) ||
+                      !orderDate ||
+                      Boolean(busy) ||
+                      preparingPhotos ||
+                      editing
+                    }
+                    loading={busy === "send"}
+                    loadingText="Ожидание ответа"
+                    onClick={() => void run("send")}
+                  >
+                    <Send size={16} />
+                    Отправить
+                  </AppButton>
+                </div>
               </div>
             </div>
           </section>
@@ -454,7 +614,7 @@ export function OrderAssistantModal({
                 <RegularBuyerSelect
                   value={buyerDraft === undefined ? session.proposal.regularBuyerId : buyerDraft}
                   currentName={session.proposal.regularBuyerName}
-                  disabled={Boolean(busy)}
+                  disabled={Boolean(busy) || preparingPhotos || editing}
                   unresolved={buyerQuestions.length > 0 && buyerDraft === undefined}
                   hint="Найдите по официальному названию или названию в заявке. Выбор сразу передаётся помощнику."
                   onChange={(regularBuyerId) => void answer({ kind: "buyer", regularBuyerId })}
@@ -512,7 +672,7 @@ export function OrderAssistantModal({
                               type="button"
                               variant="secondary"
                               className="order-assistant__option"
-                              disabled={Boolean(busy)}
+                              disabled={Boolean(busy) || preparingPhotos || editing}
                               loading={
                                 busy === "answer" &&
                                 pendingAnswer?.action.kind === "choice" &&
@@ -539,30 +699,41 @@ export function OrderAssistantModal({
                   </p>
                 </section>
               )}
-              <ol className="order-assistant__items">
-                {session.proposal.items.map((item, index) => (
-                  <li key={index} className={item.issue ? "has-issue" : ""}>
-                    <strong>{item.name || item.source}</strong>
-                    {item.source && item.source !== item.name && (
-                      <span>Из заявки: {item.source}</span>
-                    )}
-                    <div>
-                      {item.quantity == null ? "Количество не определено" : quantity(item.quantity)}{" "}
-                      {item.measurementUnit ? measurementUnitLabel(item.measurementUnit) : ""}
-                      {item.unitPrice != null && (
-                        <span>
-                          {" "}
-                          · {quantity(item.unitPrice)} ₸ /{" "}
-                          {item.measurementUnit
-                            ? measurementUnitLabel(item.measurementUnit)
-                            : "ед."}
-                        </span>
+              <OrderAssistantItemsEditor
+                key={session.id}
+                session={session}
+                disabled={Boolean(busy) || preparingPhotos}
+                onSave={saveItems}
+                onEditingChange={setEditing}
+              />
+              {!editing && (
+                <ol className="order-assistant__items">
+                  {session.proposal.items.map((item, index) => (
+                    <li key={index} className={item.issue ? "has-issue" : ""}>
+                      <strong>{item.name || item.source}</strong>
+                      {item.source && item.source !== item.name && (
+                        <span>Из заявки: {item.source}</span>
                       )}
-                    </div>
-                    {item.issue && <p>{item.issue}</p>}
-                  </li>
-                ))}
-              </ol>
+                      <div>
+                        {item.quantity == null
+                          ? "Количество не определено"
+                          : quantity(item.quantity)}{" "}
+                        {item.measurementUnit ? measurementUnitLabel(item.measurementUnit) : ""}
+                        {item.unitPrice != null && (
+                          <span>
+                            {" "}
+                            · {quantity(item.unitPrice)} ₸ /{" "}
+                            {item.measurementUnit
+                              ? measurementUnitLabel(item.measurementUnit)
+                              : "ед."}
+                          </span>
+                        )}
+                      </div>
+                      {item.issue && <p>{item.issue}</p>}
+                    </li>
+                  ))}
+                </ol>
+              )}
               {session.proposal.comment && (
                 <p className="order-assistant__comment">{session.proposal.comment}</p>
               )}
@@ -578,7 +749,7 @@ export function OrderAssistantModal({
           <AppButton
             type="button"
             variant="secondary"
-            disabled={Boolean(busy)}
+            disabled={Boolean(busy) || preparingPhotos || editing}
             onClick={() => {
               if (failedAnswer) void answer(failedAnswer.action);
             }}
@@ -590,13 +761,21 @@ export function OrderAssistantModal({
           <AppButton
             type="button"
             variant="ghost"
-            disabled={Boolean(busy)}
+            disabled={Boolean(busy) || preparingPhotos || editing}
             onClick={() => void run("reload")}
           >
             Обновить состояние диалога
           </AppButton>
         )}
         {success && <AppAlert title={success} tone="success" />}
+        {Boolean(session?.attachments?.length) && !applied && (
+          <AppCheckbox
+            label="Названия, количество и единицы сверены с фотографиями"
+            checked={photosReviewed}
+            onCheckedChange={setPhotosReviewed}
+            disabled={Boolean(busy) || preparingPhotos || editing}
+          />
+        )}
         {context.mode === "CREATE" &&
           session?.ready &&
           user?.permissions?.includes("warehouse.negative_stock") && (
@@ -613,7 +792,9 @@ export function OrderAssistantModal({
               ? "Заказ сохранён. Откройте его или продолжите правки в чате."
               : session?.mode === "CREATE"
                 ? session.ready
-                  ? "Черновик готов. Нажмите «Создать заказ» или проверьте его в форме."
+                  ? session.attachments?.length && !photosReviewed
+                    ? "Сверьте распознанные позиции с фото и отметьте проверку. Затем можно создать заказ."
+                    : "Черновик готов. Нажмите «Создать заказ» или проверьте его в форме."
                   : "Заказ ещё не создан: остались уточнения. Продолжите в чате или откройте форму для оформления."
                 : applied
                   ? "Состав передан в форму. Сохраните заказ в ней."
@@ -624,7 +805,7 @@ export function OrderAssistantModal({
               <AppButton
                 type="button"
                 variant="secondary"
-                disabled={Boolean(busy)}
+                disabled={Boolean(busy) || preparingPhotos || editing}
                 onClick={() => session.orderId && onOpenOrder(session.orderId)}
               >
                 <ArrowUpRight size={17} />
@@ -635,7 +816,7 @@ export function OrderAssistantModal({
               <AppButton
                 type="button"
                 variant="secondary"
-                disabled={Boolean(busy)}
+                disabled={Boolean(busy) || preparingPhotos || editing}
                 onClick={() => onReviewDraft(session.id)}
               >
                 <ClipboardPen size={17} />
@@ -645,7 +826,7 @@ export function OrderAssistantModal({
             <AppButton
               type="button"
               variant="ghost"
-              disabled={Boolean(busy)}
+              disabled={Boolean(busy) || preparingPhotos || editing}
               onClick={() => onOpenChange(false)}
             >
               Закрыть
@@ -653,7 +834,15 @@ export function OrderAssistantModal({
             <AppButton
               type="button"
               disabled={
-                !session?.ready || Boolean(applied) || Boolean(busy) || Boolean(failedAnswer)
+                !session?.ready ||
+                Boolean(applied) ||
+                Boolean(busy) ||
+                Boolean(failedAnswer) ||
+                (Boolean(session?.attachments?.length) && !photosReviewed) ||
+                preparingPhotos ||
+                editing ||
+                photos.length > 0 ||
+                Boolean(message.trim())
               }
               loading={busy === "apply"}
               onClick={() => void run("apply")}
