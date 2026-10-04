@@ -10,12 +10,14 @@ import {
   Plus,
   ReceiptText,
   RotateCcw,
+  Sparkles,
   Trash2,
   X,
   XCircle,
 } from "lucide-react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useCommerce } from "@/features/commerce/CommerceProvider";
+import { OrderAssistantModal } from "@/features/orders/OrderAssistantModal";
 import { OrderCompletionFlow } from "@/features/orders/OrderCompletionFlow";
 import { PRICE_TIER_LABELS, priceTierTone } from "@/features/orders/price-tier";
 import { AdminPage } from "@/layouts/AdminPage";
@@ -185,6 +187,7 @@ export function AdminOrdersPage() {
     initialState.columnVisibility,
   );
   const [expandedOrderIds, setExpandedOrderIds] = useState(initialState.expandedOrderIds ?? []);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Order | null>(null);
   const [orderCompletionTarget, setOrderCompletionTarget] = useState<Order | null>(null);
   const [orderContextMenu, setOrderContextMenu] = useState<{
@@ -758,6 +761,9 @@ export function AdminOrdersPage() {
       actions={
         canCreateOrder ? (
           <>
+            <AppButton type="button" variant="secondary" onClick={() => setAssistantOpen(true)}>
+              <Sparkles size={18} /> Помощник
+            </AppButton>
             <AppButton
               type="button"
               className="admin-orders-create-desktop"
@@ -891,6 +897,30 @@ export function AdminOrdersPage() {
           if (!open) setOrderContextMenu(null);
         }}
       />
+      {canCreateOrder && (
+        <OrderAssistantModal
+          open={assistantOpen}
+          onOpenChange={setAssistantOpen}
+          context={{
+            mode: "CREATE",
+            priceTier: "RETAIL",
+            orderDate: new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+              .toISOString()
+              .slice(0, 10),
+          }}
+          onApplied={() => {
+            void queryClient.invalidateQueries({ queryKey: ["orders"] });
+          }}
+          onOpenOrder={(orderId) => {
+            setAssistantOpen(false);
+            openOrder(orderId);
+          }}
+          onReviewDraft={(sessionId) => {
+            setAssistantOpen(false);
+            openCreateOrder(`/admin/orders/new?assistantSession=${encodeURIComponent(sessionId)}`);
+          }}
+        />
+      )}
       <OrderCompletionFlow
         order={orderCompletionTarget}
         canReleaseWithStockShortage={user?.permissions?.includes("warehouse.negative_stock")}

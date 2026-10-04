@@ -896,7 +896,10 @@ export function UiKitPage() {
           />
           <AppSelect
             label="Одиночный выбор с поиском"
-            options={categoryOptions}
+            options={categoryOptions.map((option) =>
+              option.value === "boilers" ? { ...option, keywords: ["отопление"] } : option,
+            )}
+            hint="Введите «отопление»: поиск учитывает keywords, сохраняя название варианта."
             value={searchable}
             searchable
             onValueChange={(value) => setSearchable(value as string)}

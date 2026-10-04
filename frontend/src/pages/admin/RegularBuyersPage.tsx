@@ -2,6 +2,10 @@ import { type FormEvent, useMemo, useState } from "react";
 import { Archive, ArchiveRestore, Pencil, Plus } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCommerce } from "@/features/commerce/CommerceProvider";
+import {
+  RegularBuyerAliasesField,
+  appendRegularBuyerAlias,
+} from "@/features/regularBuyers/RegularBuyerAliasesField";
 import { AdminPage } from "@/layouts/AdminPage";
 import {
   createRegularBuyer,
@@ -24,6 +28,7 @@ import "./RegularBuyersPage.css";
 function initialInput(buyer?: RegularBuyer): RegularBuyerInput {
   return {
     name: buyer?.name ?? "",
+    aliases: buyer?.aliases ?? [],
     contactName: buyer?.contactName ?? "",
     phone: buyer?.phone ?? "",
     email: buyer?.email ?? "",
@@ -51,14 +56,10 @@ export function RegularBuyersPage() {
   const [search, setSearch] = useState("");
   const [edited, setEdited] = useState<RegularBuyer | null | undefined>(undefined);
   const [input, setInput] = useState<RegularBuyerInput>(initialInput());
+  const [draftAlias, setDraftAlias] = useState("");
+  const [aliasError, setAliasError] = useState<string | undefined>();
   const save = useMutation({
-    mutationFn: () => {
-      const payload = {
-        ...input,
-        name: input.name.trim(),
-        taxId: input.taxId?.trim() || null,
-        legalAddress: input.legalAddress?.trim() || null,
-      };
+    mutationFn: (payload: RegularBuyerInput) => {
       return edited ? updateRegularBuyer(edited.id, payload) : createRegularBuyer(payload);
     },
     onSuccess: async () => {
@@ -81,6 +82,8 @@ export function RegularBuyersPage() {
   function editBuyer(buyer: RegularBuyer) {
     save.reset();
     setInput(initialInput(buyer));
+    setDraftAlias("");
+    setAliasError(undefined);
     setEdited(buyer);
   }
 
@@ -101,7 +104,7 @@ export function RegularBuyersPage() {
     () =>
       (buyers.data ?? []).filter((buyer) =>
         adminMatchesSearch(
-          `${buyer.name} ${buyer.contactName ?? ""} ${buyer.phone ?? ""} ${buyer.email ?? ""} ${buyer.taxId ?? ""} ${buyer.legalAddress ?? ""} ${buyer.comment ?? ""}`,
+          `${buyer.name} ${(buyer.aliases ?? []).join(" ")} ${buyer.contactName ?? ""} ${buyer.phone ?? ""} ${buyer.email ?? ""} ${buyer.taxId ?? ""} ${buyer.legalAddress ?? ""} ${buyer.comment ?? ""}`,
           search,
         ),
       ),
@@ -111,11 +114,17 @@ export function RegularBuyersPage() {
     {
       id: "name",
       header: "Наименование покупателя",
-      value: (buyer) => `${buyer.name} ${buyer.contactName ?? ""}`,
+      value: (buyer) =>
+        `${buyer.name} ${(buyer.aliases ?? []).join(" ")} ${buyer.contactName ?? ""}`,
       cell: (buyer) => (
         <div className="regular-buyers-page__cell">
           <b>{buyer.name}</b>
           {buyer.contactName && <span>{buyer.contactName}</span>}
+          {!!buyer.aliases?.length && (
+            <span className="regular-buyers-page__aliases" title={buyer.aliases.join(", ")}>
+              В заявках: {buyer.aliases.join(", ")}
+            </span>
+          )}
         </div>
       ),
     },
@@ -183,7 +192,21 @@ export function RegularBuyersPage() {
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canManage || save.isPending || !input.name.trim()) return;
-    save.mutate();
+    try {
+      const aliases = appendRegularBuyerAlias(input.aliases ?? [], draftAlias);
+      setAliasError(undefined);
+      setInput((current) => ({ ...current, aliases }));
+      setDraftAlias("");
+      save.mutate({
+        ...input,
+        aliases,
+        name: input.name.trim(),
+        taxId: input.taxId?.trim() || null,
+        legalAddress: input.legalAddress?.trim() || null,
+      });
+    } catch (error) {
+      setAliasError(errorMessage(error));
+    }
   }
 
   return (
@@ -197,6 +220,8 @@ export function RegularBuyersPage() {
             onClick={() => {
               save.reset();
               setInput(initialInput());
+              setDraftAlias("");
+              setAliasError(undefined);
               setEdited(null);
             }}
           >
@@ -235,7 +260,7 @@ export function RegularBuyersPage() {
               searchable
               searchValue={search}
               onSearchChange={setSearch}
-              searchPlaceholder="Наименование, ИИН/БИН, адрес или контакты"
+              searchPlaceholder="Наименование, название в заявке, ИИН/БИН или контакты"
               initialFilterValues={{ status: ["ACTIVE"] }}
               mobileFilterDialog
               contextMenuActions={buyerActions}
@@ -256,6 +281,11 @@ export function RegularBuyersPage() {
                   <AppBadge tone={buyer.archived ? "slate" : "green"}>
                     {buyer.archived ? "Архив" : "Активен"}
                   </AppBadge>
+                  {!!buyer.aliases?.length && (
+                    <span className="regular-buyers-page__aliases">
+                      В заявках: {buyer.aliases.join(", ")}
+                    </span>
+                  )}
                   {buyer.contactName && <span>Контакт: {buyer.contactName}</span>}
                   {buyer.phone && <span>Телефон: {buyer.phone}</span>}
                   {buyer.email && <span>E-mail: {buyer.email}</span>}
@@ -287,6 +317,33 @@ export function RegularBuyersPage() {
             disabled={save.isPending}
             placeholder="Например: ТОО «Покупатель»"
             onChange={(event) => setInput({ ...input, name: event.target.value })}
+          />
+          <RegularBuyerAliasesField
+            aliases={input.aliases ?? []}
+            draft={draftAlias}
+            error={aliasError}
+            disabled={save.isPending}
+            onDraftChange={(value) => {
+              setDraftAlias(value);
+              setAliasError(undefined);
+            }}
+            onAdd={() => {
+              try {
+                const aliases = appendRegularBuyerAlias(input.aliases ?? [], draftAlias);
+                setInput((current) => ({ ...current, aliases }));
+                setDraftAlias("");
+                setAliasError(undefined);
+              } catch (error) {
+                setAliasError(errorMessage(error));
+              }
+            }}
+            onRemove={(index) => {
+              setInput((current) => ({
+                ...current,
+                aliases: (current.aliases ?? []).filter((_, position) => index !== position),
+              }));
+              setAliasError(undefined);
+            }}
           />
           <AppInput
             label="ИИН/БИН"

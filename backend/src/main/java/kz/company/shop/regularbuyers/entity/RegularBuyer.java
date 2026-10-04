@@ -9,15 +9,45 @@ import java.util.UUID;
 @Table(name = "regular_buyers")
 public class RegularBuyer {
     @Id public UUID id;
-    @Column(nullable = false, length = 240) public String name;
-    @Column(name = "contact_name", length = 160) public String contactName;
-    @Column(length = 64) public String phone;
-    @Column(length = 254) public String email;
-    @Column(name = "tax_id", length = 12) public String taxId;
-    @Column(name = "legal_address", length = 1000) public String legalAddress;
-    @Column(columnDefinition = "text") public String comment;
-    @Column(nullable = false) public boolean archived;
-    @Column(name = "created_at", nullable = false) public Instant createdAt = Instant.now();
-    @Column(name = "updated_at", nullable = false) public Instant updatedAt = Instant.now();
-    @PreUpdate void touch() { updatedAt = Instant.now(); }
+
+    @Column(nullable = false, length = 240)
+    public String name;
+
+    @ElementCollection
+    @CollectionTable(name = "regular_buyer_aliases", joinColumns = @JoinColumn(name = "buyer_id"))
+    @OrderColumn(name = "position")
+    @Column(name = "alias", nullable = false, length = 120)
+    public java.util.List<String> aliases = new java.util.ArrayList<>();
+
+    @Column(name = "contact_name", length = 160)
+    public String contactName;
+
+    @Column(length = 64)
+    public String phone;
+
+    @Column(length = 254)
+    public String email;
+
+    @Column(name = "tax_id", length = 12)
+    public String taxId;
+
+    @Column(name = "legal_address", length = 1000)
+    public String legalAddress;
+
+    @Column(columnDefinition = "text")
+    public String comment;
+
+    @Column(nullable = false)
+    public boolean archived;
+
+    @Column(name = "created_at", nullable = false)
+    public Instant createdAt = Instant.now();
+
+    @Column(name = "updated_at", nullable = false)
+    public Instant updatedAt = Instant.now();
+
+    @PreUpdate
+    void touch() {
+        updatedAt = Instant.now();
+    }
 }

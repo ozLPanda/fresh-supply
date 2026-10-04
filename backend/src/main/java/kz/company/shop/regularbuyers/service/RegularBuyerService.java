@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 import kz.company.shop.common.exception.AppExceptions;
 import kz.company.shop.orders.entity.Order;
+import kz.company.shop.regularbuyers.RegularBuyerAliases;
 import kz.company.shop.regularbuyers.dto.RegularBuyerDto;
 import kz.company.shop.regularbuyers.dto.RegularBuyerRequest;
 import kz.company.shop.regularbuyers.entity.RegularBuyer;
@@ -16,12 +17,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class RegularBuyerService {
     private final RegularBuyerRepository repository;
-    public RegularBuyerService(RegularBuyerRepository repository) { this.repository = repository; }
+
+    public RegularBuyerService(RegularBuyerRepository repository) {
+        this.repository = repository;
+    }
 
     @Transactional(readOnly = true)
     public List<RegularBuyerDto> list(boolean includeArchived) {
-        return (includeArchived ? repository.findAllByOrderByNameAsc()
-                : repository.findByArchivedFalseOrderByNameAsc()).stream().map(this::toDto).toList();
+        return (includeArchived
+                        ? repository.findAllByOrderByNameAsc()
+                        : repository.findByArchivedFalseOrderByNameAsc())
+                .stream().map(this::toDto).toList();
     }
 
     @Transactional
@@ -48,14 +54,16 @@ public class RegularBuyerService {
         }
         if (regularBuyerId.equals(order.regularBuyerId)) return;
         RegularBuyer buyer = get(regularBuyerId);
-        if (buyer.archived) throw new AppExceptions.BadRequest("Выбранный постоянный покупатель в архиве");
+        if (buyer.archived)
+            throw new AppExceptions.BadRequest("Выбранный постоянный покупатель в архиве");
         order.regularBuyerId = buyer.id;
         order.regularBuyerName = buyer.name;
     }
 
     private RegularBuyer get(UUID id) {
-        return repository.findById(id).orElseThrow(
-                () -> new AppExceptions.NotFound("Постоянный покупатель не найден"));
+        return repository
+                .findById(id)
+                .orElseThrow(() -> new AppExceptions.NotFound("Постоянный покупатель не найден"));
     }
 
     /** Use the order's name snapshot with current requisites, including for archived buyers. */
@@ -74,7 +82,14 @@ public class RegularBuyerService {
 
     private void apply(RegularBuyer buyer, RegularBuyerRequest request) {
         String name = normalized(request.name());
-        if (name == null) throw new AppExceptions.BadRequest("Укажите наименование постоянного покупателя");
+        if (name == null)
+            throw new AppExceptions.BadRequest("Укажите наименование постоянного покупателя");
+        List<String> aliases =
+                request.aliases() == null ? null : RegularBuyerAliases.normalize(request.aliases());
+        if (aliases != null) {
+            buyer.aliases.clear();
+            buyer.aliases.addAll(aliases);
+        }
         buyer.name = name;
         buyer.contactName = normalized(request.contactName());
         buyer.phone = normalized(request.phone());
@@ -86,10 +101,23 @@ public class RegularBuyerService {
         buyer.updatedAt = Instant.now();
     }
 
-    private String normalized(String value) { return value == null || value.isBlank() ? null : value.trim(); }
+    private String normalized(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
     private RegularBuyerDto toDto(RegularBuyer buyer) {
-        return new RegularBuyerDto(buyer.id, buyer.name, buyer.contactName, buyer.phone,
-                buyer.email, buyer.comment, buyer.archived, buyer.createdAt, buyer.updatedAt,
-                buyer.taxId, buyer.legalAddress);
+        return new RegularBuyerDto(
+                buyer.id,
+                buyer.name,
+                buyer.contactName,
+                buyer.phone,
+                buyer.email,
+                buyer.comment,
+                buyer.archived,
+                buyer.createdAt,
+                buyer.updatedAt,
+                buyer.taxId,
+                buyer.legalAddress,
+                buyer.aliases);
     }
 }

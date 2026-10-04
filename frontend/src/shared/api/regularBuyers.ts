@@ -1,6 +1,7 @@
 import { api } from "@/shared/api/http";
 
 export type RegularBuyer = {
+  aliases: string[];
   id: string;
   name: string;
   contactName?: string | null;
@@ -15,6 +16,7 @@ export type RegularBuyer = {
 };
 
 export type RegularBuyerInput = {
+  aliases?: string[];
   name: string;
   contactName?: string | null;
   phone?: string | null;

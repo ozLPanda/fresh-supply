@@ -1421,6 +1421,73 @@ public class OrderService {
         return toDto(saved);
     }
 
+    /** Internal atomic replacement used only after assistant-session ownership and preview checks. */
+    @Transactional
+    public OrderDto replaceAssistantItems(UUID id, List<BarcodeOrderItemRequest> requested,
+            UUID regularBuyerId, String comment, boolean allowStockShortage, Long actorUserId) {
+        Order order = lockedGet(id);
+        ensureItemsEditable(order);
+        if (!Objects.equals(order.createdByUserId, actorUserId)
+                || (order.status != OrderStatus.NEW && order.status != OrderStatus.PROCESSING)) {
+            throw new AppExceptions.BadRequest("Агент может исправлять только свой заказ в работе");
+        }
+        if (requested == null || requested.isEmpty() || requested.size() > 200) {
+            throw new AppExceptions.BadRequest("В заказе должно быть от 1 до 200 позиций");
+        }
+        Set<Long> ids = new HashSet<>();
+        Map<Long, OrderItem> existing = order.items.stream().filter(i -> i.productId != null)
+                .collect(Collectors.toMap(i -> i.productId, i -> i));
+        List<OrderItem> replacement = new ArrayList<>();
+        for (BarcodeOrderItemRequest row : requested) {
+            validateOrderItemQuantity(row.quantity());
+            if (row.productId() == null || !ids.add(row.productId()) || row.measurementUnit() == null
+                    || row.unitPrice() == null || row.unitPrice().signum() < 0) {
+                throw new AppExceptions.BadRequest("Некорректная позиция заказа");
+            }
+            Product product = productService.getEntity(row.productId());
+            if (!product.active || row.measurementUnit() != product.measurementUnit) {
+                throw new AppExceptions.BadRequest("Проверьте доступность и единицу товара «" + product.nameRu + "»");
+            }
+            OrderItem item = existing.get(product.id);
+            if (item == null) {
+                item = new OrderItem();
+                item.order = order;
+                item.productId = product.id;
+                item.sku = product.sku;
+                item.nameRu = product.nameRu;
+                item.madeToOrder = product.madeToOrder;
+                item.incomingPrice = product.incomingPrice;
+                item.priceTier = order.priceTier;
+                item.wholesale = order.wholesale;
+            }
+            item.measurementUnit = row.measurementUnit();
+            item.quantity = row.quantity();
+            item.unitPrice = row.unitPrice();
+            item.confirmedUnitPrice = row.unitPrice();
+            item.lineTotal = row.unitPrice().multiply(row.quantity());
+            item.confirmedLineTotal = item.lineTotal;
+            item.sortOrder = replacement.size();
+            replacement.add(item);
+        }
+        for (OrderItem old : new ArrayList<>(order.items)) {
+            if (!replacement.contains(old)) warehouseService.detachAutomaticReturnLines(order, old.id);
+        }
+        order.items.clear();
+        order.items.addAll(replacement);
+        updateOrderTotal(order);
+        regularBuyerService.assign(order, regularBuyerId);
+        order.comment = comment;
+        if (order.reservationExpiresAt != null && order.reservationExpiresAt.isAfter(Instant.now())) {
+            warehouseService.reserveOrder(order, allowStockShortage);
+        } else {
+            ensureDefaultReservation(order, allowStockShortage);
+        }
+        Order saved = repository.save(order);
+        auditService.record("ORDER_ASSISTANT_UPDATE", "ORDER", saved.id,
+                "Изменил состав заказа #" + displayCode(saved) + " через помощника");
+        return toDto(saved);
+    }
+
     @Transactional
     public OrderDto addManualItem(UUID id, OrderManualItemCreateRequest request, Long actorUserId) {
         Order order = get(id);

@@ -52,6 +52,7 @@ class OpenAiGptProviderTest {
             assertEquals(5, result.outputTokens());
             assertEquals("Bearer test-key", authorization.get());
             assertEquals("gpt-6-luna", sent.get().path("model").asText());
+            assertEquals("medium", sent.get().path("reasoning").path("effort").asText());
             assertEquals("Hi", sent.get().path("input").asText());
             assertEquals("Be brief", sent.get().path("instructions").asText());
             assertEquals(50, sent.get().path("max_output_tokens").asInt());

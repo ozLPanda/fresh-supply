@@ -17,7 +17,22 @@ export type BarcodeOrderLine = BarcodeOrderProduct & {
   unitPrice: number | null;
 };
 
+export type AssistantDraftReview = {
+  sessionId: string;
+  revision: number;
+  unresolved: Array<{
+    source: string;
+    name: string;
+    quantity: number | null;
+    unit: string | null;
+    reason: string;
+  }>;
+  questions: string[];
+  reviewed: boolean;
+};
+
 export type BarcodeOrderDraft = {
+  assistantImport?: AssistantDraftReview;
   /** Missing in drafts written before save timestamps were introduced. */
   savedAt?: string;
   lines: BarcodeOrderLine[];
@@ -48,8 +63,8 @@ const PRICE_TIERS = new Set<BarcodeOrderPriceTier>([
 ]);
 const PRICE_ADJUSTMENT_OPERATIONS = new Set<PriceAdjustmentOperation>(["PERCENT", "ADD"]);
 
-function storageKey(userId: number, mode: OrderCreateMode) {
-  return `${DRAFT_PREFIX}_v1_${userId}_${mode}`;
+function storageKey(userId: number, mode: OrderCreateMode, assistantSessionId?: string) {
+  return `${DRAFT_PREFIX}_v1_${userId}_${mode}${assistantSessionId ? `_assistant_${assistantSessionId}` : ""}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -161,6 +176,43 @@ function parsePendingBinding(value: unknown): PendingCustomerBinding | null {
   return { email, phone, label: value.label };
 }
 
+function parseAssistantImport(value: unknown): AssistantDraftReview | undefined {
+  if (
+    !isRecord(value) ||
+    typeof value.sessionId !== "string" ||
+    !Number.isInteger(value.revision) ||
+    Number(value.revision) < 0 ||
+    !Array.isArray(value.unresolved) ||
+    !Array.isArray(value.questions)
+  )
+    return undefined;
+  const unresolved = value.unresolved.flatMap((item) =>
+    isRecord(item) &&
+    typeof item.source === "string" &&
+    typeof item.name === "string" &&
+    typeof item.reason === "string"
+      ? [
+          {
+            source: item.source,
+            name: item.name,
+            quantity: finiteNumber(item.quantity),
+            unit: typeof item.unit === "string" ? item.unit : null,
+            reason: item.reason,
+          },
+        ]
+      : [],
+  );
+  return {
+    sessionId: value.sessionId,
+    revision: Number(value.revision),
+    unresolved,
+    questions: value.questions.filter(
+      (question): question is string => typeof question === "string",
+    ),
+    reviewed: value.reviewed === true,
+  };
+}
+
 function parseDraft(value: unknown, mode: OrderCreateMode): BarcodeOrderDraft | null {
   if (
     !isRecord(value) ||
@@ -191,6 +243,7 @@ function parseDraft(value: unknown, mode: OrderCreateMode): BarcodeOrderDraft | 
   const selectedCustomerId = value.selectedCustomerId;
 
   return {
+    assistantImport: parseAssistantImport(value.assistantImport),
     lines,
     savedAt:
       typeof value.savedAt === "string" && Number.isFinite(Date.parse(value.savedAt))
@@ -212,7 +265,7 @@ function parseDraft(value: unknown, mode: OrderCreateMode): BarcodeOrderDraft | 
       value.priceAdjustmentHistoryByLine,
       lineIds,
     ),
-    comment: value.comment.slice(0, 1_000),
+    comment: value.comment.slice(0, 2_000),
     selectedCustomerId:
       typeof selectedCustomerId === "number" &&
       Number.isInteger(selectedCustomerId) &&
@@ -228,9 +281,16 @@ function parseDraft(value: unknown, mode: OrderCreateMode): BarcodeOrderDraft | 
   };
 }
 
-export function readBarcodeOrderDraft(userId: number, mode: OrderCreateMode) {
+export function readBarcodeOrderDraft(
+  userId: number,
+  mode: OrderCreateMode,
+  assistantSessionId?: string,
+) {
   try {
-    return parseDraft(JSON.parse(localStorage.getItem(storageKey(userId, mode)) ?? "null"), mode);
+    return parseDraft(
+      JSON.parse(localStorage.getItem(storageKey(userId, mode, assistantSessionId)) ?? "null"),
+      mode,
+    );
   } catch {
     return null;
   }
@@ -240,6 +300,7 @@ export function writeBarcodeOrderDraft(
   userId: number,
   mode: OrderCreateMode,
   draft: BarcodeOrderDraft,
+  assistantSessionId?: string,
 ) {
   const storedDraft: StoredBarcodeOrderDraft = {
     ...draft,
@@ -248,15 +309,19 @@ export function writeBarcodeOrderDraft(
     mode,
   };
   try {
-    localStorage.setItem(storageKey(userId, mode), JSON.stringify(storedDraft));
+    localStorage.setItem(storageKey(userId, mode, assistantSessionId), JSON.stringify(storedDraft));
   } catch {
     // Local persistence is an additional safeguard and must never block order creation.
   }
 }
 
-export function clearBarcodeOrderDraft(userId: number, mode: OrderCreateMode) {
+export function clearBarcodeOrderDraft(
+  userId: number,
+  mode: OrderCreateMode,
+  assistantSessionId?: string,
+) {
   try {
-    localStorage.removeItem(storageKey(userId, mode));
+    localStorage.removeItem(storageKey(userId, mode, assistantSessionId));
   } catch {
     // Local storage may be unavailable in private or restricted browser sessions.
   }

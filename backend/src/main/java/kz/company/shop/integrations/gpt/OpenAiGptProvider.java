@@ -102,6 +102,9 @@ public class OpenAiGptProvider implements GptProvider {
         body.put("model", properties.getModel());
         body.put("input", input);
         body.put("store", false);
+        if (properties.getReasoningEffort() != null && !properties.getReasoningEffort().isBlank()) {
+            body.put("reasoning", Map.of("effort", properties.getReasoningEffort()));
+        }
         if (instructions != null && !instructions.isBlank()) {
             body.put("instructions", instructions);
         }

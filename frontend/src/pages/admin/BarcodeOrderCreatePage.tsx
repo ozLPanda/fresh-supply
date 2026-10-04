@@ -8,6 +8,8 @@ import {
   Barcode,
   Check,
   CheckCheck,
+  ChevronDown,
+  ChevronUp,
   ImageOff,
   GripVertical,
   ListX,
@@ -16,6 +18,7 @@ import {
   Plus,
   Play,
   Search,
+  Sparkles,
   RotateCcw,
   Trash2,
   UserRound,
@@ -51,6 +54,15 @@ import {
 import { appToast } from "@/shared/ui/AppToast";
 import { DataPanel } from "@/shared/ui/DataPanel";
 import { SegmentedControl } from "@/shared/ui/SegmentedControl";
+import { OrderAssistantModal } from "@/features/orders/OrderAssistantModal";
+import {
+  checkoutOrderAssistant,
+  getOrderAssistantSession,
+  type OrderAssistantContext,
+  type OrderAssistantSession,
+} from "@/shared/api/orderAssistant";
+import { AppCheckbox } from "@/shared/ui/AppControls";
+import { prepareAssistantOrderImport } from "./assistantOrderImport";
 import { OrderProductPickerModal } from "@/features/orders/OrderProductPickerModal";
 import { RegularBuyerSelect } from "@/features/orders/RegularBuyerSelect";
 import { OrderProductAvailability } from "@/features/orders/OrderProductAvailability";
@@ -65,6 +77,8 @@ import {
   clearBarcodeOrderDraft,
   readBarcodeOrderDraft,
   type BarcodeOrderLine,
+  type BarcodeOrderDraft,
+  type AssistantDraftReview,
   type OrderCreateMode,
   type PendingCustomerBinding,
   type PriceAdjustmentHistoryEntry,
@@ -247,6 +261,15 @@ export function ProductSelectionOrderCreatePage() {
 function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const assistantParam = new URLSearchParams(location.search).get("assistantSession");
+  const assistantSessionId =
+    assistantParam &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(assistantParam)
+      ? assistantParam
+      : undefined;
+  const isAssistantImport = assistantParam !== null;
+  const [assistantImport, setAssistantImport] = useState<AssistantDraftReview | undefined>();
+  const [assistantReviewExpanded, setAssistantReviewExpanded] = useState(true);
   const returnPath = orderCreateReturnPath(location.state, location.pathname);
   const returnState = (location.state as { returnState?: unknown } | null)?.returnState;
   const { user: activeUser } = useCommerce();
@@ -289,6 +312,9 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
   const [pendingStockShortageSubmission, setPendingStockShortageSubmission] =
     useState<OrderSubmission | null>(null);
   const [productPickerOpen, setProductPickerOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantVersion, setAssistantVersion] = useState(0);
+  const assistantSnapshotRef = useRef<string | null>(null);
   const [restoredDraftScope, setRestoredDraftScope] = useState<string | null>(null);
   const [restoredDraftInfo, setRestoredDraftInfo] = useState<{
     orderDate: string;
@@ -304,18 +330,28 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
   const canReleaseWithStockShortage =
     activeUser?.permissions?.includes("warehouse.negative_stock") ?? false;
   const canUpdateProducts = activeUser?.permissions?.includes("products.update") ?? false;
-  const draftScope = activeUserId ? `${activeUserId}:${mode}` : null;
+  const draftScope = activeUserId
+    ? `${activeUserId}:${mode}${isAssistantImport ? `:assistant:${assistantParam}` : ""}`
+    : null;
+  const assistantSource = useQuery({
+    queryKey: ["order-assistant", "form-source", activeUserId, assistantSessionId],
+    queryFn: () => getOrderAssistantSession(assistantSessionId!),
+    enabled: Boolean(activeUserId && assistantSessionId),
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+  const assistantSourceReady =
+    !isAssistantImport ||
+    Boolean(
+      assistantSessionId &&
+      assistantSource.isSuccess &&
+      assistantSource.data.mode === "CREATE" &&
+      !assistantSource.data.orderId &&
+      assistantImport &&
+      restoredDraftScope === draftScope,
+    );
 
-  useEffect(() => {
-    removedLineRef.current = null;
-    setRemovedLine(null);
-    if (!activeUserId || !draftScope) {
-      setRestoredDraftScope(null);
-      setRestoredDraftInfo(null);
-      return;
-    }
-
-    const draft = readBarcodeOrderDraft(activeUserId, mode);
+  function restoreForm(draft?: BarcodeOrderDraft | null) {
     setLines(draft?.lines ?? []);
     setPriceTier(draft?.priceTier ?? "RETAIL");
     setOrderDate(draft?.orderDate ?? localDateInputValue());
@@ -328,6 +364,90 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
     setRegularBuyerId(draft?.regularBuyerId ?? null);
     setSelectedCustomerId(draft?.selectedCustomerId ?? null);
     setSelectedPendingBinding(draft?.selectedPendingBinding ?? null);
+    setAssistantImport(draft?.assistantImport);
+  }
+
+  useEffect(() => {
+    if (
+      !isAssistantImport ||
+      !assistantSessionId ||
+      !activeUserId ||
+      !draftScope ||
+      !assistantSource.data
+    )
+      return;
+    const source = assistantSource.data;
+    if (source.orderId) {
+      navigate(`/admin/orders/${source.orderId}`, {
+        replace: true,
+        state: { returnTo: returnPath, returnState },
+      });
+      return;
+    }
+    if (source.mode !== "CREATE" || restoredDraftScope === draftScope) return;
+    const stored = readBarcodeOrderDraft(activeUserId, mode, assistantSessionId);
+    if (stored?.assistantImport?.sessionId === assistantSessionId) {
+      restoreForm(stored);
+    } else {
+      const prepared = prepareAssistantOrderImport(source);
+      const proposal = source.proposal;
+      const supplierNote = proposal.supplierName
+        ? `Поставщик (справочно): ${proposal.supplierName}`
+        : "";
+      const sourceComment = proposal.comment || "";
+      restoreForm({
+        lines: prepared.lines,
+        assistantImport: prepared.review,
+        priceTier: source.priceTier,
+        orderDate: source.orderDate,
+        selectedPriceLineIds: prepared.lines.map((line) => line.id),
+        priceAdjustmentOperation: "PERCENT",
+        priceAdjustmentValue: "",
+        priceAdjustmentOriginalPrices: {},
+        priceAdjustmentHistoryByLine: {},
+        comment:
+          supplierNote && !sourceComment.includes(supplierNote)
+            ? [sourceComment, supplierNote].filter(Boolean).join("\n")
+            : sourceComment,
+        regularBuyerId: proposal.regularBuyerId,
+        selectedCustomerId: proposal.customerId,
+        selectedPendingBinding:
+          proposal.pendingCustomerEmail || proposal.pendingCustomerPhone
+            ? {
+                email: proposal.pendingCustomerEmail,
+                phone: proposal.pendingCustomerPhone,
+                label: proposal.pendingCustomerEmail || proposal.pendingCustomerPhone || "",
+              }
+            : null,
+      });
+    }
+    setRestoredDraftInfo(null);
+    setRestoredDraftScope(draftScope);
+  }, [
+    isAssistantImport,
+    assistantSessionId,
+    activeUserId,
+    draftScope,
+    assistantSource.data,
+    mode,
+    restoredDraftScope,
+    navigate,
+    returnPath,
+    returnState,
+  ]);
+
+  useEffect(() => {
+    removedLineRef.current = null;
+    setRemovedLine(null);
+    if (!activeUserId || !draftScope) {
+      setRestoredDraftScope(null);
+      setRestoredDraftInfo(null);
+      return;
+    }
+
+    if (isAssistantImport) return;
+    const draft = readBarcodeOrderDraft(activeUserId, mode);
+    restoreForm(draft);
     setRestoredDraftScope(draftScope);
     const hasDraft = Boolean(draft && (draft.lines.length || draft.comment.trim()));
     setRestoredDraftInfo(
@@ -340,7 +460,7 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
     if (draft?.lines.length) {
       appToast.info("Восстановлен незавершённый заказ на этом устройстве");
     }
-  }, [activeUserId, draftScope, mode]);
+  }, [activeUserId, draftScope, mode, isAssistantImport]);
 
   useEffect(
     () => () => {
@@ -351,22 +471,36 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
   );
 
   useEffect(() => {
-    if (!activeUserId || restoredDraftScope !== draftScope) return;
-    writeBarcodeOrderDraft(activeUserId, mode, {
-      lines,
-      priceTier,
-      orderDate,
-      selectedPriceLineIds,
-      priceAdjustmentOperation,
-      priceAdjustmentValue,
-      priceAdjustmentOriginalPrices,
-      priceAdjustmentHistoryByLine,
-      comment,
-      regularBuyerId,
-      selectedCustomerId,
-      selectedPendingBinding,
-    });
+    if (
+      !activeUserId ||
+      restoredDraftScope !== draftScope ||
+      (isAssistantImport && (!assistantSessionId || !assistantImport))
+    )
+      return;
+    writeBarcodeOrderDraft(
+      activeUserId,
+      mode,
+      {
+        assistantImport,
+        lines,
+        priceTier,
+        orderDate,
+        selectedPriceLineIds,
+        priceAdjustmentOperation,
+        priceAdjustmentValue,
+        priceAdjustmentOriginalPrices,
+        priceAdjustmentHistoryByLine,
+        comment,
+        regularBuyerId,
+        selectedCustomerId,
+        selectedPendingBinding,
+      },
+      assistantSessionId,
+    );
   }, [
+    assistantImport,
+    assistantSessionId,
+    isAssistantImport,
     activeUserId,
     comment,
     regularBuyerId,
@@ -427,8 +561,15 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
       regularBuyerId,
       pendingBinding,
       allowStockShortage = false,
-    }: OrderSubmission) =>
-      createBarcodeOrder({
+    }: OrderSubmission) => {
+      if (
+        isAssistantImport &&
+        (!assistantSourceReady ||
+          !assistantImport?.reviewed ||
+          assistantImport.revision !== assistantSource.data?.revision)
+      )
+        throw new Error("Проверьте уточнения заявки перед созданием заказа.");
+      const payload = {
         customerId,
         regularBuyerId,
         pendingCustomerEmail: pendingBinding?.email ?? null,
@@ -443,13 +584,18 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
         })),
         comment: comment.trim() || null,
         allowStockShortage,
-      }),
+      };
+      return assistantSessionId && assistantImport
+        ? checkoutOrderAssistant(assistantSessionId, assistantImport.revision, payload)
+        : createBarcodeOrder(payload);
+    },
     onSuccess: (order) => {
-      if (activeUserId) clearBarcodeOrderDraft(activeUserId, mode);
+      if (activeUserId) clearBarcodeOrderDraft(activeUserId, mode, assistantSessionId);
       appToast.success(`Заказ № ${order.displayCode} создан и передан в работу`);
       navigate(`/admin/orders/${order.id}`, { state: { returnTo: returnPath, returnState } });
     },
     onError: async (error, submission) => {
+      if (isAssistantImport) void assistantSource.refetch();
       if (!submission.allowStockShortage && canReadWarehouse && isStockShortageError(error)) {
         const refreshed = await warehouseBalancesQuery.refetch();
         const shortages = calculateStockShortages(lines, refreshed.data);
@@ -513,6 +659,104 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
     setProductModalOpen(false);
     setDetectedProduct(null);
     appToast.success("Товар добавлен в заказ");
+  }
+
+  function assistantContext(): OrderAssistantContext {
+    return {
+      mode: "DRAFT",
+      priceTier,
+      orderDate,
+      regularBuyerId,
+      customerId: selectedCustomerId,
+      pendingCustomerEmail: selectedPendingBinding?.email ?? null,
+      pendingCustomerPhone: selectedPendingBinding?.phone ?? null,
+      comment: comment || null,
+      items: lines.map((line) => ({
+        productId: line.id,
+        quantity: line.quantity,
+        measurementUnit: line.measurementUnit ?? "PIECE",
+        unitPrice: line.unitPrice,
+      })),
+    };
+  }
+
+  function openAssistant() {
+    const snapshot = JSON.stringify(assistantContext());
+    // A manual edit starts a new conversation from the complete current form.
+    if (assistantSnapshotRef.current !== snapshot) setAssistantVersion((value) => value + 1);
+    assistantSnapshotRef.current = snapshot;
+    setAssistantOpen(true);
+  }
+
+  function applyAssistantDraft(session: OrderAssistantSession) {
+    if (JSON.stringify(assistantContext()) !== assistantSnapshotRef.current) {
+      throw new Error(
+        "Форма изменилась. Закройте и откройте помощника, чтобы продолжить с текущим составом.",
+      );
+    }
+    const proposal = session.proposal;
+    const nextLines: BarcodeOrderLine[] = proposal.items.map((item) => {
+      if (
+        !item.product ||
+        item.quantity == null ||
+        item.unitPrice == null ||
+        !item.measurementUnit
+      ) {
+        throw new Error("В предложении остались незаполненные позиции. Уточните их в чате.");
+      }
+      return {
+        ...item.product,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        measurementUnit: item.measurementUnit,
+      };
+    });
+    const nextContext: OrderAssistantContext = {
+      mode: "DRAFT",
+      priceTier: session.priceTier,
+      orderDate: session.orderDate,
+      regularBuyerId: proposal.regularBuyerId,
+      customerId: proposal.customerId,
+      pendingCustomerEmail: proposal.pendingCustomerEmail,
+      pendingCustomerPhone: proposal.pendingCustomerPhone,
+      comment: proposal.comment || null,
+      items: nextLines.map((line) => ({
+        productId: line.id,
+        quantity: line.quantity,
+        measurementUnit: line.measurementUnit ?? "PIECE",
+        unitPrice: line.unitPrice,
+      })),
+    };
+    assistantSnapshotRef.current = JSON.stringify(nextContext);
+    setLines(nextLines);
+    setPriceTier(session.priceTier);
+    setOrderDate(session.orderDate);
+    setRegularBuyerId(proposal.regularBuyerId);
+    setSelectedCustomerId(proposal.customerId);
+    setSelectedPendingBinding(
+      proposal.pendingCustomerEmail || proposal.pendingCustomerPhone
+        ? {
+            email: proposal.pendingCustomerEmail,
+            phone: proposal.pendingCustomerPhone,
+            label: proposal.pendingCustomerEmail || proposal.pendingCustomerPhone || "",
+          }
+        : null,
+    );
+    setComment(proposal.comment || "");
+    setSelectedPriceLineIds(nextLines.map((line) => line.id));
+    const unchangedPriceIds = new Set(
+      nextLines
+        .filter((line) =>
+          lines.some((old) => old.id === line.id && old.unitPrice === line.unitPrice),
+        )
+        .map((line) => String(line.id)),
+    );
+    setPriceAdjustmentHistoryByLine((current) =>
+      Object.fromEntries(Object.entries(current).filter(([id]) => unchangedPriceIds.has(id))),
+    );
+    setPriceAdjustmentOriginalPrices((current) =>
+      Object.fromEntries(Object.entries(current).filter(([id]) => unchangedPriceIds.has(id))),
+    );
   }
 
   function addProduct(product: BarcodeOrderProduct, quantity = 1) {
@@ -768,7 +1012,7 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
   }
 
   function startNewDraft() {
-    if (activeUserId) clearBarcodeOrderDraft(activeUserId, mode);
+    if (activeUserId) clearBarcodeOrderDraft(activeUserId, mode, assistantSessionId);
     removedLineRef.current = null;
     setRemovedLine(null);
     appToast.dismiss(`order-line-removal-${draftScope}`);
@@ -834,8 +1078,13 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
   const canContinue =
     lines.length > 0 &&
     missingPriceLines.length === 0 &&
-    (!restoredDraftInfo || restoredDraftInfo.continued);
-  const orderSubmissionPending = createOrder.isPending || checkingStock;
+    (!restoredDraftInfo || restoredDraftInfo.continued) &&
+    assistantSourceReady &&
+    (!isAssistantImport ||
+      Boolean(
+        assistantImport?.reviewed && assistantImport.revision === assistantSource.data?.revision,
+      ));
+  const orderSubmissionPending = createOrder.isPending || checkingStock || !assistantSourceReady;
 
   const columns = useMemo<AppDataTableColumn<BarcodeOrderLine>[]>(
     () => [
@@ -1157,11 +1406,75 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
     createOrder.mutate(submission);
   }
 
+  if (isAssistantImport && !assistantSourceReady) {
+    const invalid = !assistantSessionId;
+    const wrongMode = assistantSource.data && assistantSource.data.mode !== "CREATE";
+    return (
+      <AdminPage
+        title="Новый заказ из заявки"
+        eyebrow="Продажи"
+        backAction={
+          <AppButton
+            type="button"
+            variant="ghost"
+            aria-label="Назад к заказам"
+            onClick={() => navigate(returnPath, { replace: true, state: returnState })}
+          >
+            <ArrowLeft size={18} />
+          </AppButton>
+        }
+      >
+        {invalid || wrongMode || assistantSource.isError ? (
+          <AppAlert
+            title="Не удалось открыть заявку"
+            tone="danger"
+            onRetry={
+              invalid || wrongMode
+                ? undefined
+                : () => {
+                    void assistantSource.refetch();
+                  }
+            }
+          >
+            {invalid
+              ? "В ссылке указан неверный идентификатор диалога."
+              : wrongMode
+                ? "Этот диалог относится к другой форме. Вернитесь к исходному новому заказу."
+                : getErrorMessage(assistantSource.error)}
+          </AppAlert>
+        ) : (
+          <>
+            <AppAlert
+              title={
+                assistantSource.data?.orderId
+                  ? "Заказ уже создан — открываем его"
+                  : "Загружаем заявку помощника"
+              }
+            >
+              Форма откроется после проверки исходных данных.
+            </AppAlert>
+            <AppSkeleton />
+          </>
+        )}
+      </AdminPage>
+    );
+  }
+
   return (
     <AdminPage
       className="order-workspace"
       eyebrow="Продажи"
       title={mode === "barcode" ? "Новый заказ по штрихкодам" : "Новый заказ"}
+      actions={
+        <AppButton
+          type="button"
+          variant="secondary"
+          onClick={openAssistant}
+          disabled={orderSubmissionPending}
+        >
+          <Sparkles size={18} /> Помощник
+        </AppButton>
+      }
       backAction={
         <AppButton
           type="button"
@@ -1178,6 +1491,113 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
           ? "Сканируйте штрихкод камерой телефона или введите код вручную. Цена и итог заказа рассчитываются для выбранного типа продажи."
           : "Подберите товары из каталога, укажите количество, единицу измерения и тип цены. Заказ будет создан с тем же процессом оплаты и сборки."}
       </AppAlert>
+
+      {assistantImport && (
+        <section className="barcode-order-assistant-review" aria-label="Проверка заявки помощника">
+          <div className="barcode-order-assistant-review__heading">
+            <strong>Заявка помощника</strong>
+            <AppButton
+              type="button"
+              variant="ghost"
+              aria-expanded={assistantReviewExpanded}
+              aria-controls="assistant-order-review-details"
+              onClick={() => setAssistantReviewExpanded((expanded) => !expanded)}
+            >
+              {assistantReviewExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              {assistantReviewExpanded ? "Свернуть" : "Развернуть"}
+            </AppButton>
+          </div>
+          <div
+            id="assistant-order-review-details"
+            className="barcode-order-assistant-review__details"
+            hidden={!assistantReviewExpanded}
+          >
+            <p className="barcode-order-assistant-review__description">
+              Проверьте таблицу и добавьте недостающие товары через подбор.
+            </p>
+            {assistantImport.revision !== assistantSource.data?.revision && (
+              <AppAlert title="Диалог изменился после открытия формы" tone="warning">
+                Ваши правки в таблице сохранены. Обновите сведения заявки и проверьте их перед
+                оформлением.
+              </AppAlert>
+            )}
+            {assistantImport.revision !== assistantSource.data?.revision && (
+              <AppButton
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  const source = assistantSource.data;
+                  if (!source) return;
+                  const prepared = prepareAssistantOrderImport(source);
+                  setAssistantImport({
+                    ...prepared.review,
+                    unresolved: source.proposal.items.map((item) => ({
+                      source: item.source,
+                      name: item.name,
+                      quantity: item.quantity,
+                      unit: item.measurementUnit,
+                      reason: item.issue || "Актуальная строка заявки: сверьте с таблицей вручную.",
+                    })),
+                    questions: [
+                      ...prepared.review.questions,
+                      "Диалог обновлён. Состав таблицы оставлен без изменений — сверьте его с актуальной заявкой.",
+                    ],
+                  });
+                }}
+              >
+                Обновить сведения для проверки
+              </AppButton>
+            )}
+            {assistantImport.unresolved.length > 0 && (
+              <div>
+                <strong>Требуют ручной проверки · {assistantImport.unresolved.length}</strong>
+                <ul className="barcode-order-assistant-review__items">
+                  {assistantImport.unresolved.map((item, index) => (
+                    <li key={index}>
+                      <strong>{item.source || item.name || `Строка ${index + 1}`}</strong>
+                      {item.name && item.name !== item.source && (
+                        <span>Предложенный товар: {item.name}</span>
+                      )}
+                      <span>
+                        Количество:{" "}
+                        {item.quantity == null ? "не определено" : formatQuantity(item.quantity)}
+                        {item.unit
+                          ? ` ${item.unit === "KG" ? "кг" : item.unit === "PIECE" ? "шт" : item.unit}`
+                          : " · единица не определена"}
+                      </span>
+                      <span>{item.reason}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p>
+                  Эти строки не добавляются автоматически. Добавьте нужные товары в таблицу или
+                  подтвердите создание без них.
+                </p>
+              </div>
+            )}
+            {assistantImport.questions.length > 0 && (
+              <div>
+                <strong>Уточнения из диалога</strong>
+                <ul className="barcode-order-assistant-review__questions">
+                  {assistantImport.questions.map((question, index) => (
+                    <li key={index}>{question}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+          <AppCheckbox
+            label="Проверил уточнения. Заказ будет создан только из строк таблицы"
+            checked={assistantImport.reviewed}
+            disabled={
+              orderSubmissionPending || assistantImport.revision !== assistantSource.data?.revision
+            }
+            onCheckedChange={(reviewed) =>
+              setAssistantImport((current) => (current ? { ...current, reviewed } : current))
+            }
+          />
+        </section>
+      )}
 
       {restoredDraftInfo && (
         <section className="barcode-order-draft" aria-label="Восстановленный черновик">
@@ -1426,7 +1846,7 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
           <AppTextarea
             label="Комментарий к заказу"
             value={comment}
-            maxLength={1_000}
+            maxLength={isAssistantImport ? 2_000 : 1_000}
             placeholder="Необязательно"
             onChange={(event) => setComment(event.target.value)}
           />
@@ -1444,9 +1864,15 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
               type="button"
               disabled={!canContinue}
               onClick={() => {
-                setSelectedCustomerId(null);
-                setSelectedPendingBinding(null);
-                setCustomerBindingMode("regular-buyer");
+                if (!isAssistantImport) {
+                  setSelectedCustomerId(null);
+                  setSelectedPendingBinding(null);
+                }
+                setCustomerBindingMode(
+                  isAssistantImport && (selectedCustomerId || selectedPendingBinding)
+                    ? "user"
+                    : "regular-buyer",
+                );
                 setCustomerModalOpen(true);
               }}
             >
@@ -1492,6 +1918,13 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
         </div>
       </AppModal>
 
+      <OrderAssistantModal
+        key={assistantVersion}
+        open={assistantOpen}
+        onOpenChange={setAssistantOpen}
+        context={assistantContext()}
+        onApplied={applyAssistantDraft}
+      />
       {mode === "selection" && (
         <OrderProductPickerModal
           open={productPickerOpen}
@@ -1909,7 +2342,11 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
             loading={orderSubmissionPending && submittingAction === "selected"}
             loadingText={checkingStock ? "Проверяем склад..." : "Создаём заказ..."}
             onClick={() => {
-              if (customerBindingMode === "regular-buyer") void submitOrder(null);
+              if (customerBindingMode === "regular-buyer")
+                void submitOrder(
+                  isAssistantImport ? selectedCustomerId : null,
+                  isAssistantImport ? selectedPendingBinding : null,
+                );
               else void submitOrder(selectedCustomerId, selectedPendingBinding);
             }}
           >

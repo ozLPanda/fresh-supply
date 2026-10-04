@@ -249,6 +249,8 @@ export const AppSearchInput = forwardRef<HTMLInputElement, Omit<AppInputProps, "
 );
 
 export type AppSelectOption = {
+  /** Additional searchable names without changing the visible label. */
+  keywords?: string[];
   value: string;
   label: string;
   disabled?: boolean;
@@ -422,6 +424,7 @@ function EnhancedSelect({
                 <CommandItem
                   key={option.value}
                   value={`${option.label} ${option.value}`}
+                  keywords={option.keywords}
                   disabled={option.disabled}
                   onSelect={() => toggle(option.value)}
                 >

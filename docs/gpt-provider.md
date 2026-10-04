@@ -1,6 +1,6 @@
 # GPT provider
 
-The backend exposes an internal `GptProvider` Spring bean for future features. It sends text requests to the OpenAI Responses API. There is no public GPT endpoint or frontend API key.
+The backend exposes an internal `GptProvider` Spring bean for order and warehouse assistants. It sends text requests to the OpenAI Responses API. There is no public GPT endpoint or frontend API key.
 
 Configure the backend environment:
 
@@ -8,11 +8,23 @@ Configure the backend environment:
 APP_GPT_ENABLED=true
 OPENAI_API_KEY=your-server-side-key
 APP_GPT_MODEL=gpt-6-luna
+APP_GPT_REASONING_EFFORT=medium
 ```
 
 The production Compose configurations disable the provider by default. The provider fails if enabled without a key. `APP_GPT_BASE_URL` (default `https://api.openai.com/v1`), `APP_GPT_CONNECT_TIMEOUT` (default `5s`) and `APP_GPT_READ_TIMEOUT` (default `60s`) are optional. Keep the key in the deployment environment or secret store; never put it in a frontend variable or commit it.
 
-For this project's production server, edit `/opt/company-shop-repo/.env.production` as the deployment user and add the three variables above with the real key. Both the legacy production Compose file and the blue/green app Compose file pass them to the backend. Compose reads the environment when a container is created: a plain restart does not apply a changed key. Deploy a new revision (the blue/green rollout creates a fresh backend) or recreate the active backend container using its current image and slot settings. Never print `docker compose config` or `docker inspect` environment output while troubleshooting, because they contain the key.
+For local development, put these variables in `.env` at the root of **this** repository (`ovoshi-help`), beside `docker-compose.yml`. This file is ignored by Git. Paste the token only after `OPENAI_API_KEY=`; it must never be in `frontend/`, a `VITE_*` variable, a chat message, or a committed file. The configured Responses request explicitly sends `reasoning.effort=medium` by default. See the [official GPT-6 Luna documentation](https://developers.openai.com/api/docs/models/gpt-6-luna).
+
+After the key is saved, run the following manually from this repository's root to apply changed environment variables to the local backend:
+
+```bash
+docker compose ps backend
+docker compose up -d --no-build --no-deps backend
+docker compose ps backend
+curl --fail http://localhost:8084/actuator/health
+```
+
+For production, edit the `.env.production` belonging to this project's deployment as the deployment user and add the variables above with the real key. Both the legacy production Compose file and the blue/green app Compose file pass them to the backend. Compose reads the environment when a container is created: a plain restart does not apply a changed key. Deploy a new revision (the blue/green rollout creates a fresh backend) or recreate the active backend container using its current image and slot settings. Never print `docker compose config` or `docker inspect` environment output while troubleshooting, because they contain the key.
 
 Inject `GptProvider` into a backend service and call:
 

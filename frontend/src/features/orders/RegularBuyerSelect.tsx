@@ -10,11 +10,15 @@ export function RegularBuyerSelect({
   onChange,
   disabled = false,
   currentName,
+  hint,
+  unresolved = false,
 }: {
   value: string | null;
   onChange: (id: string | null) => void;
   disabled?: boolean;
   currentName?: string | null;
+  hint?: string;
+  unresolved?: boolean;
 }) {
   const { user } = useCommerce();
   const canRead = user?.permissions.some((permission) =>
@@ -25,14 +29,34 @@ export function RegularBuyerSelect({
     queryFn: () => fetchRegularBuyers(Boolean(value)),
     enabled: Boolean(canRead),
   });
+  const visibleBuyers = (buyers.data ?? []).filter(
+    (buyer) => !buyer.archived || buyer.id === value,
+  );
+  const nameKey = (name: string) =>
+    name.trim().replace(/\s+/g, " ").toLocaleLowerCase("ru").replace(/ё/g, "е");
+  const nameCounts = new Map<string, number>();
+  visibleBuyers.forEach((buyer) =>
+    nameCounts.set(nameKey(buyer.name), (nameCounts.get(nameKey(buyer.name)) ?? 0) + 1),
+  );
   const options: AppSelectOption[] = [
     { value: "", label: "Без постоянного покупателя" },
-    ...(buyers.data ?? [])
-      .filter((buyer) => !buyer.archived || buyer.id === value)
-      .map((buyer) => ({
+    ...visibleBuyers.map((buyer) => {
+      const duplicate = (nameCounts.get(nameKey(buyer.name)) ?? 0) > 1;
+      const detail = buyer.taxId
+        ? `ИИН/БИН ${buyer.taxId}`
+        : buyer.phone || buyer.contactName || buyer.id.slice(0, 8);
+      return {
         value: buyer.id,
-        label: `${buyer.name}${buyer.archived ? " (в архиве)" : ""}`,
-      })),
+        label: `${buyer.name}${duplicate ? ` · ${detail}` : ""}${buyer.archived ? " (в архиве)" : ""}`,
+        keywords: [
+          buyer.name,
+          ...(buyer.aliases ?? []),
+          buyer.taxId ?? "",
+          buyer.phone ?? "",
+          buyer.contactName ?? "",
+        ].flatMap((name) => [name, name.replace(/ё/gi, "е")]),
+      };
+    }),
   ];
   if (value && !options.some((option) => option.value === value)) {
     options.push({ value, label: currentName || "Текущий покупатель", disabled: true });
@@ -43,7 +67,8 @@ export function RegularBuyerSelect({
       <AppSelect
         label="Постоянный покупатель"
         options={options}
-        value={value ?? ""}
+        value={unresolved && !value ? "__unselected__" : (value ?? "")}
+        placeholder="Выберите покупателя"
         onValueChange={(selected) =>
           onChange(typeof selected === "string" && selected ? selected : null)
         }
@@ -52,7 +77,8 @@ export function RegularBuyerSelect({
         hint={
           buyers.isPending && canRead
             ? "Загружаем покупателей…"
-            : "Наименование попадёт в поле «Организация (индивидуальный предприниматель) — получатель» накладной. Без выбора поле останется пустым."
+            : (hint ??
+              "Наименование попадёт в поле «Организация (индивидуальный предприниматель) — получатель» накладной. Без выбора поле останется пустым.")
         }
       />
       {buyers.isError && (

@@ -11,6 +11,7 @@ public class GptProperties {
     private String apiKey = "";
     private String baseUrl = "https://api.openai.com/v1";
     private String model = "gpt-6-luna";
+    private String reasoningEffort = "medium";
     private Duration connectTimeout = Duration.ofSeconds(5);
     private Duration readTimeout = Duration.ofSeconds(60);
 
@@ -44,6 +45,14 @@ public class GptProperties {
 
     public void setModel(String model) {
         this.model = model;
+    }
+
+    public String getReasoningEffort() {
+        return reasoningEffort;
+    }
+
+    public void setReasoningEffort(String reasoningEffort) {
+        this.reasoningEffort = reasoningEffort;
     }
 
     public Duration getConnectTimeout() {

@@ -25,8 +25,10 @@ class RegularBuyerControllerTest {
 
     @BeforeEach
     void setUp() {
-        mvc = MockMvcBuilders.standaloneSetup(new RegularBuyerController(service, auth))
-                .setControllerAdvice(new GlobalExceptionHandler()).build();
+        mvc =
+                MockMvcBuilders.standaloneSetup(new RegularBuyerController(service, auth))
+                        .setControllerAdvice(new GlobalExceptionHandler())
+                        .build();
         signedIn(Set.of());
         when(service.list(anyBoolean())).thenReturn(List.of());
     }
@@ -38,7 +40,8 @@ class RegularBuyerControllerTest {
         verify(service).list(false);
         verify(auth, never()).require(anyString());
         signedIn(Set.of("regular-buyers.manage"));
-        mvc.perform(get("/api/admin/regular-buyers?includeArchived=true")).andExpect(status().isOk());
+        mvc.perform(get("/api/admin/regular-buyers?includeArchived=true"))
+                .andExpect(status().isOk());
         verify(service).list(true);
         signedIn(Set.of("regular-buyers.read"));
         mvc.perform(get("/api/admin/regular-buyers")).andExpect(status().isOk());
@@ -47,55 +50,163 @@ class RegularBuyerControllerTest {
 
     @Test
     void deniesDirectoryReadAndWriteWhenPermissionsAreMissing() throws Exception {
-        doThrow(new AppExceptions.Forbidden("regular-buyers.read")).when(auth).require("regular-buyers.read");
+        doThrow(new AppExceptions.Forbidden("regular-buyers.read"))
+                .when(auth)
+                .require("regular-buyers.read");
         mvc.perform(get("/api/admin/regular-buyers")).andExpect(status().isForbidden());
-        doThrow(new AppExceptions.Forbidden("regular-buyers.manage")).when(auth).require("regular-buyers.manage");
-        mvc.perform(post("/api/admin/regular-buyers").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"ИП Получатель\"}"))
+        doThrow(new AppExceptions.Forbidden("regular-buyers.manage"))
+                .when(auth)
+                .require("regular-buyers.manage");
+        mvc.perform(
+                        post("/api/admin/regular-buyers")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"name\":\"ИП Получатель\"}"))
                 .andExpect(status().isForbidden());
         verifyNoInteractions(service);
     }
 
     @Test
     void validatesNameLengthAndEmailBeforeSaving() throws Exception {
-        for (String body : List.of("{\"name\":\"   \"}", "{\"name\":\"" + "x".repeat(241) + "\"}",
-                "{\"name\":\"ИП Получатель\",\"email\":\"invalid\"}")) {
-            mvc.perform(post("/api/admin/regular-buyers").contentType(MediaType.APPLICATION_JSON)
-                            .content(body)).andExpect(status().isBadRequest());
+        for (String body :
+                List.of(
+                        "{\"name\":\"   \"}",
+                        "{\"name\":\"" + "x".repeat(241) + "\"}",
+                        "{\"name\":\"ИП Получатель\",\"email\":\"invalid\"}")) {
+            mvc.perform(
+                            post("/api/admin/regular-buyers")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(body))
+                    .andExpect(status().isBadRequest());
         }
         verifyNoInteractions(service);
     }
 
+    @Test
+    void rejectsInvalidAliasesBeforeServiceInvocation() throws Exception {
+        var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        for (Object aliases :
+                List.of(
+                        List.of(" \t "),
+                        java.util.Arrays.asList((String) null),
+                        List.of("x".repeat(121)),
+                        java.util.Collections.nCopies(51, "Викинг"))) {
+            mvc.perform(
+                            post("/api/admin/regular-buyers")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(
+                                            mapper.writeValueAsString(
+                                                    java.util.Map.of(
+                                                            "name",
+                                                            "Покупатель",
+                                                            "aliases",
+                                                            aliases))))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void preservesOmittedVersusExplicitEmptyAliasSemantics() throws Exception {
+        mvc.perform(
+                        put("/api/admin/regular-buyers/00000000-0000-0000-0000-000000000001")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"name\":\"Покупатель\"}"))
+                .andExpect(status().isOk());
+        verify(service).update(any(), argThat(request -> request.aliases() == null));
+        mvc.perform(
+                        put("/api/admin/regular-buyers/00000000-0000-0000-0000-000000000001")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"name\":\"Покупатель\",\"aliases\":[]}"))
+                .andExpect(status().isOk());
+        verify(service)
+                .update(
+                        any(),
+                        argThat(
+                                request ->
+                                        request.aliases() != null && request.aliases().isEmpty()));
+    }
+
+    @Test
+    void validatesLengthAfterTrimmingAliases() throws Exception {
+        mvc.perform(
+                        post("/api/admin/regular-buyers")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        new com.fasterxml.jackson.databind.ObjectMapper()
+                                                .writeValueAsString(
+                                                        java.util.Map.of(
+                                                                "name",
+                                                                "Покупатель",
+                                                                "aliases",
+                                                                List.of(
+                                                                        "  "
+                                                                                + "x".repeat(120)
+                                                                                + "  ")))))
+                .andExpect(status().isOk());
+        verify(service)
+                .create(argThat(request -> request.aliases().equals(List.of("x".repeat(120)))));
+    }
+
     private void signedIn(Set<String> permissions) {
-        when(auth.current()).thenReturn(new CurrentUser(7L, "admin@example.com", "Admin", null,
-                permissions, true, BigDecimal.ZERO));
+        when(auth.current())
+                .thenReturn(
+                        new CurrentUser(
+                                7L,
+                                "admin@example.com",
+                                "Admin",
+                                null,
+                                permissions,
+                                true,
+                                BigDecimal.ZERO));
     }
 
     @Test
     void rejectsInvalidTaxIdsAndOverlongLegalAddress() throws Exception {
         for (String taxId : List.of("123", "1234567890123", "12345678901a", "１２３４５６７８９０１２")) {
-            mvc.perform(post("/api/admin/regular-buyers").contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"name\":\"Покупатель\",\"taxId\":\"" + taxId + "\"}"))
+            mvc.perform(
+                            post("/api/admin/regular-buyers")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(
+                                            "{\"name\":\"Покупатель\",\"taxId\":\""
+                                                    + taxId
+                                                    + "\"}"))
                     .andExpect(status().isBadRequest());
         }
-        mvc.perform(put("/api/admin/regular-buyers/00000000-0000-0000-0000-000000000001")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Покупатель\",\"legalAddress\":\"" + "x".repeat(1001) + "\"}"))
+        mvc.perform(
+                        put("/api/admin/regular-buyers/00000000-0000-0000-0000-000000000001")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"name\":\"Покупатель\",\"legalAddress\":\""
+                                                + "x".repeat(1001)
+                                                + "\"}"))
                 .andExpect(status().isBadRequest());
         verifyNoInteractions(service);
     }
 
     @Test
     void acceptsMissingBlankAndTrimmedPaymentDetails() throws Exception {
-        for (String details : List.of("", ",\"taxId\":null,\"legalAddress\":null",
-                ",\"taxId\":\"  \",\"legalAddress\":\"  \"",
-                ",\"taxId\":\"  012345678901  \",\"legalAddress\":\"  Адрес  \"")) {
-            mvc.perform(post("/api/admin/regular-buyers").contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"name\":\"Покупатель\"" + details + "}"))
+        for (String details :
+                List.of(
+                        "",
+                        ",\"taxId\":null,\"legalAddress\":null",
+                        ",\"taxId\":\"  \",\"legalAddress\":\"  \"",
+                        ",\"taxId\":\"  012345678901  \",\"legalAddress\":\"  Адрес  \"")) {
+            mvc.perform(
+                            post("/api/admin/regular-buyers")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"name\":\"Покупатель\"" + details + "}"))
                     .andExpect(status().isOk());
         }
-        verify(service, times(3)).create(argThat(request -> request.taxId() == null && request.legalAddress() == null));
-        verify(service).create(argThat(request -> "012345678901".equals(request.taxId())
-                && "Адрес".equals(request.legalAddress())));
+        verify(service, times(3))
+                .create(
+                        argThat(
+                                request ->
+                                        request.taxId() == null && request.legalAddress() == null));
+        verify(service)
+                .create(
+                        argThat(
+                                request ->
+                                        "012345678901".equals(request.taxId())
+                                                && "Адрес".equals(request.legalAddress())));
     }
 }
