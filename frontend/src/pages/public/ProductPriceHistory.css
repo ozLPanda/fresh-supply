@@ -1,0 +1,31 @@
+.product-price-history {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.product-price-history__toolbar {
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.product-price-history__toolbar .segmented-control {
+  width: max-content;
+}
+
+.product-price-history__skeleton {
+  min-height: 280px;
+}
+
+.product-price-history__empty {
+  margin: 0;
+  padding: 48px 12px;
+  color: var(--muted, #6b7280);
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .product-price-history__toolbar .segmented-control button {
+    padding-inline: 12px;
+  }
+}

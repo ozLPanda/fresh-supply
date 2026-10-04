@@ -1,0 +1,171 @@
+.app-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 13px 14px;
+  border: 1px solid #cbd8ec;
+  border-radius: var(--r-s);
+  background: #eef5ff;
+  color: #173c73;
+}
+
+.app-alert__content {
+  flex: 1 1 auto;
+}
+
+.app-alert.success {
+  border-color: #b9e5cb;
+  background: #eefbf3;
+  color: #087044;
+}
+
+.app-alert.warning {
+  border-color: #f1d297;
+  background: #fff8e7;
+  color: #805500;
+}
+
+.app-alert.danger {
+  border-color: #efb7b2;
+  background: #fff0ef;
+  color: #93000a;
+}
+
+.app-alert > svg {
+  flex: 0 0 auto;
+}
+
+.app-alert__retry {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  margin: -3px -4px -3px 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  color: inherit;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    background-color 140ms ease,
+    opacity 140ms ease;
+}
+
+.app-alert__retry:hover {
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  transform: rotate(-20deg);
+}
+
+.app-alert__retry:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.app-alert__retry:active {
+  transform: scale(0.94);
+}
+
+.app-alert b {
+  display: block;
+  font-size: 14px;
+}
+
+.app-alert p {
+  margin: 3px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.app-modal-title {
+  padding-right: 32px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.app-modal-description {
+  margin-top: -8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.app-modal-close,
+.app-modal-close:hover,
+.app-modal-close:active,
+.app-modal-close:focus,
+.app-modal-close:focus-visible {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  border: 0;
+  outline: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.app-modal-close svg {
+  transition:
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.app-modal-close:hover svg {
+  color: var(--navy);
+  transform: scale(1.12);
+}
+
+.app-modal-close:active svg {
+  transform: scale(0.92);
+}
+
+.app-modal-close:focus-visible {
+  outline: 2px solid var(--orange, #ea580c);
+  outline-offset: 2px;
+  border-radius: 5px;
+}
+
+@media (max-width: 767px) {
+  .app-modal-title {
+    padding-right: 48px;
+  }
+
+  .app-modal-close,
+  .app-modal-close:hover,
+  .app-modal-close:active,
+  .app-modal-close:focus,
+  .app-modal-close:focus-visible {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+.app-skeleton-stack {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+}
+
+.app-skeleton-line {
+  width: 100%;
+  height: 40px;
+}
+
+.app-skeleton-line--title {
+  width: 40%;
+  height: 20px;
+}
+
+.app-skeleton-line--short {
+  width: 80%;
+}

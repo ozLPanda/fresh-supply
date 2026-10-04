@@ -1,0 +1,30 @@
+.segmented-control {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: var(--r-s);
+  background: var(--segmented-background, var(--sunken));
+}
+
+.segmented-control button {
+  min-height: 34px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted-strong, #434653);
+  cursor: pointer;
+  font: 500 11px var(--font);
+  text-transform: none;
+}
+
+.segmented-control button:focus-visible {
+  outline: 2px solid var(--segmented-accent, var(--orange, var(--ac-ink)));
+  outline-offset: 1px;
+}
+
+.segmented-control button.active {
+  background: var(--surface, #ffffff);
+  color: var(--navy, #091426);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+}

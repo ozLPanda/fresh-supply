@@ -1,0 +1,136 @@
+.store-search {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.store-search__field {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.store-search__field .field,
+.store-search__field .app-input-shell,
+.store-search__field .app-input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.store-search__field .app-input-shell {
+  min-height: 48px;
+  padding-right: 52px;
+  border-color: transparent;
+  background: var(--sunken);
+  border-radius: 10px;
+}
+
+.store-search__field .app-input-shell:focus-within {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 4px rgba(27, 132, 255, 0.12);
+}
+
+.store-search__clear {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+  transform: translateY(-50%);
+  color: var(--muted, #6b7280);
+  transition: color 160ms ease;
+}
+
+.store-search__clear.app-button:not(:disabled):hover,
+.store-search__clear.app-button:not(:disabled):active {
+  background: transparent;
+  box-shadow: none;
+  color: var(--text, #091426);
+  transform: translateY(-50%);
+}
+
+.store-search__clear.app-button:not(:disabled):hover > svg,
+.store-search__clear.app-button:not(:disabled):active > svg {
+  transform: none;
+}
+
+.store-search__panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  right: 0;
+  z-index: 80;
+  display: grid;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 24px 48px rgba(9, 20, 38, 0.14);
+}
+
+.store-search__item,
+.store-search__empty,
+.store-search__status {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+}
+
+.store-search__item {
+  color: var(--text);
+}
+
+.store-search__item:hover,
+.store-search__item.is-active {
+  background: var(--ac-soft);
+}
+
+.store-search__item b {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+.store-search__item span,
+.store-search__empty,
+.store-search__status {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.store-search__status {
+  color: var(--muted);
+}
+
+.store-search__hint {
+  margin: 4px 8px 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+@media (max-width: 640px) {
+  .store-search__field .app-input-shell {
+    min-height: 50px;
+  }
+
+  .store-search__panel {
+    max-height: min(420px, 70dvh);
+    overflow: auto;
+    overscroll-behavior: contain;
+    border-radius: 10px;
+  }
+}

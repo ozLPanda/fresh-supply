@@ -1,0 +1,1 @@
+create table permissions (id bigserial primary key, code varchar(120) not null unique, entity_name varchar(80) not null, action_name varchar(80) not null, name_ru varchar(160) not null, created_at timestamptz not null default now(), updated_at timestamptz not null default now());

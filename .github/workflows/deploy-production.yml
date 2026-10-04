@@ -1,0 +1,17 @@
+name: Ovoshi Help deployment information
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  information:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain independent deployment setup
+        run: |
+          echo "This repository has no configured production deployment."
+          echo "See PRODUCTION.md to configure an independent host, domain and secrets."
+          echo "This workflow does not deploy or contact the original shop."

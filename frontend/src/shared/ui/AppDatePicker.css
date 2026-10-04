@@ -1,0 +1,468 @@
+.app-date-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-date-field__label {
+  color: var(--muted-strong, #434653);
+  font: 500 13px var(--font);
+  text-transform: none;
+}
+
+.app-date-field__label b {
+  margin-left: 4px;
+  color: var(--red, #ba1a1a);
+}
+
+.app-date-field__message {
+  color: var(--muted, #6b7280);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.app-date-field--error .app-date-field__message {
+  color: var(--red, #ba1a1a);
+}
+
+.app-date-field--error .app-date-input {
+  border-color: var(--red, #ba1a1a);
+}
+
+.app-date-trigger-wrap {
+  position: relative;
+}
+
+.app-date-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 72px 10px 13px;
+  border: 1px solid transparent;
+  border-radius: var(--r-s);
+  background: var(--sunken);
+  color: var(--text);
+  outline: none;
+}
+
+.app-date-input::placeholder {
+  color: var(--faint);
+}
+
+.app-date-input:focus {
+  border-color: var(--ac);
+  background: var(--panel);
+  box-shadow: 0 0 0 3px rgba(27, 132, 255, 0.18);
+}
+
+.app-date-input:disabled {
+  cursor: not-allowed;
+  background: #eef1f5;
+  color: #7c8492;
+}
+
+.app-date-trigger-wrap:has(.app-date-clear) .app-date-input {
+  padding-right: 72px;
+}
+
+.app-date-icon-button {
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--navy-2);
+  cursor: pointer;
+}
+
+.app-date-icon-button:hover {
+  background: var(--sunken);
+}
+
+.app-date-icon-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(27, 132, 255, 0.38);
+}
+
+.app-date-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.app-date-clear {
+  position: absolute;
+  top: 50%;
+  right: 42px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.app-calendar-popover {
+  width: min(320px, calc(100vw - 24px));
+  min-width: 0;
+  max-height: min(var(--radix-popover-content-available-height, 100dvh), calc(100dvh - 24px));
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: 12px;
+}
+
+.app-date-time-picker__time {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+  color: var(--muted-strong, #434653);
+  font: 500 13px var(--font);
+  text-transform: none;
+}
+
+.app-date-time-picker__time input {
+  min-height: 36px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: var(--sunken);
+  color: var(--text);
+  font: inherit;
+  text-transform: none;
+}
+
+@media (max-width: 640px) {
+  .app-date-input,
+  .app-date-time-picker__time input {
+    font-size: 16px;
+  }
+
+  .app-date-icon-button {
+    right: 2px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .app-date-clear {
+    right: 46px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .app-date-trigger-wrap:has(.app-date-clear) .app-date-input {
+    padding-right: 94px;
+  }
+
+  .app-date-time-picker__time input {
+    min-height: 44px;
+  }
+}
+
+.app-date-time-picker__time input:focus {
+  border-color: var(--ac);
+  background: var(--panel);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(27, 132, 255, 0.18);
+}
+
+.app-calendar {
+  width: 100%;
+  background: var(--sunken);
+}
+
+.app-calendar__view {
+  transform-origin: center;
+  animation: app-calendar-view-enter 260ms cubic-bezier(0.22, 0.72, 0.28, 1) both;
+}
+
+@keyframes app-calendar-view-enter {
+  from {
+    transform: scale(0.965) translateY(3px);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.app-calendar__header {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.app-calendar__header button {
+  display: grid;
+  place-items: center;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--sunken);
+  color: var(--navy);
+  cursor: pointer;
+}
+
+.app-calendar__header button:hover {
+  border-color: #9ca7b7;
+  background: var(--sunken);
+}
+
+.app-calendar__header .app-calendar__title {
+  border-color: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.app-calendar__header .app-calendar__title:hover {
+  border-color: transparent;
+  background: var(--sunken);
+}
+
+.app-calendar__picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  min-height: 286px;
+  padding: 16px;
+}
+
+.app-calendar__picker-grid button {
+  min-height: 54px;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: capitalize;
+  transform-origin: center;
+  animation: app-calendar-item-enter 300ms cubic-bezier(0.22, 0.72, 0.28, 1) both;
+}
+
+.app-calendar__picker-grid button:nth-child(1),
+.app-calendar__picker-grid button:nth-child(12) {
+  animation-delay: 8ms;
+}
+
+.app-calendar__picker-grid button:nth-child(2),
+.app-calendar__picker-grid button:nth-child(11) {
+  animation-delay: 16ms;
+}
+
+.app-calendar__picker-grid button:nth-child(3),
+.app-calendar__picker-grid button:nth-child(10) {
+  animation-delay: 24ms;
+}
+
+.app-calendar__picker-grid button:nth-child(4),
+.app-calendar__picker-grid button:nth-child(9) {
+  animation-delay: 32ms;
+}
+
+.app-calendar__picker-grid button:nth-child(5),
+.app-calendar__picker-grid button:nth-child(8) {
+  animation-delay: 40ms;
+}
+
+.app-calendar__picker-grid button:nth-child(6),
+.app-calendar__picker-grid button:nth-child(7) {
+  animation-delay: 48ms;
+}
+
+@keyframes app-calendar-item-enter {
+  from {
+    transform: translateY(5px) scale(0.84);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.app-calendar__picker-grid button:hover {
+  border-color: #cbd3df;
+  background: var(--sunken);
+}
+
+.app-calendar__picker-grid button.active {
+  border-color: var(--orange);
+  background: var(--ac-soft);
+  color: var(--orange-dark);
+}
+
+.app-calendar__days {
+  padding: 12px 14px 16px;
+}
+
+.app-calendar__months,
+.app-calendar__month {
+  width: 100%;
+}
+
+.app-calendar__native-caption {
+  display: none;
+}
+
+.app-calendar__month-grid {
+  width: 100%;
+  min-width: 0;
+  border-spacing: 0 4px;
+  border-collapse: separate;
+  table-layout: fixed;
+}
+
+.app-calendar__weekday {
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+  text-align: center;
+  font: 500 13px var(--font);
+  text-transform: none;
+}
+
+.app-calendar__day {
+  width: 40px;
+  height: 40px;
+  padding: 2px;
+  border: 0;
+  text-align: center;
+  animation: app-calendar-day-enter 230ms cubic-bezier(0.22, 0.72, 0.28, 1) both;
+}
+
+.app-calendar__week:nth-child(1) .app-calendar__day {
+  animation-delay: 8ms;
+}
+
+.app-calendar__week:nth-child(2) .app-calendar__day {
+  animation-delay: 16ms;
+}
+
+.app-calendar__week:nth-child(3) .app-calendar__day {
+  animation-delay: 24ms;
+}
+
+.app-calendar__week:nth-child(4) .app-calendar__day {
+  animation-delay: 32ms;
+}
+
+.app-calendar__week:nth-child(5) .app-calendar__day,
+.app-calendar__week:nth-child(6) .app-calendar__day {
+  animation-delay: 40ms;
+}
+
+@keyframes app-calendar-day-enter {
+  from {
+    transform: translateY(3px) scale(0.9);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.app-calendar__week:hover .app-calendar__day {
+  background: transparent;
+}
+
+.app-calendar__day-button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  outline: none;
+  font-size: 13px;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.app-calendar__day-button:hover {
+  background: var(--sunken);
+}
+
+.app-calendar__day-button:focus-visible {
+  box-shadow: 0 0 0 2px rgba(27, 132, 255, 0.38);
+}
+
+.app-calendar__day.is-today .app-calendar__day-button {
+  color: var(--orange-dark);
+  font-weight: 600;
+}
+
+.app-calendar__day.is-selected .app-calendar__day-button,
+.app-calendar__day.is-range-start .app-calendar__day-button,
+.app-calendar__day.is-range-end .app-calendar__day-button {
+  background: var(--orange);
+  color: white;
+  font-weight: 600;
+}
+
+.app-calendar__day.is-range-middle {
+  background: transparent;
+}
+
+.app-calendar__day.is-range-middle .app-calendar__day-button {
+  border: 1px solid var(--orange);
+  border-radius: 5px;
+  background: var(--sunken);
+  color: var(--orange-dark);
+}
+
+.app-calendar__day.is-range-middle .app-calendar__day-button:hover {
+  background: var(--ac-soft);
+}
+
+.app-calendar__day.is-outside .app-calendar__day-button {
+  color: #a7afbc;
+}
+
+.app-calendar__day.is-disabled .app-calendar__day-button {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.app-calendar__day.is-hidden {
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-calendar__view,
+  .app-calendar__picker-grid button,
+  .app-calendar__day {
+    animation: none;
+  }
+}

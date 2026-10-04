@@ -1,0 +1,130 @@
+# Install this as /etc/nginx/sites-available/ovoshi-help after replacing
+# __PROD_HOST__ with the public DNS name. The certificate is issued as
+# /etc/letsencrypt/live/__PROD_HOST__/ by Certbot.
+# Fast edge protection for the two anonymous authentication endpoints. The backend enforces
+# the same policy in Redis so it also works when several application slots are running.
+limit_req_zone $binary_remote_addr zone=ovoshi_help_login_per_ip:10m rate=20r/m;
+limit_req_zone $binary_remote_addr zone=ovoshi_help_register_per_ip:10m rate=1r/m;
+limit_req_zone $binary_remote_addr zone=ovoshi_help_api_per_ip:10m rate=4r/s;
+limit_req_zone $binary_remote_addr zone=ovoshi_help_web_per_ip:10m rate=10r/s;
+limit_req_zone $binary_remote_addr zone=ovoshi_help_heavy_per_ip:10m rate=6r/m;
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __PROD_HOST__ www.__PROD_HOST__;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/letsencrypt;
+        default_type text/plain;
+        try_files $uri =404;
+    }
+
+    location / {
+        return 301 https://__PROD_HOST__$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name __PROD_HOST__ www.__PROD_HOST__;
+
+    ssl_certificate /etc/letsencrypt/live/__PROD_HOST__/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/__PROD_HOST__/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    # Keep one canonical public host.
+    if ($host = www.__PROD_HOST__) {
+        return 301 https://__PROD_HOST__$request_uri;
+    }
+
+    client_max_body_size 25m;
+
+    location = /api/auth/login {
+        limit_req zone=ovoshi_help_login_per_ip burst=5 nodelay;
+        limit_req_status 429;
+        proxy_pass http://ovoshi_help_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location = /api/auth/register {
+        limit_req zone=ovoshi_help_register_per_ip burst=4 nodelay;
+        limit_req_status 429;
+        proxy_pass http://ovoshi_help_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ~ ^/(?:robots\.txt|sitemap(?:-(?:pages|products-[0-9]+|categories-[0-9]+))?\.xml|p[0-9]+(?:-[^/]+)?\.html|product/[^/]+/?|catalog(?:/[^/]+)?/?|categories/?)?$ {
+        limit_req zone=ovoshi_help_web_per_ip burst=120 nodelay;
+        limit_req_status 429;
+        proxy_pass http://ovoshi_help_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Price lists can be large and their parsing may take up to 10 minutes.
+    # Keep this exception narrow: the rest of the API remains limited to 25 MB.
+    location = /api/admin/product-price-imports/analyze {
+        limit_req zone=ovoshi_help_heavy_per_ip burst=2 nodelay;
+        limit_req_status 429;
+        client_max_body_size 2g;
+        client_body_timeout 15m;
+        proxy_pass http://ovoshi_help_backend;
+        proxy_http_version 1.1;
+        proxy_request_buffering off;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 15m;
+        proxy_read_timeout 15m;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/ {
+        limit_req zone=ovoshi_help_api_per_ip burst=80 nodelay;
+        limit_req_status 429;
+        proxy_pass http://ovoshi_help_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /uploads/ {
+        limit_req zone=ovoshi_help_web_per_ip burst=120 nodelay;
+        limit_req_status 429;
+        proxy_pass http://ovoshi_help_backend;
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        limit_req zone=ovoshi_help_web_per_ip burst=120 nodelay;
+        limit_req_status 429;
+        proxy_pass http://ovoshi_help_frontend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

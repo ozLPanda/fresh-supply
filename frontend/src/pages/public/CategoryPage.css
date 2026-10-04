@@ -1,0 +1,127 @@
+.category-page {
+  width: min(1280px, calc(100% - 32px));
+  margin: 28px auto 0;
+  display: grid;
+  gap: 24px;
+}
+
+.category-page__hero {
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--hair);
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: var(--sh-1);
+}
+
+.category-page__hero-copy {
+  display: grid;
+  gap: 16px;
+  padding: 40px;
+}
+
+.category-page__hero-copy p:first-child {
+  margin: 0;
+  color: var(--ac-ink);
+  font: 500 11px var(--font, system-ui, sans-serif);
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+.category-page__hero-copy h1 {
+  margin: 0;
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1.04;
+  font-weight: 600;
+}
+
+.category-page__hero-copy p:last-of-type {
+  margin: 0;
+  max-width: 680px;
+  color: var(--mut);
+  line-height: 26px;
+}
+
+.category-page__hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.category-page__search-card .app-card__header {
+  align-items: center;
+}
+
+.category-page__search-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 14px;
+}
+
+.category-page__search-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.category-page__search-actions .app-button {
+  min-height: 46px;
+}
+
+.category-page__content {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+
+.category-page__loading {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+@media (max-width: 1024px) {
+  .category-page {
+    width: min(100% - 24px, 1280px);
+  }
+
+  .category-page__loading {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .category-page {
+    width: min(100% - 20px, 1280px);
+    margin-top: 18px;
+    gap: 18px;
+  }
+
+  .category-page__hero {
+    border-radius: 14px;
+  }
+
+  .category-page__hero-copy {
+    gap: 12px;
+    padding: 24px 18px;
+  }
+
+  .category-page__hero-copy h1 {
+    font-size: 28px;
+    line-height: 34px;
+  }
+
+  .category-page__hero-copy p:last-of-type {
+    font-size: 15px;
+    line-height: 24px;
+  }
+
+  .category-page__search-form {
+    grid-template-columns: 1fr;
+  }
+
+  .category-page__search-actions .app-button {
+    flex: 1 1 0;
+  }
+}

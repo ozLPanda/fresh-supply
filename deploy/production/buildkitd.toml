@@ -1,0 +1,8 @@
+# The production host has 4 CPUs / 8 GiB RAM. The builder container is additionally
+# capped at 2 CPUs / 3 GiB by provision-buildx.sh; applications retain headroom.
+[worker.oci]
+  max-parallelism = 1
+  gc = true
+  reservedSpace = "2GB"
+  maxUsedSpace = "8GB"
+  minFreeSpace = "15GB"

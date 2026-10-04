@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+readonly STATE_FILE="/var/lib/ovoshi-help/active-slot"
+readonly UPSTREAM_FILE="/etc/nginx/conf.d/ovoshi-help-upstreams.conf"
+
+if [[ $# -ne 1 ]]; then
+  echo "Usage: $0 <legacy|blue|green|status>" >&2
+  exit 64
+fi
+
+if [[ "$1" == "status" ]]; then
+  [[ -r "$STATE_FILE" ]] || exit 1
+  cat "$STATE_FILE"
+  exit 0
+fi
+
+case "$1" in
+  legacy)
+    backend_port=18090
+    frontend_port=18091
+    ;;
+  blue)
+    backend_port=18092
+    frontend_port=18093
+    ;;
+  green)
+    backend_port=18094
+    frontend_port=18095
+    ;;
+  *)
+    echo "Unknown deployment slot: $1" >&2
+    exit 64
+    ;;
+esac
+
+install -d -m 0755 "$(dirname "$STATE_FILE")" "$(dirname "$UPSTREAM_FILE")"
+upstream_tmp="$(mktemp "${UPSTREAM_FILE}.XXXXXX")"
+state_tmp="$(mktemp "${STATE_FILE}.XXXXXX")"
+previous_upstream_tmp="$(mktemp "${UPSTREAM_FILE}.previous.XXXXXX")"
+previous_upstream_exists=false
+
+if [[ -f "$UPSTREAM_FILE" ]]; then
+  cp "$UPSTREAM_FILE" "$previous_upstream_tmp"
+  previous_upstream_exists=true
+fi
+
+cleanup() {
+  rm -f "$upstream_tmp" "$state_tmp" "$previous_upstream_tmp"
+}
+trap cleanup EXIT
+
+restore_previous_upstream() {
+  if [[ "$previous_upstream_exists" == true ]]; then
+    install -m 0644 "$previous_upstream_tmp" "$UPSTREAM_FILE"
+  else
+    rm -f "$UPSTREAM_FILE"
+  fi
+}
+
+cat >"$upstream_tmp" <<EOF
+upstream ovoshi_help_backend {
+    server 127.0.0.1:${backend_port};
+    keepalive 32;
+}
+
+upstream ovoshi_help_frontend {
+    server 127.0.0.1:${frontend_port};
+    keepalive 16;
+}
+EOF
+
+printf '%s\n' "$1" >"$state_tmp"
+install -m 0644 "$upstream_tmp" "$UPSTREAM_FILE"
+if ! nginx -t; then
+  restore_previous_upstream
+  exit 1
+fi
+
+# A failed reload may still have reached Nginx. Restore the on-disk upstream and
+# attempt another graceful reload, but keep both slots alive: existing workers
+# may still be draining requests through the candidate. Exit 75 tells the deploy
+# caller that removing either slot requires reconciliation first.
+if ! systemctl reload nginx; then
+  if restore_previous_upstream && nginx -t && systemctl reload nginx; then
+    echo "Nginx reload failed; restored the previous upstream. Keep both slots running while requests drain." >&2
+  else
+    echo "Nginx reload and rollback could not be confirmed. Keep both slots running and inspect Nginx before another rollout." >&2
+  fi
+  exit 75
+fi
+
+# Publish the slot only after a successful reload. Atomic replacement prevents
+# readers from observing a truncated state file.
+if ! chmod 0644 "$state_tmp" || ! mv -f "$state_tmp" "$STATE_FILE"; then
+  echo "Nginx switched but its slot state could not be recorded. Keep both slots running and reconcile the active slot." >&2
+  exit 75
+fi

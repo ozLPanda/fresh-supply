@@ -1,0 +1,62 @@
+.warehouse-price-group-modal {
+  width: min(1120px, calc(100vw - 32px));
+  height: min(860px, calc(100dvh - 32px));
+  max-height: calc(100dvh - 32px);
+}
+
+.warehouse-price-group-modal__form {
+  display: grid;
+  gap: 16px;
+}
+
+.warehouse-price-group-modal .app-modal__header {
+  position: sticky;
+  top: -24px;
+  z-index: 2;
+  display: grid;
+  gap: 8px;
+  margin: -24px -24px 0;
+  padding: 24px 56px 14px 24px;
+  border-bottom: 1px solid var(--line, #d8dee8);
+  background: var(--surface, #fff);
+}
+
+.warehouse-price-group-modal .app-modal-description {
+  margin-top: 0;
+}
+
+.warehouse-price-group-modal .app-rich-text-editor__content {
+  min-height: clamp(280px, 40dvh, 480px);
+}
+
+.warehouse-price-group-modal__actions {
+  position: sticky;
+  bottom: -24px;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 0 -24px -24px;
+  padding: 14px 24px 24px;
+  border-top: 1px solid var(--line, #d8dee8);
+  background: var(--surface, #fff);
+}
+
+@media (max-width: 640px) {
+  .warehouse-price-group-modal .app-modal__header {
+    top: -16px;
+    margin: -16px -16px 0;
+    padding: 16px 48px 12px 16px;
+  }
+
+  .warehouse-price-group-modal__actions {
+    bottom: -16px;
+    flex-direction: column-reverse;
+    margin: 0 -16px -16px;
+    padding: 12px 16px 16px;
+  }
+
+  .warehouse-price-group-modal__actions .app-button {
+    width: 100%;
+  }
+}

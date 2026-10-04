@@ -1,0 +1,4 @@
+interface:
+  display_name: "Company Shop Permissions"
+  short_description: "Добавление прав и ролей в company_shop"
+  default_prompt: "Добавь новое право или роль в company_shop по проектному workflow."

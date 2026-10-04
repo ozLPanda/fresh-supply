@@ -1,0 +1,31 @@
+.app-badge {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  min-height: 24px;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  font: 500 12px var(--font);
+  text-transform: none;
+}
+
+.app-badge.slate {
+  background: var(--sunken);
+  color: var(--mut);
+}
+.app-badge.green {
+  background: var(--ok-soft);
+  color: #0a7130;
+}
+.app-badge.orange {
+  background: var(--wr-soft);
+  color: var(--wr-ink);
+}
+.app-badge.red {
+  background: var(--er-soft);
+  color: var(--er-ink);
+}
+.app-badge.blue {
+  background: var(--ac-soft);
+  color: var(--ac-ink);
+}

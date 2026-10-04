@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+readonly REPOSITORY_DIR="/opt/ovoshi-help-repo"
+readonly TEMPLATE_FILE="$REPOSITORY_DIR/deploy/nginx/ovoshi-help.conf.template"
+readonly SITE_FILE="/etc/nginx/sites-available/ovoshi-help"
+
+[[ -f "$TEMPLATE_FILE" ]] || {
+  echo "Nginx template is missing: $TEMPLATE_FILE" >&2
+  exit 1
+}
+
+production_host="$(awk '$1 == "server_name" && $2 != "_" {sub(/^www\./, "", $2); gsub(/;/, "", $2); print $2; exit}' "$SITE_FILE")"
+[[ "$production_host" =~ ^[A-Za-z0-9.-]+$ ]] || {
+  echo "Could not determine the production host from $SITE_FILE" >&2
+  exit 1
+}
+
+candidate="$(mktemp "${SITE_FILE}.XXXXXX")"
+backup="$(mktemp "${SITE_FILE}.backup.XXXXXX")"
+trap 'rm -f "$candidate" "$backup"' EXIT
+sed "s/__PROD_HOST__/${production_host}/g" "$TEMPLATE_FILE" >"$candidate"
+
+cp "$SITE_FILE" "$backup"
+install -m 0644 "$candidate" "$SITE_FILE"
+if ! nginx -t; then
+  install -m 0644 "$backup" "$SITE_FILE"
+  echo "Generated Nginx configuration is invalid; restored the previous configuration" >&2
+  exit 1
+fi
+
+if ! systemctl reload nginx; then
+  install -m 0644 "$backup" "$SITE_FILE"
+  nginx -t && systemctl reload nginx || true
+  echo "Could not reload Nginx; restored the previous configuration" >&2
+  exit 1
+fi

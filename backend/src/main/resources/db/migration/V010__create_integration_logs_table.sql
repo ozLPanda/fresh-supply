@@ -1,0 +1,1 @@
+create table integration_logs (id bigserial primary key, source_system varchar(80) not null, operation varchar(120) not null, status varchar(60) not null, message text, created_at timestamptz not null default now(), updated_at timestamptz not null default now());

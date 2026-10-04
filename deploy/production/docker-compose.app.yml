@@ -1,0 +1,141 @@
+# One blue/green application slot. Shared PostgreSQL, uploads, and embedding
+# service stay in the base production Compose project.
+services:
+  backend:
+    image: ${BACKEND_IMAGE:?Set BACKEND_IMAGE}
+    restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    environment:
+      APP_AUTH_COOKIE_NAME: ${APP_AUTH_COOKIE_NAME:-ovoshi_help_session}
+      APP_SEO_SITE_URL: ${APP_SEO_SITE_URL:-}
+      APP_SEO_GOOGLE_SITE_VERIFICATION: ${APP_SEO_GOOGLE_SITE_VERIFICATION:-}
+      APP_SEO_YANDEX_VERIFICATION: ${APP_SEO_YANDEX_VERIFICATION:-}
+      APP_SEO_TEMPLATE_URL: http://frontend:8080/index.html
+      SPRING_PROFILES_ACTIVE: production
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-company_shop}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-company_shop}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the production environment}
+      APP_STORAGE_ENDPOINT: http://minio:9000
+      APP_STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in the production environment}
+      APP_STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in the production environment}
+      APP_STORAGE_BUCKET: ${APP_STORAGE_BUCKET:-company-shop-files}
+      APP_PRICE_IMPORT_PYTHON: /opt/price-importer-venv/bin/python
+      APP_PRICE_IMPORT_SCRIPT: /app/price-importer/price_importer.py
+      APP_PRICE_IMPORT_TEMP_DIR: /tmp/ovoshi-help-price-imports
+      APP_DEPLOY_STATUS_DIR: /app/deploy-status
+      APP_EMBEDDINGS_ENABLED: "true"
+      APP_EMBEDDINGS_URL: http://embedding-service:8000
+      APP_EMBEDDINGS_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-base}
+      APP_EMBEDDINGS_DIMENSIONS: "768"
+      APP_ALIBABA_SOURCING_PROVIDER: ${ALIBABA_SOURCING_PROVIDER:-html}
+      APP_WEB_PUSH_PUBLIC_KEY: ${APP_WEB_PUSH_PUBLIC_KEY:-}
+      APP_WEB_PUSH_PRIVATE_KEY: ${APP_WEB_PUSH_PRIVATE_KEY:-}
+      APP_WEB_PUSH_SUBJECT: ${APP_WEB_PUSH_SUBJECT:-}
+      APP_GPT_ENABLED: ${APP_GPT_ENABLED:-false}
+      APP_GPT_MODEL: ${APP_GPT_MODEL:-gpt-6-luna}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      APP_WHATSAPP_ACCESS_TOKEN: ${APP_WHATSAPP_ACCESS_TOKEN:-}
+      APP_WHATSAPP_PHONE_NUMBER_ID: ${APP_WHATSAPP_PHONE_NUMBER_ID:-}
+      APP_WHATSAPP_WABA_ID: ${APP_WHATSAPP_WABA_ID:-}
+      APP_WHATSAPP_VERIFY_TOKEN: ${APP_WHATSAPP_VERIFY_TOKEN:-}
+      APP_WHATSAPP_APP_SECRET: ${APP_WHATSAPP_APP_SECRET:-}
+      APP_MKS_LOGIN: ${APP_MKS_LOGIN:-}
+      APP_MKS_PASSWORD: ${APP_MKS_PASSWORD:-}
+      SPRING_DATA_REDIS_HOST: redis
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:?Set APP_CORS_ALLOWED_ORIGINS}
+      APP_BOOTSTRAP_ADMIN_PASSWORD: ${APP_BOOTSTRAP_ADMIN_PASSWORD:?Set APP_BOOTSTRAP_ADMIN_PASSWORD}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError}
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:?Set BACKEND_PORT}:8080"
+    volumes:
+      - /var/lib/ovoshi-help/deploy-status:/app/deploy-status:ro
+    networks:
+      - backend
+      - seo-template
+      - database
+      - services
+      - egress
+    read_only: true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:size=2g,mode=1777
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://localhost:8080/actuator/health/liveness"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    stop_grace_period: 45s
+    pids_limit: 512
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+          pids: 512
+
+  frontend:
+    image: ${FRONTEND_IMAGE:?Set FRONTEND_IMAGE}
+    restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:?Set FRONTEND_PORT}:8080"
+    networks:
+      - frontend
+      - seo-template
+    read_only: true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+      - /var/cache/nginx:size=32m,mode=0755,uid=101,gid=101
+      - /var/run:size=1m,mode=0755,uid=101,gid=101
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/healthz"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    stop_grace_period: 15s
+    pids_limit: 100
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M
+          pids: 100
+
+networks:
+  # Slot-local network: a backend must fetch the matching frontend app shell.
+  seo-template:
+    internal: true
+  frontend:
+    external: true
+    name: ovoshi-help-prod_frontend
+  backend:
+    external: true
+    name: ovoshi-help-prod_backend
+  database:
+    external: true
+    name: ovoshi-help-prod_database
+  services:
+    external: true
+    name: ovoshi-help-prod_services
+  egress:
+    external: true
+    name: ovoshi-help-prod_egress

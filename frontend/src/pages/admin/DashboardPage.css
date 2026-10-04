@@ -1,0 +1,369 @@
+.dashboard-page__heading-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.dashboard-page__metrics {
+  gap: var(--gap-cards);
+}
+
+.dashboard-page__chart-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.dashboard-page__main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(250px, 0.8fr);
+  align-items: stretch;
+  gap: var(--gap-blocks);
+}
+
+.dashboard-page__chart {
+  display: grid;
+  min-height: 320px;
+  padding: 14px 18px 8px;
+}
+
+.dashboard-page__sales-bar {
+  cursor: pointer;
+}
+
+.dashboard-page__quick-list {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+
+.dashboard-page__tables {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--gap-blocks);
+}
+
+.dashboard-page__products-table th:nth-child(1) {
+  width: 18%;
+}
+
+.dashboard-page__products-table th:nth-child(2) {
+  width: 44%;
+}
+
+.dashboard-page__products-table th:nth-child(3) {
+  width: 20%;
+}
+
+.dashboard-page__products-table th:nth-child(4) {
+  width: 18%;
+}
+
+.dashboard-page__actions-table th:nth-child(1) {
+  width: 22%;
+}
+
+.dashboard-page__actions-table th:nth-child(2) {
+  width: 24%;
+}
+
+.dashboard-page__actions-table th:nth-child(3) {
+  width: 54%;
+}
+
+.dashboard-page__products-table a,
+.dashboard-page__actions-table a {
+  color: var(--ac-ink);
+  font-weight: 500;
+}
+
+.dashboard-page__empty {
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  min-height: 280px;
+  color: var(--muted, #6b7280);
+  text-align: center;
+}
+
+.dashboard-page__empty b {
+  color: var(--text, #111827);
+}
+
+.dashboard-page__empty--small {
+  min-height: 150px;
+}
+
+.dashboard-page__panel-loading {
+  padding: 18px;
+}
+
+.dashboard-page__deployments {
+  margin-top: var(--gap-blocks);
+}
+
+.dashboard-page__deployment-error {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  padding: 18px;
+}
+
+.dashboard-page__deployment-warning {
+  padding: 0 24px 20px;
+}
+
+.dashboard-page__deployment-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 18px 24px;
+  padding: 20px 24px;
+}
+
+.dashboard-page__deployment-detail {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dashboard-page__deployment-detail > span {
+  color: var(--muted, #6b7280);
+  font-size: 13px;
+}
+
+.dashboard-page__deployment-detail > code {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+.dashboard-page__deployment-detail > strong {
+  font-size: 14px;
+}
+
+.dashboard-page__deployment-console {
+  margin: 0 24px 24px;
+  overflow: hidden;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-s);
+}
+
+.dashboard-page__deployment-console-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 12px 16px;
+  background: var(--surface, #fff);
+}
+
+.dashboard-page__deployment-console-heading h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.dashboard-page__deployment-console-heading p {
+  margin: 3px 0 0;
+  color: var(--muted, #6b7280);
+  font-size: 13px;
+}
+
+.dashboard-page__deployment-console-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.dashboard-page__deployment-log-note {
+  margin: 0;
+  padding: 6px 16px;
+  color: var(--muted, #6b7280);
+  font-size: 12px;
+}
+
+.dashboard-page__deployment-log {
+  box-sizing: border-box;
+  width: 100%;
+  height: clamp(220px, 36vh, 440px);
+  margin: 0;
+  padding: 12px 8px;
+  overflow: auto;
+  background: #111827;
+  color: #d7e2ef;
+  font:
+    12px/1.6 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    monospace;
+  white-space: pre;
+  tab-size: 2;
+}
+
+.dashboard-page__deployment-log--expanded {
+  height: min(75vh, 900px);
+}
+
+.dashboard-page__deployment-log-placeholder {
+  display: block;
+  padding: 4px 8px;
+}
+
+.dashboard-page__deployment-log-line {
+  box-sizing: border-box;
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  width: max-content;
+  min-width: 100%;
+  min-height: 24px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.dashboard-page__deployment-log-line--stage {
+  background: #182d4a;
+  color: #c9dfff;
+}
+
+.dashboard-page__deployment-log-line--error {
+  background: #3b2029;
+  color: #ffd9de;
+}
+
+.dashboard-page__deployment-log-line--warning {
+  background: #392d1f;
+  color: #ffe0ae;
+}
+
+.dashboard-page__deployment-log-line--success {
+  background: #1b342c;
+  color: #c9f4de;
+}
+
+.dashboard-page__deployment-log-tag {
+  flex: 0 0 auto;
+  padding: 0 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 18px;
+  text-transform: uppercase;
+}
+
+.dashboard-page__deployment-log-tag--stage {
+  background: #1e4b86;
+  color: #d9eaff;
+}
+
+.dashboard-page__deployment-log-tag--error {
+  background: #8c2e3b;
+  color: #fff0f1;
+}
+
+.dashboard-page__deployment-log-tag--warning {
+  background: #815315;
+  color: #fff2d9;
+}
+
+.dashboard-page__deployment-log-tag--success {
+  background: #17654b;
+  color: #e2fff0;
+}
+
+.dashboard-page__deployment-history h3 {
+  margin: 0;
+  padding: 0 24px 16px;
+  font-size: 16px;
+}
+
+.dashboard-page__deployment-table code {
+  overflow-wrap: anywhere;
+}
+
+.dashboard-page__deployment-table th:first-child {
+  width: 32%;
+}
+
+.dashboard-page__deployment-table th:nth-child(2) {
+  width: 16%;
+}
+
+.dashboard-page__deployment-table th:nth-child(3),
+.dashboard-page__deployment-table th:nth-child(4) {
+  width: 21%;
+}
+
+.dashboard-page__deployment-table th:nth-child(5) {
+  width: 10%;
+}
+
+.dashboard-page__deployment-empty {
+  margin: 0;
+  padding: 0 24px 20px;
+  color: var(--muted, #6b7280);
+}
+
+@media (max-width: 1100px) {
+  .dashboard-page__main-grid,
+  .dashboard-page__tables {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-page__deployment-summary {
+    padding: 16px;
+  }
+
+  .dashboard-page__deployment-history h3,
+  .dashboard-page__deployment-empty,
+  .dashboard-page__deployment-warning {
+    padding-inline: 16px;
+  }
+
+  .dashboard-page__deployment-console {
+    margin: 0 16px 20px;
+  }
+
+  .dashboard-page__deployment-console-heading {
+    align-items: flex-start;
+  }
+
+  .dashboard-page__heading-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .dashboard-page__heading-actions .segmented-control {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .dashboard-page__heading-actions .segmented-control button {
+    flex: 1 0 auto;
+  }
+
+  .dashboard-page__chart {
+    min-height: 280px;
+    padding-inline: 8px;
+  }
+
+  .dashboard-page__chart-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .dashboard-page__chart-actions .segmented-control {
+    width: 100%;
+    overflow-x: auto;
+  }
+}

@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Company Shop PostgreSQL backup
+
+[Timer]
+OnCalendar=*-*-* 00:00:00
+Persistent=true
+Unit=ovoshi-help-db-backup@daily.service
+
+[Install]
+WantedBy=timers.target

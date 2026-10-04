@@ -1,0 +1,250 @@
+.product-reviews {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.product-reviews__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line, #d8dee8);
+}
+
+.product-reviews__summary > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.product-reviews__summary p {
+  width: 100%;
+  margin: 0;
+  color: var(--muted, #6b7280);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.product-reviews__summary strong {
+  color: var(--navy, #091426);
+  font-size: 30px;
+  line-height: 1;
+}
+
+.product-reviews__summary span {
+  color: var(--muted, #6b7280);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.product-reviews__stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--orange, #ff6b13);
+}
+
+.product-reviews__form {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line, #d8dee8);
+  border-radius: 12px;
+  background: #fbfcff;
+  min-width: 0;
+}
+
+.product-reviews__rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.product-reviews__rating button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #c7ceda;
+  cursor: pointer;
+}
+
+.product-reviews__rating button.is-active {
+  color: var(--orange, #ff6b13);
+}
+
+.product-reviews__upload {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.product-reviews__upload label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--orange-dark, #d85c0c);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.product-reviews__upload label:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--orange, #ff6b13) 30%, transparent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.product-reviews__upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.product-reviews__upload small,
+.product-reviews__hint {
+  margin: 0;
+  color: var(--muted, #6b7280);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.product-reviews__selected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.product-reviews__selected span {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #eef3fb;
+  color: var(--muted-strong, #4b5563);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.product-reviews__list {
+  display: grid;
+  gap: 14px;
+}
+
+.product-review-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line, #d8dee8);
+  border-radius: 12px;
+  background: var(--surface, #ffffff);
+  min-width: 0;
+}
+
+.product-review-card header,
+.product-review-card__meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.product-review-card header strong {
+  display: block;
+  color: var(--navy, #091426);
+}
+
+.product-review-card header span {
+  color: var(--muted, #6b7280);
+  font-size: 13px;
+}
+
+.product-review-card p {
+  margin: 0;
+  color: var(--muted-strong, #4b5563);
+  line-height: 23px;
+}
+
+.product-review-card__images {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.product-review-card__images img {
+  width: 78px;
+  height: 78px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line, #d8dee8);
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.product-review-card__thread {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line, #d8dee8);
+}
+
+.product-review-card__message {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f4f7fb;
+}
+
+.product-review-card__message.admin {
+  border-left: 3px solid var(--orange, #ff6b13);
+}
+
+.product-review-card__message b {
+  color: var(--navy, #091426);
+  font-size: 13px;
+}
+
+.product-review-card__message span {
+  color: var(--muted, #6b7280);
+  font-size: 12px;
+}
+
+.product-review-card__reply {
+  display: grid;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .product-reviews__summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .product-reviews__form,
+  .product-review-card {
+    padding: 12px;
+  }
+
+  .product-reviews__upload {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .product-reviews__selected span {
+    max-width: calc(100vw - 76px);
+  }
+}

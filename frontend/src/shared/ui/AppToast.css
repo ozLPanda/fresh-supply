@@ -1,0 +1,29 @@
+.app-toast {
+  border: 1px solid var(--line, #d8dee8) !important;
+  border-radius: 6px !important;
+  font-family: Inter, system-ui, sans-serif !important;
+}
+
+@media (max-width: 640px) {
+  .app-toast {
+    gap: 6px !important;
+    padding: 10px 12px !important;
+    border-radius: 8px !important;
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+  }
+
+  .app-toast [data-icon] {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  .app-toast [data-content] {
+    gap: 0 !important;
+  }
+
+  .app-toast [data-button] {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+}

@@ -1,0 +1,88 @@
+.products-page__name {
+  cursor: pointer;
+}
+
+.products-page__price {
+  white-space: nowrap;
+}
+
+.products-page__image-stack,
+.products-page__image-placeholder {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 7px;
+}
+
+.products-page__image-stack {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.products-page__image-stack img {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line, #d8dee8);
+  border-radius: 6px;
+  background: var(--surface, #ffffff);
+  object-fit: cover;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.14);
+  transition: transform 160ms ease;
+}
+
+.products-page__image-stack:focus-visible {
+  outline: 2px solid var(--orange, var(--ac-ink));
+  outline-offset: 2px;
+}
+
+.products-page__image-count {
+  position: absolute;
+  z-index: 4;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 2px solid var(--surface, #ffffff);
+  border-radius: 999px;
+  background: var(--navy, #091426);
+  color: #ffffff;
+  font: 500 10px var(--font);
+}
+
+.products-page__image-placeholder {
+  border: 1px dashed var(--line-strong, #c4ccd8);
+  color: var(--muted, #64748b);
+}
+
+.products-page__image-delete-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.products-page__incoming-warning {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.products-page__incoming-warning .app-alert {
+  flex: 1;
+}
+
+@media (max-width: 640px) {
+  .products-page__incoming-warning {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

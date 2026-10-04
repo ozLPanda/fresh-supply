@@ -1,0 +1,10 @@
+insert into permissions(code, entity_name, action_name, name_ru) values
+('products.create','products','create','Создание товаров'),('products.read','products','read','Просмотр товаров'),('products.update','products','update','Редактирование товаров'),('products.delete','products','delete','Удаление товаров'),
+('categories.create','categories','create','Создание категорий'),('categories.read','categories','read','Просмотр категорий'),('categories.update','categories','update','Редактирование категорий'),('categories.delete','categories','delete','Удаление категорий'),
+('users.create','users','create','Создание пользователей'),('users.read','users','read','Просмотр пользователей'),('users.update','users','update','Редактирование пользователей'),('users.delete','users','delete','Удаление пользователей'),
+('roles.create','roles','create','Создание ролей'),('roles.read','roles','read','Просмотр ролей'),('roles.update','roles','update','Редактирование ролей'),('roles.delete','roles','delete','Удаление ролей'),
+('pages.dashboard.view','pages.dashboard','view','Главная'),('pages.products.view','pages.products','view','Товары'),('pages.categories.view','pages.categories','view','Категории'),('pages.users.view','pages.users','view','Пользователи'),('pages.roles.view','pages.roles','view','Роли'),('pages.settings.view','pages.settings','view','Настройки'),('pages.administration.view','pages.administration','view','Администрирование'),('pages.externalSoftware.view','pages.externalSoftware','view','Стороннее ПО');
+insert into roles(code, name_ru, name_kk, active) values ('administrator','Администратор','Әкімші',true);
+insert into role_permissions(role_id, permission_id) select r.id, p.id from roles r cross join permissions p where r.code='administrator';
+insert into users(name, email, phone, password_hash, active) values ('Администратор','admin@active.kz','+7 777 459 32 33','$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',true);
+insert into user_roles(user_id, role_id) select u.id, r.id from users u cross join roles r where u.email='admin@active.kz' and r.code='administrator';

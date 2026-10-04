@@ -1,0 +1,86 @@
+.pwa-prompt {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: min(520px, calc(100vw - 32px));
+  padding: 16px;
+  border: 1px solid var(--line, #d8dee8);
+  border-radius: 16px;
+  background: var(--surface, #ffffff);
+  color: var(--text, #111827);
+  box-shadow: 0 20px 48px rgba(9, 20, 38, 0.2);
+}
+
+.pwa-prompt__copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.pwa-prompt__copy strong {
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.pwa-prompt__copy span {
+  color: var(--muted, #6b7280);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.pwa-prompt__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.pwa-prompt__actions .app-button {
+  gap: 7px;
+}
+
+.pwa-ios-help {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  color: var(--text, #111827);
+}
+
+.pwa-ios-help > svg {
+  color: var(--orange, #ff6b00);
+}
+
+.pwa-ios-help ol {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 22px;
+  line-height: 22px;
+}
+
+.pwa-install-help__content p {
+  margin: 0;
+  color: var(--muted-strong, #434653);
+  line-height: 22px;
+}
+
+@media (max-width: 640px) {
+  .pwa-prompt {
+    left: 12px;
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    display: grid;
+    width: auto;
+    gap: 12px;
+  }
+
+  .pwa-prompt__actions {
+    justify-content: flex-end;
+  }
+}

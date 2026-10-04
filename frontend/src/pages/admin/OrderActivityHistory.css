@@ -1,0 +1,23 @@
+.order-activity-history {
+  min-width: 0;
+}
+.order-activity-history__filters {
+  display: flex;
+  flex: 1 1 680px;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+}
+.order-activity-history__filters > * {
+  flex: 1 1 180px;
+  min-width: 160px;
+}
+.order-activity-history__filters .app-date-field {
+  min-width: 210px;
+}
+@media (max-width: 640px) {
+  .order-activity-history__filters > *,
+  .order-activity-history__filters .app-date-field {
+    flex-basis: 100%;
+  }
+}

@@ -1,0 +1,245 @@
+.field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.field__label {
+  color: var(--muted-strong);
+  font: 500 13px var(--font);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.field__label b {
+  margin-left: 4px;
+  color: var(--red);
+}
+
+.field__message {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.field--error .field__message {
+  color: var(--red);
+}
+
+.app-input-shell {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: var(--r-s);
+  background: var(--sunken);
+  transition: 160ms ease;
+}
+
+.app-input-shell:focus-within {
+  border-color: var(--ac);
+  background: var(--panel);
+  box-shadow: 0 0 0 3px rgba(27, 132, 255, 0.18);
+}
+
+.field--error .app-input-shell,
+.field--error > .app-input,
+.field--error .app-select-trigger,
+.field--error .app-date-input {
+  border-color: var(--red);
+}
+
+.app-input-shell.is-disabled {
+  background: #eef1f5;
+}
+
+.app-input-shell .app-input {
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 auto;
+  min-height: 42px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-input-shell .app-input:focus {
+  border: 0;
+  box-shadow: none;
+}
+
+.app-input-affix {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 0 13px;
+  color: var(--muted-strong);
+  font-weight: 600;
+}
+
+.app-input-affix:first-child {
+  padding-right: 0;
+}
+
+.app-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 13px;
+  border: 1px solid transparent;
+  border-radius: var(--r-s);
+  background: var(--sunken);
+  outline: none;
+}
+
+.app-input[type="search"]::-webkit-search-cancel-button,
+.app-input[type="search"]::-webkit-search-decoration {
+  display: none;
+  appearance: none;
+}
+
+.app-input:focus {
+  border-color: var(--ac);
+  background: var(--panel);
+  box-shadow: 0 0 0 3px rgba(27, 132, 255, 0.18);
+}
+
+.app-input:disabled,
+.app-select-trigger:disabled {
+  cursor: not-allowed;
+  background: #eef1f5;
+  color: #7c8492;
+}
+
+textarea.app-input {
+  min-height: 116px;
+  resize: vertical;
+}
+
+.app-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  overflow: hidden;
+  padding: 10px 13px;
+  border: 1px solid transparent;
+  border-radius: var(--r-s);
+  background: var(--sunken);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  outline: none;
+}
+
+.app-select-trigger > span:first-child {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-select-trigger > svg {
+  flex: 0 0 auto;
+}
+
+.app-select-trigger:has(.app-select-clear) {
+  gap: 4px;
+}
+
+.app-select-clear {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.app-select-clear:hover {
+  background: var(--sunken);
+  color: var(--navy);
+}
+
+.app-select-clear:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(27, 132, 255, 0.28);
+}
+
+.app-select-trigger:focus-visible {
+  border-color: var(--ac);
+  background: var(--panel);
+  box-shadow: 0 0 0 3px rgba(27, 132, 255, 0.18);
+}
+
+.app-select-trigger .is-placeholder {
+  color: var(--faint);
+}
+
+.app-select-popover {
+  padding: 0;
+}
+
+.app-select-popover [cmdk-list] {
+  max-height: min(260px, var(--radix-popover-content-available-height, 260px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.app-select-empty {
+  padding: 16px;
+  color: #64748b;
+  text-align: center;
+  font-size: 14px;
+}
+
+.app-select-check {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #cbd2dc;
+  border-radius: 4px;
+}
+
+.app-select-check.active {
+  border-color: var(--orange);
+  background: var(--orange);
+  color: white;
+}
+
+.app-select-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.app-select-tags button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 27px;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--sunken);
+  color: var(--navy-2);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.app-select-tags .clear-all {
+  background: transparent;
+  color: var(--red);
+}

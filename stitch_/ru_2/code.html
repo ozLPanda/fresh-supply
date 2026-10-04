@@ -1,0 +1,538 @@
+<!DOCTYPE html><html class="scroll-smooth" lang="ru" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>HeatFlow Solutions | Профессиональное отопительное оборудование</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-low": "#eff4ff",
+                      "outline-variant": "#c5c6cd",
+                      "tertiary-container": "#5a0008",
+                      "primary": "#091426",
+                      "secondary": "#9d4300",
+                      "on-secondary-container": "#5c2400",
+                      "background": "#f8f9ff",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed": "#d8e3fb",
+                      "error": "#ba1a1a",
+                      "surface-variant": "#d5e3fd",
+                      "on-primary": "#ffffff",
+                      "on-primary-fixed": "#111c2d",
+                      "error-container": "#ffdad6",
+                      "on-tertiary-container": "#ff5250",
+                      "on-surface": "#0d1c2f",
+                      "inverse-on-surface": "#ebf1ff",
+                      "status-success": "#10B981",
+                      "on-primary-fixed-variant": "#3c475a",
+                      "on-tertiary-fixed": "#410004",
+                      "on-secondary-fixed": "#341100",
+                      "heat-medium": "#F97316",
+                      "on-primary-container": "#8590a6",
+                      "on-secondary": "#ffffff",
+                      "secondary-fixed-dim": "#ffb690",
+                      "primary-fixed-dim": "#bcc7de",
+                      "border-subtle": "#E2E8F0",
+                      "surface-base": "#FFFFFF",
+                      "tertiary-fixed-dim": "#ffb3ad",
+                      "surface-muted": "#F8FAFC",
+                      "heat-high": "#EF4444",
+                      "secondary-fixed": "#ffdbca",
+                      "surface-container-high": "#dde9ff",
+                      "secondary-container": "#fd761a",
+                      "surface": "#f8f9ff",
+                      "outline": "#75777d",
+                      "inverse-primary": "#bcc7de",
+                      "primary-container": "#1e293b",
+                      "on-background": "#0d1c2f",
+                      "surface-container-highest": "#d5e3fd",
+                      "surface-dim": "#ccdbf4",
+                      "on-tertiary-fixed-variant": "#930013",
+                      "tertiary": "#330002",
+                      "surface-bright": "#f8f9ff",
+                      "surface-tint": "#545f73",
+                      "on-error": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "inverse-surface": "#233144",
+                      "surface-container": "#e6eeff",
+                      "on-error-container": "#93000a",
+                      "on-surface-variant": "#45474c",
+                      "tertiary-fixed": "#ffdad7",
+                      "on-secondary-fixed-variant": "#783200"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "margin-desktop": "32px",
+                      "sidebar-width": "280px",
+                      "margin-mobile": "16px",
+                      "container-max": "1280px",
+                      "base": "4px",
+                      "gutter": "16px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": ["Inter"],
+                      "label-md": ["JetBrains Mono"],
+                      "display-lg": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "body-md": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "title-md": ["Inter"],
+                      "label-sm": ["JetBrains Mono"],
+                      "headline-md": ["Inter"]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                      "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                      "label-sm": ["11px", {"lineHeight": "14px", "fontWeight": "500"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(2, minmax(200px, auto));
+            gap: 1.5rem;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md overflow-x-hidden">
+<!-- TopNavBar -->
+<nav class="bg-surface-base fixed top-0 w-full z-50 border-b border-border-subtle shadow-sm">
+<div class="flex justify-between items-center w-full px-margin-desktop max-w-container-max mx-auto h-16">
+<div class="flex items-center gap-8">
+<span class="font-headline-md text-headline-md font-bold text-secondary">Фирма Актив</span>
+<div class="hidden md:flex gap-6 items-center">
+<a class="text-on-surface-variant hover:text-secondary font-body-md text-body-md transition-all" href="#">Котлы</a>
+<a class="text-on-surface-variant hover:text-secondary font-body-md text-body-md transition-all" href="#">Радиаторы</a>
+<a class="text-on-surface-variant hover:text-secondary font-body-md text-body-md transition-all" href="#">Насосы</a>
+<a class="text-on-surface-variant hover:text-secondary font-body-md text-body-md transition-all" href="#">Трубы</a>
+<a class="text-on-surface-variant hover:text-secondary font-body-md text-body-md transition-all" href="#">Арматура</a>
+<a class="text-on-surface-variant hover:text-secondary font-body-md text-body-md transition-all" href="#">Инструменты</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-secondary transition-transform active:scale-95">phone</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-secondary transition-transform active:scale-95">person</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-secondary transition-transform active:scale-95 relative">
+                    shopping_cart
+                    <span class="absolute -top-2 -right-2 bg-secondary text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">2</span>
+</button>
+</div>
+</div>
+</nav>
+<main class="pt-16">
+<!-- Hero Section -->
+<section class="relative min-h-[716px] flex items-center bg-primary overflow-hidden">
+<div class="absolute inset-0 opacity-40">
+<img alt="Boiler Hero" class="w-full h-full object-cover" data-alt="A professional close-up of a high-tech industrial boiler system in a modern facility. The lighting is dramatic and moody, with deep navy shadows and bright orange highlights reflecting the HeatFlow brand colors. The setting is clean and high-performance, emphasizing precision engineering and advanced technology. The overall atmosphere is powerful and reliable, representing professional HVAC solutions." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhOq2ORGBnZHwipPQJb5QRO_BhjkAng1dJNnKgzJnH0zOqAQVGU3m_eQmt1n_OswhU_wkrg0LOuWzRaodEZq2wuYR2j2CLvSPC9lpjumxHbGYXvcYuq14oFH4VX_JEgMRxW_fy3DO2eR0PqcqpA5Ab7dhs7v_Qf1f6zO2sXnUO4a4aAgo6g3D1EFiSigpGX0BAoMAMaMn72Thznf0ba0keJIoELSUyHSM6lbsuY-9DkIDSFomQfHHltSXmT17FvBnQFCoiuiL4xrA">
+</div>
+<div class="absolute inset-0 bg-gradient-to-r from-primary via-primary/80 to-transparent"></div>
+<div class="relative px-margin-desktop max-w-container-max mx-auto w-full py-20">
+<div class="max-w-2xl">
+<span class="inline-block px-3 py-1 bg-secondary text-white font-label-md text-label-md rounded-lg mb-6 tracking-wider">НОВАЯ КОЛЛЕКЦИЯ 2024</span>
+<h1 class="font-display-lg text-display-lg text-white mb-6">Котлы длительного горения</h1>
+<p class="font-body-lg text-body-lg text-on-primary-container mb-10 max-w-lg">
+                        Инновационные котлы длительного горения для вашего дома и бизнеса. Эффективность до 95% и автономная работа до 7 суток на одной закладке.
+                    </p>
+<div class="flex flex-wrap gap-4">
+<button class="bg-secondary hover:bg-secondary-container text-white px-8 py-4 rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-secondary/20">
+                            Выбрать котел
+                        </button>
+<button class="border border-white/30 text-white px-8 py-4 rounded-xl font-bold hover:bg-white/10 transition-all">
+                            Технические данные
+                        </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Popular Categories -->
+<section class="py-20 bg-surface-muted px-margin-desktop max-w-container-max mx-auto">
+<div class="flex justify-between items-end mb-12">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Популярные категории</h2>
+<p class="text-on-surface-variant mt-2">Все для отопления в одном месте</p>
+</div>
+<button class="text-secondary font-bold flex items-center gap-2 hover:gap-3 transition-all">
+                    Все категории <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Category 1 -->
+<div class="group bg-white p-6 rounded-2xl border border-border-subtle hover:border-secondary transition-all cursor-pointer shadow-sm hover:shadow-xl" style="transform: translateY(0px);">
+<div class="w-16 h-16 bg-surface-container-low rounded-xl flex items-center justify-center mb-6 group-hover:bg-secondary/10 transition-colors">
+<span class="material-symbols-outlined text-3xl text-primary group-hover:text-secondary">bolt</span>
+</div>
+<h3 class="font-title-md text-title-md mb-2">Котлы</h3>
+<p class="text-label-md text-on-surface-variant font-label-md">120+ моделей</p>
+</div>
+<!-- Category 2 -->
+<div class="group bg-white p-6 rounded-2xl border border-border-subtle hover:border-secondary transition-all cursor-pointer shadow-sm hover:shadow-xl" style="transform: translateY(0px);">
+<div class="w-16 h-16 bg-surface-container-low rounded-xl flex items-center justify-center mb-6 group-hover:bg-secondary/10 transition-colors">
+<span class="material-symbols-outlined text-3xl text-primary group-hover:text-secondary">radar</span>
+</div>
+<h3 class="font-title-md text-title-md mb-2">Радиаторы</h3>
+<p class="text-label-md text-on-surface-variant font-label-md">85+ моделей</p>
+</div>
+<!-- Category 3 -->
+<div class="group bg-white p-6 rounded-2xl border border-border-subtle hover:border-secondary transition-all cursor-pointer shadow-sm hover:shadow-xl">
+<div class="w-16 h-16 bg-surface-container-low rounded-xl flex items-center justify-center mb-6 group-hover:bg-secondary/10 transition-colors">
+<span class="material-symbols-outlined text-3xl text-primary group-hover:text-secondary">plumbing</span>
+</div>
+<h3 class="font-title-md text-title-md mb-2">Сантехника</h3>
+<p class="text-label-md text-on-surface-variant font-label-md">300+ компонентов</p>
+</div>
+<!-- Category 4 -->
+<div class="group bg-white p-6 rounded-2xl border border-border-subtle hover:border-secondary transition-all cursor-pointer shadow-sm hover:shadow-xl">
+<div class="w-16 h-16 bg-surface-container-low rounded-xl flex items-center justify-center mb-6 group-hover:bg-secondary/10 transition-colors">
+<span class="material-symbols-outlined text-3xl text-primary group-hover:text-secondary">water_pump</span>
+</div>
+<h3 class="font-title-md text-title-md mb-2">Насосы</h3>
+<p class="text-label-md text-on-surface-variant font-label-md">45+ моделей</p>
+</div>
+</div>
+</section>
+<!-- Popular Products -->
+<section class="py-20 px-margin-desktop max-w-container-max mx-auto">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-12">Популярные товары</h2>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+<!-- Product Card -->
+<div class="group relative bg-white border border-border-subtle rounded-xl overflow-hidden hover:shadow-lg transition-all" style="transform: translateY(0px);">
+<div class="absolute top-4 left-4 z-10">
+<span class="bg-status-success/10 text-status-success px-2 py-1 rounded text-label-sm font-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> В наличии
+                        </span>
+</div>
+<div class="aspect-square bg-surface-muted p-8 flex items-center justify-center overflow-hidden">
+<img alt="Boiler X1" class="group-hover:scale-110 transition-transform duration-500" data-alt="A clean product shot of a high-end stainless steel wall-mounted gas boiler against a minimalist light grey background. The lighting is studio-quality, highlighting the sleek metallic textures and digital control panel. The composition is centered and professional, conveying a sense of premium quality and industrial reliability consistent with the HeatFlow brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2gq_sYbp9IIB3hVnUbkm8DYNVyMKrJLUY4pVbZrDQpMYbrrzhY4wVTH4ybcToAmBh9N1_Esu-FbvXhaLgMBmiZniUTw6nKpmQFiHLjUYaSgTM9tYU6hvHK3o7k9BeR_iL9hOss7YS0MQi_exLrPOIzQfHf_Y2kEttLIcTOaRa8OId7fX5tkc_6PnlnN7VPxsqaWEX4TO1n4m0kIhBM_x-oYJq8EFEOCrPkK7OgNvIixFU7xGCaMaOSSSqUka1EgiyNIGioCP-UAo">
+</div>
+<div class="p-6">
+<p class="font-label-sm text-on-surface-variant mb-1">Артикул: HF-9920-K</p>
+<h3 class="font-title-md text-title-md mb-4 line-clamp-2">Котел твердотопливный HeatMax 30кВт</h3>
+<div class="flex justify-between items-center">
+<span class="font-headline-md text-headline-md text-primary">450 000 ₸</span>
+<button class="bg-primary text-white p-2 rounded-lg hover:bg-secondary transition-colors">
+<span class="material-symbols-outlined">shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Repeat Product Cards -->
+<div class="group relative bg-white border border-border-subtle rounded-xl overflow-hidden hover:shadow-lg transition-all" style="transform: translateY(0px);">
+<div class="absolute top-4 left-4 z-10">
+<span class="bg-status-success/10 text-status-success px-2 py-1 rounded text-label-sm font-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> В наличии
+                        </span>
+</div>
+<div class="aspect-square bg-surface-muted p-8 flex items-center justify-center overflow-hidden">
+<img alt="Pump Pro" class="group-hover:scale-110 transition-transform duration-500" data-alt="Close-up of a high-performance industrial water circulation pump, finished in a professional matte black and orange coating. The product is shown from a 3/4 angle on a clean white surface with subtle reflections. High contrast lighting emphasizes the mechanical details and heavy-duty construction, aligning with the HeatFlow Solutions technical aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCc3DeeIZ1b1sNfFMLBkgDQ0xsW7h0SFGjZWM2i4C6365GMXuI6GaCrq4Z4ARv-lsDN5ydW2PHhZZg02KXadAlRaAO9PnLtFiPHEnCzla18QPpP1DqGQbJTfF5AYohn6p55vLXR7AZw7l4uM7Wr2aumZzmfUW7ABHdJ32Kr95l-60x9Hzw_s8oH6MuTKR0naiM5HerjZXJqa7PgjjSwbyk4JlW1aq1yazI4Vryf_0g_q9mVteicc2hmOJ8SP6VzolCyuVQ_yKLtUks">
+</div>
+<div class="p-6">
+<p class="font-label-sm text-on-surface-variant mb-1">Артикул: HF-P442-W</p>
+<h3 class="font-title-md text-title-md mb-4 line-clamp-2">Циркуляционный насос FlowPro 25-60</h3>
+<div class="flex justify-between items-center">
+<span class="font-headline-md text-headline-md text-primary">68 500 ₸</span>
+<button class="bg-primary text-white p-2 rounded-lg hover:bg-secondary transition-colors">
+<span class="material-symbols-outlined">shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+<div class="group relative bg-white border border-border-subtle rounded-xl overflow-hidden hover:shadow-lg transition-all">
+<div class="absolute top-4 left-4 z-10">
+<span class="bg-status-success/10 text-status-success px-2 py-1 rounded text-label-sm font-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> В наличии
+                        </span>
+</div>
+<div class="aspect-square bg-surface-muted p-8 flex items-center justify-center overflow-hidden">
+<img alt="Radiator Design" class="group-hover:scale-110 transition-transform duration-500" data-alt="A modern designer radiator with a clean, vertical fin layout in a matte graphite finish. The lighting is soft and directional, highlighting the geometric precision and modern architectural feel. The background is a soft neutral grey, emphasizing the product's sleek form and professional build quality for high-end residential heating solutions." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCs7M8-2GexVpRL3Rzh_AB102pjjAbtnZpi7nL7q6YKCJloHtn2cnjnENnDCLxT1i-5Acv3X4Q4ysJ4fxWLLjtL6u0vuXoDFARstgBCRFVaA5d0FiPPiPrUgaXIrmXbX2Iq1GMw5HLlZyJQ3wGGSPTFz5D1XWWSKqy4wqPloPnrQnOssOP0ioJJp5CAcjplHeOHa-l571yrFqNjX8n60rbL1fsy2jb45rMyqwvLYRcVSfVV0WvAi2B3ePX2zVJJN_PMRhqmqubi_6Q">
+</div>
+<div class="p-6">
+<p class="font-label-sm text-on-surface-variant mb-1">Артикул: HF-R772-V</p>
+<h3 class="font-title-md text-title-md mb-4 line-clamp-2">Биметаллический радиатор Prime 500</h3>
+<div class="flex justify-between items-center">
+<span class="font-headline-md text-headline-md text-primary">5 800 ₸/секц</span>
+<button class="bg-primary text-white p-2 rounded-lg hover:bg-secondary transition-colors">
+<span class="material-symbols-outlined">shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+<div class="group relative bg-white border border-border-subtle rounded-xl overflow-hidden hover:shadow-lg transition-all">
+<div class="absolute top-4 left-4 z-10">
+<span class="bg-status-success/10 text-status-success px-2 py-1 rounded text-label-sm font-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> В наличии
+                        </span>
+</div>
+<div class="aspect-square bg-surface-muted p-8 flex items-center justify-center overflow-hidden">
+<img alt="Valves Set" class="group-hover:scale-110 transition-transform duration-500" data-alt="A professional collection of brass plumbing valves and connectors arranged neatly. The brass has a warm, bright sheen, contrasting with the dark navy brand colors of the HeatFlow background. The lighting is sharp and clear, showcasing the heavy-duty threads and high-precision casting of professional-grade plumbing components." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZ9jS0Z0RW7e3Tw7wCgoawyXgyNXAzeK6k3kuiz9kxX03qzQ9nc6C_F-8Jfm80vuuidK67RXKu039cq2-6bXgO7ZW8FQmyQLVECA9UoFFwtrGaYBUdSm3YciyyAVwt-orN0gE6Aat9naXzgssjR9fDQXTjbZGMboZLxq7GHEV7aubYCAhpsm0S22505bcAvt-Q4sAHxXm-o1MDZL85wu-Ug0CY4Oe4gF7e1xn0g4n-my4Paathf0gj21wB5gqrowmVaR9_P-7GDUA">
+</div>
+<div class="p-6">
+<p class="font-label-sm text-on-surface-variant mb-1">Артикул: HF-V112-G</p>
+<h3 class="font-title-md text-title-md mb-4 line-clamp-2">Комплект запорной арматуры HeavyDuty</h3>
+<div class="flex justify-between items-center">
+<span class="font-headline-md text-headline-md text-primary">12 400 ₸</span>
+<button class="bg-primary text-white p-2 rounded-lg hover:bg-secondary transition-colors">
+<span class="material-symbols-outlined">shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Specialized Blocks (Bento Style) -->
+<section class="py-20 bg-primary text-white px-margin-desktop">
+<div class="max-w-container-max mx-auto">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6 h-auto md:h-[600px]">
+<!-- KOTLY -->
+<div class="md:col-span-7 relative group rounded-3xl overflow-hidden border border-white/10">
+<img alt="Boiler Section" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-60" data-alt="A detailed, macro view of an industrial boiler control system with glowing digital displays and mechanical gauges. The scene is illuminated by technical orange light against deep navy backgrounds, creating a high-performance, expert feel. The focus is sharp on the quality of construction and advanced interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-OjTV1zeWrv14wHUeqV-dMoHVH6YLYNOIYwnXZi5Pz8mApnioE1Kh3JSWadOrkWS6LRNW7q5ZWZk2D1jKkJYMfOlrvkMTy4m5EpxI3Dfbt5POsu5-ojG9sVEZW4ZtLhA8MFmwxIVi_ubsT6JjAUmIDNCBJl3oyCKo_XTBa0PPz0SCgOKBbyWohCP5Q7jijsAQisrezYBCJeEJV9MDKDk-NajFzRwGAtWVPrGtS0jYtUhn82nWqahSp_CA-c4dyhZ3zpestUspApc">
+<div class="absolute inset-0 bg-gradient-to-t from-primary via-transparent to-transparent"></div>
+<div class="relative h-full flex flex-col justify-end p-10">
+<h2 class="font-display-lg text-display-lg mb-4">КОТЛЫ</h2>
+<p class="text-on-primary-container max-w-md mb-6">Промышленные и бытовые решения для систем отопления любой сложности. Официальная гарантия до 10 лет.</p>
+<a class="text-secondary font-bold flex items-center gap-2" href="#">Перейти в каталог <span class="material-symbols-outlined">arrow_outward</span></a>
+</div>
+</div>
+<!-- RADIATORS & PLUMBING -->
+<div class="md:col-span-5 flex flex-col gap-6">
+<div class="h-1/2 relative group rounded-3xl overflow-hidden border border-white/10">
+<img alt="Radiators" class="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-105 transition-transform duration-700" data-alt="A row of high-quality vertical radiators installed in a contemporary, minimalist space. The setting is clean with soft light cascading over the metallic surfaces, emphasizing the modern design and technical precision. The color palette is professional, focusing on greys, whites, and subtle navy tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAi4Z9iC5M73sMqz2xEMhAeOFrkMvlCuVsmaRNuk8k__likb45M83vmy6QrtW2f17AfESOTirpp7vIqnpH7lb8mISN0brnKwy4h6qmwdsa1PyACLtd06cFmUTsmG0wsJynC7uCKYWpdZWV6TI6Ah1bx85qhQXY6yHgVY4o82qmOLPpti_87L_ajzRj7umdAsmUrONv4_TWXdgxEYnhZ4ZpGrVpvxNqXXUvpNZBiRSHF2V7Y0l4X5FPeysgAG0pAOXcWBy1_zhyTqEw">
+<div class="absolute inset-0 bg-gradient-to-l from-primary/80 to-transparent"></div>
+<div class="relative h-full flex flex-col justify-center p-8">
+<h3 class="font-headline-md text-headline-md mb-2">РАДИАТОРЫ</h3>
+<p class="text-on-primary-container mb-4">Элегантное тепло для вашего интерьера.</p>
+<a class="text-white border-b border-white/30 inline-block w-fit" href="#">Смотреть выбор</a>
+</div>
+</div>
+<div class="h-1/2 relative group rounded-3xl overflow-hidden border border-white/10 bg-secondary">
+<div class="relative h-full flex flex-col justify-center p-8">
+<h3 class="font-headline-md text-headline-md mb-2">САНТЕХНИКА</h3>
+<p class="text-white/80 mb-4">Все комплектующие для монтажа отопительных систем.</p>
+<a class="bg-primary text-white px-6 py-2 rounded-lg font-bold w-fit" href="#">В магазин</a>
+<span class="material-symbols-outlined absolute top-8 right-8 text-6xl text-white/10">build</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Advantages -->
+<section class="py-20 bg-surface-base border-b border-border-subtle">
+<div class="px-margin-desktop max-w-container-max mx-auto">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+<div class="flex flex-col items-start gap-4">
+<div class="w-12 h-12 bg-surface-container-low rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary">local_shipping</span>
+</div>
+<h4 class="font-title-md text-title-md">Доставка по РК</h4>
+<p class="text-on-surface-variant text-body-md">Быстрая доставка во все регионы Казахстана надежными транспортными компаниями.</p>
+</div>
+<div class="flex flex-col items-start gap-4">
+<div class="w-12 h-12 bg-surface-container-low rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary">support_agent</span>
+</div>
+<h4 class="font-title-md text-title-md">Помощь экспертов</h4>
+<p class="text-on-surface-variant text-body-md">Наши инженеры помогут подобрать оборудование под ваши параметры и бюджет.</p>
+</div>
+<div class="flex flex-col items-start gap-4">
+<div class="w-12 h-12 bg-surface-container-low rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary">payments</span>
+</div>
+<h4 class="font-title-md text-title-md">Оптовые цены</h4>
+<p class="text-on-surface-variant text-body-md">Прямые поставки от заводов позволяют нам предлагать лучшие цены на рынке.</p>
+</div>
+<div class="flex flex-col items-start gap-4">
+<div class="w-12 h-12 bg-surface-container-low rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary">inventory</span>
+</div>
+<h4 class="font-title-md text-title-md">Гарантия наличия</h4>
+<p class="text-on-surface-variant text-body-md">90% ассортимента всегда на складе и готово к немедленной отгрузке.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Brands Carousel (Simplified) -->
+<section class="py-16 bg-white overflow-hidden border-b border-border-subtle">
+<div class="px-margin-desktop max-w-container-max mx-auto text-center mb-10">
+<span class="text-on-surface-variant font-label-md uppercase tracking-widest">Наши партнеры</span>
+</div>
+<div class="flex flex-wrap justify-center items-center gap-12 opacity-50 grayscale hover:grayscale-0 transition-all">
+<span class="font-display-lg text-primary/80 font-black italic">BOSCH</span>
+<span class="font-display-lg text-primary/80 font-black italic">VAILLANT</span>
+<span class="font-display-lg text-primary/80 font-black italic">GRUNDFOS</span>
+<span class="font-display-lg text-primary/80 font-black italic">ARISTON</span>
+<span class="font-display-lg text-primary/80 font-black italic">DANFOSS</span>
+<span class="font-display-lg text-primary/80 font-black italic">BUDERUS</span>
+</div>
+</section>
+<!-- Reviews Section -->
+<section class="py-20 bg-surface-muted">
+<div class="px-margin-desktop max-w-container-max mx-auto">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-12 text-center">Отзывы наших клиентов</h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<div class="bg-white p-8 rounded-2xl shadow-sm">
+<div class="flex gap-1 text-secondary mb-4">
+<span class="material-symbols-outlined fill" style="font-variation-settings: &quot;FILL&quot; 1;">star</span>
+<span class="material-symbols-outlined fill" style="font-variation-settings: &quot;FILL&quot; 1;">star</span>
+<span class="material-symbols-outlined fill" style="font-variation-settings: &quot;FILL&quot; 1;">star</span>
+<span class="material-symbols-outlined fill" style="font-variation-settings: &quot;FILL&quot; 1;">star</span>
+<span class="material-symbols-outlined fill" style="font-variation-settings: &quot;FILL&quot; 1;">star</span>
+</div>
+<p class="text-body-md italic mb-6">"Заказывали котел для частного дома. Ребята помогли с расчетами и организовали доставку до Костаная за 3 дня. Качество оборудования на высоте!"</p>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-primary-fixed rounded-full flex items-center justify-center font-bold text-primary">А</div>
+<div>
+<p class="font-bold text-body-md">Арман Кусаинов</p>
+<p class="text-label-sm text-on-surface-variant">Частный заказчик</p>
+</div>
+</div>
+</div>
+<div class="bg-white p-8 rounded-2xl shadow-sm">
+<div class="flex gap-1 text-secondary mb-4">
+<span class="material-symbols-outlined fill" style="font-variation-settings: &quot;FILL&quot; 1;">star</span>
+<span class="material-symbols-outlined fill" style="font-variation-settings: &quot;FILL&quot; 1;">star</span>
+<span class="material-symbols-outlined fill" style="font-variation-settings: &quot;FILL&quot; 1;">star</span>
+<span class="material-symbols-outlined fill" style="font-variation-settings: &quot;FILL&quot; 1;">star</span>
+<span class="material-symbols-outlined fill" style="font-variation-settings: &quot;FILL&quot; 1;">star</span>
+</div>
+<p class="text-body-md italic mb-6">"Работаем с HeatFlow Solutions на постоянной основе как монтажная организация. Всегда отличные цены и поддержка по запчастям. Рекомендую!"</p>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-primary-fixed rounded-full flex items-center justify-center font-bold text-primary">Е</div>
+<div>
+<p class="font-bold text-body-md">Евгений Смирнов</p>
+<p class="text-label-sm text-on-surface-variant">Технический директор СМУ-3</p>
+</div>
+</div>
+</div>
+<div class="bg-white p-8 rounded-2xl shadow-sm">
+<div class="flex gap-1 text-secondary mb-4">
+<span class="material-symbols-outlined fill" style="font-variation-settings: &quot;FILL&quot; 1;">star</span>
+<span class="material-symbols-outlined fill" style="font-variation-settings: &quot;FILL&quot; 1;">star</span>
+<span class="material-symbols-outlined fill" style="font-variation-settings: &quot;FILL&quot; 1;">star</span>
+<span class="material-symbols-outlined fill" style="font-variation-settings: &quot;FILL&quot; 1;">star</span>
+<span class="material-symbols-outlined">star</span>
+</div>
+<p class="text-body-md italic mb-6">"Большой выбор радиаторов в наличии. Искали специфическую модель для офисного центра, нашли только здесь. Оформили все быстро."</p>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-primary-fixed rounded-full flex items-center justify-center font-bold text-primary">Д</div>
+<div>
+<p class="font-bold text-body-md">Данияр Тлеуов</p>
+<p class="text-label-sm text-on-surface-variant">Закупщик</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-low text-on-surface border-t border-border-subtle">
+<div class="w-full py-12 px-margin-desktop grid grid-cols-1 md:grid-cols-4 gap-gutter max-w-container-max mx-auto">
+<!-- Brand & Info -->
+<div class="col-span-1 md:col-span-1">
+<span class="font-title-md text-title-md font-bold text-secondary block mb-6">Фирма Актив</span>
+<p class="text-on-surface-variant text-body-md mb-6 leading-relaxed">Профессиональные решения в сфере отопления и водоснабжения для жилых и промышленных объектов по всему Казахстану.</p>
+<div class="flex gap-4">
+<a class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white hover:bg-secondary transition-colors" href="#"><span class="material-symbols-outlined text-[18px]">public</span></a>
+<a class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white hover:bg-secondary transition-colors" href="#"><span class="material-symbols-outlined text-[18px]">share</span></a>
+<a class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white hover:bg-secondary transition-colors" href="#"><span class="material-symbols-outlined text-[18px]">mail</span></a>
+</div>
+</div>
+<!-- Quick Links -->
+<div>
+<h4 class="font-bold text-on-surface mb-6">Навигация</h4>
+<ul class="space-y-4">
+<li class=""><a class="text-on-surface-variant hover:text-secondary underline decoration-2 transition-all" href="#">Котлы</a></li>
+<li class=""><a class="text-on-surface-variant hover:text-secondary underline decoration-2 transition-all" href="#">Радиаторы</a></li>
+<li class=""><a class="text-on-surface-variant hover:text-secondary underline decoration-2 transition-all" href="#">Насосы</a></li>
+<li class=""><a class="text-on-surface-variant hover:text-secondary underline decoration-2 transition-all" href="#">Трубы</a></li>
+</ul>
+</div>
+<!-- Support Links -->
+<div>
+<h4 class="font-bold text-on-surface mb-6">Поддержка</h4>
+<ul class="space-y-4">
+<li class=""><a class="text-on-surface-variant hover:text-secondary underline decoration-2 transition-all" href="#">Связаться с нами</a></li>
+<li class=""><a class="text-on-surface-variant hover:text-secondary underline decoration-2 transition-all" href="#">Техническая поддержка</a></li>
+<li class=""><a class="text-on-surface-variant hover:text-secondary underline decoration-2 transition-all" href="#">Условия доставки</a></li>
+<li class=""><a class="text-on-surface-variant hover:text-secondary underline decoration-2 transition-all" href="#">Пользовательское соглашение</a></li>
+</ul>
+</div>
+<!-- Contact Info -->
+<div>
+<h4 class="font-bold text-on-surface mb-6">Контакты</h4>
+<div class="space-y-4">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-secondary">location_on</span>
+<p class="text-on-surface-variant">Казахстан, г. Павлодар, ул. Генерала Дюсенова, 154</p>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-secondary">call</span>
+<p class="text-on-surface-variant font-bold">+7 777 459 32 33</p>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-secondary">schedule</span>
+<p class="text-on-surface-variant">Пн-Пт: 09:00 - 18:00, Суб: 10:00 - 17:00, Вс: по предварительному звонку</p>
+</div>
+</div>
+</div>
+</div>
+<div class="max-w-container-max mx-auto px-margin-desktop py-6 border-t border-border-subtle flex flex-col md:flex-row justify-between items-center gap-4">
+<p class="text-label-sm text-on-surface-variant">© 2024 Фирма Актив. Профессиональное оборудование для отопления и водоснабжения.</p>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-on-surface-variant opacity-50">credit_card</span>
+<span class="material-symbols-outlined text-on-surface-variant opacity-50">payments</span>
+<span class="material-symbols-outlined text-on-surface-variant opacity-50">account_balance</span>
+</div>
+</div>
+</footer>
+<!-- Interactive Scripts -->
+<script>
+        // Simple scroll behavior for the navbar
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('nav');
+            if (window.scrollY > 20) {
+                nav.classList.add('shadow-md');
+            } else {
+                nav.classList.remove('shadow-md');
+            }
+        });
+
+        // Hover effect for category cards
+        document.querySelectorAll('.group').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-4px)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+            });
+        });
+    </script>
+
+
+
+
+</body></html>

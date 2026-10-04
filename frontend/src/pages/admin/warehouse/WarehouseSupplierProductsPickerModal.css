@@ -1,0 +1,33 @@
+div.warehouse-supplier-products-modal {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.warehouse-supplier-products-modal__content {
+  display: grid;
+  gap: 16px;
+  padding: 4px 2px 2px;
+}
+
+.warehouse-supplier-products-modal__summary,
+.warehouse-supplier-products-modal__hint {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.warehouse-supplier-products-modal__hint {
+  color: var(--muted, #64748b);
+}
+
+.warehouse-supplier-products-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+@media (max-width: 480px) {
+  .warehouse-supplier-products-modal__actions .app-button {
+    flex: 1 1 100%;
+  }
+}

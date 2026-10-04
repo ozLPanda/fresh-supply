@@ -1,0 +1,109 @@
+.app-context-menu {
+  position: fixed;
+  z-index: 200;
+  display: grid;
+  pointer-events: auto;
+  box-sizing: border-box;
+  width: max-content;
+  min-width: min(224px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  grid-auto-rows: max-content;
+  padding: 6px;
+  border: 1px solid var(--line, #d8dee8);
+  border-radius: var(--r-s);
+  background: var(--surface, #ffffff);
+  box-shadow: 0 18px 42px rgba(9, 20, 38, 0.2);
+  left: var(--app-context-menu-x);
+  top: var(--app-context-menu-y);
+}
+
+.app-context-menu__group {
+  display: grid;
+  position: relative;
+}
+
+.app-context-menu__group > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text, #101828);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.app-context-menu__group > button > span {
+  flex: 1;
+}
+
+.app-context-menu__submenu-icon {
+  margin-left: auto;
+  color: var(--muted, #64748b);
+}
+
+.app-context-menu__submenu {
+  position: fixed;
+  z-index: var(--app-context-menu-submenu-z-index, 201);
+  top: 8px;
+  left: 8px;
+  display: grid;
+  box-sizing: border-box;
+  width: max-content;
+  min-width: min(224px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  grid-auto-rows: max-content;
+  padding: 6px;
+  border: 1px solid var(--line, #d8dee8);
+  border-radius: var(--r-s);
+  background: var(--surface, #ffffff);
+  box-shadow: 0 18px 42px rgba(9, 20, 38, 0.2);
+}
+
+.app-context-menu__group > button:hover,
+.app-context-menu__group > button:focus-visible {
+  background: var(--sunken);
+  outline: none;
+}
+
+.app-context-menu__group > button.is-destructive {
+  color: var(--red, #ba1a1a);
+}
+
+.app-context-menu__group > button.is-destructive:hover,
+.app-context-menu__group > button.is-destructive:focus-visible {
+  background: #fff0ef;
+}
+
+.app-context-menu__group > button:disabled {
+  cursor: default;
+  opacity: 0.46;
+}
+
+.app-context-menu__separator {
+  height: 1px;
+  margin: 5px 4px;
+  background: var(--line, #d8dee8);
+}
+
+@media (max-width: 640px) {
+  .app-context-menu__submenu {
+    position: static;
+    width: auto;
+    min-width: 0;
+    margin: 4px 0 0 12px;
+    box-shadow: none;
+  }
+}

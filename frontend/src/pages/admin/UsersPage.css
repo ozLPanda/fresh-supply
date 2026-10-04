@@ -1,0 +1,25 @@
+.users-page__create-modal {
+  max-width: 560px;
+}
+
+.users-page__create-form {
+  display: grid;
+  gap: 16px;
+}
+
+.users-page__create-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+@media (max-width: 560px) {
+  .users-page__create-actions {
+    flex-direction: column-reverse;
+  }
+
+  .users-page__create-actions .app-button {
+    width: 100%;
+  }
+}

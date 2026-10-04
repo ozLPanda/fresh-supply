@@ -1,0 +1,534 @@
+.store-shell {
+  min-height: 100vh;
+  min-width: 0;
+  overflow-x: clip;
+  background: var(--shell, #f7f6f4);
+  color: var(--ink, #14151a);
+}
+
+.store-shell .store-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: block;
+  height: auto;
+  padding: 0;
+  border-bottom: 1px solid var(--hair);
+  background: rgba(247, 246, 244, 0.96);
+  backdrop-filter: blur(14px);
+}
+
+.store-header__inner,
+.store-header__search,
+.store-footer__inner {
+  width: min(1280px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.store-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 68px;
+}
+
+.store-header__brand {
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+.store-header__brand .store-logo-shell {
+  padding: 6px 10px;
+  border-radius: 12px;
+}
+
+.store-header__brand .store-logo {
+  height: 34px;
+}
+
+.store-header .store-header__nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.store-header .store-header__nav a {
+  color: var(--muted-strong, #434653);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+}
+
+.store-header .store-header__nav a.active {
+  color: var(--ac-ink);
+  background: var(--ac-soft);
+}
+
+.store-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.store-header__actions .app-button {
+  min-height: 42px;
+  padding-inline: 18px;
+}
+
+.store-header__icon-action.app-button {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0;
+}
+
+.store-header__admin {
+  color: var(--navy, #091426);
+}
+
+.store-header__logout {
+  color: var(--muted-strong, #434653);
+}
+
+.store-header__cart {
+  position: relative;
+  overflow: visible;
+}
+
+.store-header__cart b {
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--orange);
+  color: white;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.store-header__login .app-button,
+.store-header__login a {
+  gap: 7px;
+}
+
+.store-header__phone {
+  color: var(--navy, #091426);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.store-header__menu {
+  display: none;
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.store-header__search {
+  padding-bottom: 18px;
+}
+
+.store-footer {
+  margin-top: 60px;
+  border-top: 1px solid var(--hair);
+  background: var(--panel);
+}
+
+.store-footer__inner {
+  display: grid;
+  grid-template-columns: 1.3fr repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  padding: 36px 0 22px;
+}
+
+.store-footer__brand {
+  display: grid;
+  gap: 16px;
+}
+
+.store-footer__brand .store-logo-shell {
+  width: fit-content;
+}
+
+.store-footer__brand p {
+  margin: 0;
+  color: var(--muted, #6b7280);
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.store-footer__group {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.store-footer__group h3 {
+  margin: 0 0 6px;
+  color: var(--navy, #091426);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.store-footer__group a,
+.store-footer__group span {
+  color: var(--muted, #6b7280);
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.store-footer__legal {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--line, #d8dee8);
+  color: var(--muted, #6b7280);
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+
+.store-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+
+.store-menu__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(9, 20, 38, 0.46);
+  transition: opacity 180ms ease;
+  animation: store-backdrop-in 180ms ease;
+}
+
+.store-menu__sheet {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 28px;
+  width: min(320px, calc(100vw - 48px));
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  padding: 28px 16px;
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: var(--sh-side);
+  touch-action: pan-y;
+  transition: transform 180ms ease;
+  animation: store-sidebar-in 180ms ease;
+  border-radius: 0 16px 16px 0;
+}
+
+.store-menu.is-dragging .store-menu__backdrop,
+.store-menu.is-dragging .store-menu__sheet {
+  transition: none;
+  animation: none;
+}
+
+.store-menu__head {
+  display: block;
+  min-width: 0;
+  padding: 0 44px 22px 4px;
+}
+
+.store-menu__brand {
+  display: block;
+  min-width: 0;
+}
+
+.store-menu__brand img {
+  display: block;
+  width: min(240px, 100%);
+  height: auto;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.store-menu__close.icon-button {
+  position: absolute;
+  top: 18px;
+  right: 14px;
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+  flex: 0 0 auto;
+  padding: 0;
+  color: var(--ink);
+}
+
+.store-menu__close.app-button:hover {
+  background: var(--sunken);
+}
+
+.store-menu__body {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(20, 21, 26, 0.2) transparent;
+}
+
+.store-menu__body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.store-menu__body::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(20, 21, 26, 0.2);
+}
+
+.store-menu__body a,
+.store-menu__body .app-button,
+.store-menu__footer a,
+.store-menu__footer .app-button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 14px;
+  width: 100%;
+  min-height: 46px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--mut);
+  background: transparent;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 20px;
+  text-align: left;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.store-menu__body a:hover,
+.store-menu__body .app-button:hover,
+.store-menu__footer a:hover,
+.store-menu__footer .app-button:hover {
+  background: var(--sunken);
+  color: var(--ink);
+}
+
+.store-menu__body a.active {
+  background: var(--ac-soft);
+  color: var(--ac-ink);
+  box-shadow: none;
+}
+
+.store-menu__body svg,
+.store-menu__footer svg {
+  flex: 0 0 auto;
+}
+
+.store-menu__body span,
+.store-menu__footer span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.store-menu__footer {
+  display: grid;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid var(--hair);
+}
+
+@keyframes store-sidebar-in {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes store-backdrop-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 1024px) {
+  .store-header .store-header__nav,
+  .store-header__phone {
+    display: none;
+  }
+
+  .store-header__menu {
+    display: inline-flex;
+    flex: 0 0 auto;
+  }
+
+  .store-header__logout {
+    display: none;
+  }
+
+  .store-header__actions {
+    gap: 8px;
+  }
+
+  .store-header__actions > .app-button,
+  .store-header .app-notifications__trigger {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    min-height: 46px;
+    padding: 0;
+  }
+
+  .store-header .app-notifications__trigger > svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .store-header__cart > svg,
+  .store-header__menu > svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .store-header__login span,
+  .store-header__cart span {
+    display: none;
+  }
+
+  .store-header__cart b {
+    position: absolute;
+    top: 4px;
+    right: 2px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    font-size: 10px;
+    pointer-events: none;
+  }
+
+  .store-footer__inner {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .store-header__inner,
+  .store-header__search,
+  .store-footer__inner {
+    width: min(100% - 24px, 1280px);
+  }
+
+  .store-header__inner {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 10px;
+    min-height: 62px;
+  }
+
+  .store-header__actions {
+    margin-left: auto;
+    gap: 8px;
+  }
+
+  .store-header .app-notifications,
+  .store-header .app-notifications__trigger {
+    flex: 0 0 auto;
+  }
+
+  .store-header__cart,
+  .store-header__menu,
+  .store-header__icon-action.app-button {
+    width: 46px;
+    min-width: 46px;
+    height: 46px;
+    min-height: 46px;
+    padding: 0;
+  }
+
+  .store-header__login {
+    display: none;
+  }
+
+  .store-menu__sheet {
+    width: min(320px, calc(100vw - 40px));
+    padding: 28px 16px;
+  }
+
+  .store-footer__inner {
+    grid-template-columns: 1fr;
+    padding: 28px 0 18px;
+  }
+}
+
+@media (max-width: 360px) {
+  .store-header__inner {
+    width: calc(100% - 16px);
+    gap: 6px;
+  }
+
+  .store-header__actions {
+    gap: 4px;
+  }
+
+  .store-header__actions > .app-button,
+  .store-header .app-notifications__trigger,
+  .store-header__cart,
+  .store-header__menu,
+  .store-header__icon-action.app-button {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+
+  .store-menu__sheet {
+    width: calc(100vw - 24px);
+    padding-inline: 12px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .store-header__brand {
+    margin-right: auto;
+  }
+  .store-header__brand .store-logo {
+    height: 28px;
+  }
+}
+@media (max-width: 380px) {
+  .store-header__brand .store-logo {
+    height: 21px;
+  }
+  .store-header__brand .store-logo-shell {
+    padding: 6px;
+  }
+}

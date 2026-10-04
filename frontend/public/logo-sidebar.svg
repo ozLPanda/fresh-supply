@@ -1,0 +1,41 @@
+<svg width="240" height="76" viewBox="0 0 240 76" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(3 4) scale(1.55)">
+    <path
+      d="M22 4C22 4 10 18 10 28C10 34.6274 15.3726 40 22 40C28.6274 40 34 34.6274 34 28C34 18 22 4 22 4Z"
+      fill="#2f7df4"
+    />
+    <path
+      d="M22 15C22 15 16 23 16 28C16 31.3137 18.6863 34 22 34C25.3137 34 28 31.3137 28 28C28 23 22 15 22 15Z"
+      fill="#ffffff"
+      opacity="0.82"
+    />
+    <path
+      d="M22 22C22 22 19 26 19 28C19 29.6569 20.3431 31 22 31C23.6569 31 25 29.6569 25 28C25 26 22 22 22 22Z"
+      fill="#ff6b00"
+    />
+  </g>
+  <g transform="translate(76 12)">
+    <text
+      x="0"
+      y="22"
+      font-family="Manrope, Inter, Arial, sans-serif"
+      font-size="25"
+      font-weight="800"
+      fill="#ffffff"
+    >
+      ФИРМА
+    </text>
+    <rect x="0" y="29" width="105" height="3" rx="1.5" fill="#ff6b00" />
+    <text
+      x="0"
+      y="58"
+      font-family="Manrope, Inter, Arial, sans-serif"
+      font-size="23"
+      font-weight="500"
+      letter-spacing="4"
+      fill="#ffffff"
+    >
+      АКТИВ
+    </text>
+  </g>
+</svg>

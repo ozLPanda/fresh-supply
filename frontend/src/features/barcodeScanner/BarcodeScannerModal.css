@@ -1,0 +1,165 @@
+.barcode-scanner-modal {
+  width: min(620px, calc(100% - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+}
+
+.barcode-scanner {
+  display: grid;
+  gap: 14px;
+}
+
+.barcode-scanner__viewport {
+  position: relative;
+  min-height: 250px;
+  overflow: hidden;
+  border: 1px solid var(--line, #d9dee7);
+  border-radius: 10px;
+  background: #101820;
+  aspect-ratio: 4 / 3;
+}
+
+.barcode-scanner__video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.barcode-scanner__shade {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 12, 20, 0.18);
+  pointer-events: none;
+}
+
+.barcode-scanner__target {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(82%, 440px);
+  height: 38%;
+  min-height: 100px;
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  box-shadow: 0 0 0 999px rgba(4, 10, 18, 0.35);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.barcode-scanner__target::before,
+.barcode-scanner__target::after {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-color: var(--orange, var(--ac-ink));
+  content: "";
+}
+
+.barcode-scanner__target::before {
+  top: -3px;
+  left: -3px;
+  border-top: 4px solid var(--orange, var(--ac-ink));
+  border-left: 4px solid var(--orange, var(--ac-ink));
+  border-radius: 8px 0 0;
+}
+
+.barcode-scanner__target::after {
+  right: -3px;
+  bottom: -3px;
+  border-right: 4px solid var(--orange, var(--ac-ink));
+  border-bottom: 4px solid var(--orange, var(--ac-ink));
+  border-radius: 0 0 8px;
+}
+
+.barcode-scanner__target span {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  left: 8px;
+  height: 2px;
+  background: var(--orange, var(--ac-ink));
+  box-shadow: 0 0 7px rgba(27, 132, 255, 0.8);
+  animation: barcode-scanner-line 1.7s ease-in-out infinite alternate;
+}
+
+.barcode-scanner__placeholder {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px;
+  background: #17222e;
+  color: #fff;
+  font-size: 14px;
+  text-align: center;
+}
+
+.barcode-scanner__placeholder svg {
+  animation: barcode-scanner-camera-pulse 1.3s ease-in-out infinite;
+}
+
+.barcode-scanner__status {
+  margin: 0;
+  color: var(--muted, #64748b);
+  font-size: 14px;
+  text-align: center;
+}
+
+.barcode-scanner__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.barcode-scanner__actions .app-button {
+  gap: 8px;
+}
+
+@keyframes barcode-scanner-line {
+  from {
+    transform: translateY(-32px);
+  }
+
+  to {
+    transform: translateY(32px);
+  }
+}
+
+@keyframes barcode-scanner-camera-pulse {
+  50% {
+    opacity: 0.55;
+    transform: scale(0.94);
+  }
+}
+
+@media (max-width: 520px) {
+  .barcode-scanner-modal {
+    width: calc(100% - 16px);
+    max-height: calc(100dvh - 16px);
+    padding: 18px;
+  }
+
+  .barcode-scanner__viewport {
+    min-height: 220px;
+  }
+
+  .barcode-scanner__actions {
+    display: grid;
+  }
+
+  .barcode-scanner__actions .app-button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .barcode-scanner__target span,
+  .barcode-scanner__placeholder svg {
+    animation: none;
+  }
+}

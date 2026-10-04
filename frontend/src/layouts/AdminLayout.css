@@ -1,0 +1,341 @@
+/* Hackalem's elevated shell; shop navigation and mobile gestures remain intact. */
+body .admin-shell {
+  --admin-sidebar-width: 236px;
+  min-height: 100dvh;
+  grid-template-columns: calc(var(--admin-sidebar-width) + var(--frame)) minmax(0, 1fr);
+  background: var(--shell);
+}
+
+.admin-shell .admin-sidebar {
+  position: sticky;
+  top: var(--frame);
+  width: var(--admin-sidebar-width);
+  height: calc(100dvh - var(--frame) * 2);
+  margin: var(--frame) 0 var(--frame) var(--frame);
+  padding: var(--sp-5) var(--sp-3) var(--sp-3);
+  gap: var(--sp-5);
+  color: var(--ink);
+  background: var(--panel);
+  border-radius: var(--r);
+  box-shadow: var(--sh-side);
+  overflow: hidden;
+}
+
+.admin-shell .brand-block {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: var(--touch);
+  padding: 0 var(--sp-2);
+  color: var(--ink);
+  text-decoration: none;
+  flex: none;
+}
+
+.admin-shell .admin-brand-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--ctl);
+  height: var(--ctl);
+  border-radius: var(--r-s);
+  background: var(--stamp);
+  color: var(--panel);
+}
+
+.admin-shell .admin-brand-name {
+  display: grid;
+  gap: 3px;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  letter-spacing: -0.3px;
+}
+
+.admin-shell .admin-brand-name > span {
+  color: var(--mut);
+  font-size: var(--fs-micro);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.admin-shell .admin-nav {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 2px var(--sp-2);
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--hair) transparent;
+}
+
+.admin-shell .admin-nav::-webkit-scrollbar {
+  width: 4px;
+}
+.admin-shell .admin-nav::-webkit-scrollbar-thumb {
+  background: var(--hair);
+}
+
+.admin-shell .admin-nav a,
+.admin-shell .admin-nav a.admin-nav__subitem {
+  flex: none;
+  gap: var(--sp-3);
+  min-height: var(--touch);
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border: 0;
+  border-radius: var(--r-s);
+  background: transparent;
+  color: var(--mut);
+  box-shadow: none;
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  line-height: 1.35;
+  text-decoration: none;
+  transition:
+    background var(--t-hover),
+    color var(--t-hover);
+}
+
+.admin-shell .admin-nav a.admin-nav__subitem {
+  margin-left: 16px;
+  padding-left: 14px;
+  min-height: 38px;
+  font-size: var(--fs-xs);
+}
+
+.admin-shell .admin-nav a > svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.admin-shell .admin-nav a > span {
+  min-width: 0;
+}
+
+.admin-shell .admin-nav a.active {
+  color: var(--ac-ink);
+  background: var(--ac-soft);
+  font-weight: 500;
+  box-shadow: none;
+}
+
+.admin-shell .admin-nav__section {
+  flex: none;
+  margin: var(--sp-5) var(--sp-3) var(--sp-1);
+  color: var(--faint);
+  font: 500 var(--fs-cap)/1.4 var(--font);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.admin-shell .admin-sidebar__footer {
+  flex: none;
+  gap: var(--sp-2);
+  padding-top: 0;
+  border: 0;
+}
+
+.admin-shell .sidebar-utility {
+  min-height: var(--ctl);
+  padding: 0 var(--sp-3);
+  gap: var(--sp-3);
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  color: var(--mut);
+  border-radius: var(--r-s);
+}
+
+.admin-shell .admin-profile {
+  gap: var(--sp-2);
+  min-width: 0;
+  margin: 0;
+  padding: var(--sp-2);
+  border: 0;
+  border-radius: var(--r-s);
+  background: var(--sunken);
+}
+
+.admin-shell .admin-profile .avatar {
+  flex: none;
+  width: var(--ctl);
+  height: var(--ctl);
+  border-radius: 50%;
+  background: var(--ac);
+  color: var(--panel);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.admin-shell .admin-profile div:last-child {
+  min-width: 0;
+}
+.admin-shell .admin-profile b {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-shell .admin-profile span {
+  color: var(--mut);
+  font-size: var(--fs-cap);
+}
+.admin-shell .admin-main {
+  min-width: 0;
+  background: var(--shell);
+}
+
+.admin-shell .admin-topbar {
+  height: 64px;
+  padding: var(--sp-3) var(--sp-6);
+  border: 0;
+  background: color-mix(in srgb, var(--shell) 92%, transparent);
+  backdrop-filter: blur(16px);
+}
+
+.admin-shell .topbar-actions {
+  gap: var(--sp-2);
+}
+.admin-shell .topbar-actions .icon-button,
+.admin-shell .topbar-actions .app-notifications__trigger {
+  width: var(--ctl);
+  min-width: var(--ctl);
+  height: var(--ctl);
+  min-height: var(--ctl);
+  border: 0;
+  border-radius: var(--r-s);
+  color: var(--mut);
+  background: var(--panel);
+  box-shadow: var(--sh-1);
+}
+
+.admin-shell .admin-topbar__brand {
+  color: var(--ink);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  text-decoration: none;
+}
+.admin-shell .admin-mobile-menu-button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .admin-shell .admin-nav a:hover,
+  .admin-shell .sidebar-utility.app-button:hover {
+    background: var(--sunken);
+    color: var(--ink);
+    transition-duration: 0s;
+  }
+  .admin-shell .admin-nav a.active:hover {
+    color: var(--ac-ink);
+    background: var(--ac-soft);
+  }
+}
+
+/* Keep the same 1024px breakpoint as useMobileSidebarDrag. */
+@media (max-width: 1024px) {
+  body .admin-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .admin-shell .admin-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(320px, calc(100vw - 32px));
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    padding-top: max(var(--sp-5), env(safe-area-inset-top));
+    padding-bottom: max(var(--sp-3), env(safe-area-inset-bottom));
+    border-radius: 0 var(--r) var(--r) 0;
+    box-shadow: var(--sh-panel);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform var(--t-panel),
+      visibility 0s linear 320ms;
+  }
+  .admin-shell .admin-sidebar.is-open,
+  .admin-shell .admin-sidebar.is-dragging {
+    visibility: visible;
+    transition-delay: 0s;
+  }
+  .admin-shell .admin-sidebar.is-open {
+    transform: translateX(0);
+  }
+  .admin-shell .admin-sidebar.is-dragging {
+    transition: none;
+  }
+  .admin-shell .brand-block {
+    padding-right: var(--touch);
+  }
+  .admin-shell .admin-sidebar__close.icon-button {
+    display: grid;
+    top: var(--sp-5);
+    right: var(--sp-3);
+    min-width: var(--touch);
+    min-height: var(--touch);
+    color: var(--mut);
+    border-radius: var(--r-s);
+  }
+  .admin-shell .admin-sidebar__close.app-button:hover {
+    color: var(--ink);
+    background: var(--sunken);
+  }
+  .admin-shell .admin-sidebar-backdrop {
+    background: color-mix(in srgb, var(--ink) 34%, transparent);
+    transition: opacity var(--t-panel);
+  }
+  .admin-shell .admin-sidebar-backdrop.is-dragging {
+    transition: none;
+  }
+  .admin-shell .admin-topbar {
+    display: flex;
+    height: auto;
+    min-height: 64px;
+    padding: var(--sp-2) var(--sp-4);
+    gap: var(--sp-2);
+  }
+  .admin-shell .admin-topbar__mobile {
+    display: flex;
+    gap: var(--sp-2);
+  }
+  .admin-shell .admin-topbar__brand {
+    display: block;
+  }
+  .admin-shell .admin-mobile-menu-button,
+  .admin-shell .topbar-actions .icon-button,
+  .admin-shell .topbar-actions .app-notifications__trigger {
+    width: var(--touch);
+    height: var(--touch);
+    min-width: var(--touch);
+    min-height: var(--touch);
+  }
+}
+
+@media (max-width: 360px) {
+  .admin-shell .admin-topbar {
+    padding-inline: var(--sp-2);
+  }
+  .admin-shell .topbar-actions {
+    gap: var(--sp-1);
+  }
+  .admin-shell .admin-topbar__brand {
+    font-size: var(--fs-sm);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .admin-shell .admin-topbar {
+    background: var(--shell);
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-shell .admin-sidebar,
+  .admin-shell .admin-sidebar-backdrop {
+    transition-duration: 1ms;
+    transition-delay: 0s;
+  }
+}

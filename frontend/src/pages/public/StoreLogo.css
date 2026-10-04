@@ -1,0 +1,32 @@
+.store-logo-shell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--stamp, #24262b);
+  box-shadow: none;
+}
+
+.store-logo {
+  display: block;
+  width: auto;
+  height: 42px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.store-logo-shell.is-compact {
+  padding: 8px 12px;
+  border-radius: 14px;
+}
+
+@media (max-width: 640px) {
+  .store-logo-shell {
+    padding: 8px 12px;
+  }
+
+  .store-logo {
+    height: 36px;
+  }
+}

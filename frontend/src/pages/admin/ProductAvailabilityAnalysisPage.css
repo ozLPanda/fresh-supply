@@ -1,0 +1,60 @@
+.product-availability-analysis {
+  display: grid;
+  gap: 20px;
+}
+
+.product-availability-analysis__intro {
+  display: grid;
+  gap: 14px;
+}
+
+.product-availability-analysis__product,
+.product-availability-analysis__after {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.product-availability-analysis__product > strong,
+.product-availability-analysis__after > strong {
+  overflow-wrap: anywhere;
+}
+
+.product-availability-analysis__product > span {
+  color: var(--muted, #64748b);
+  font-size: 12px;
+}
+
+.product-availability-analysis__state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.product-availability-analysis__keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.product-availability-analysis__confirm-modal {
+  width: min(92vw, 520px);
+}
+
+.product-availability-analysis__confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+@media (max-width: 560px) {
+  .product-availability-analysis__confirm-actions {
+    flex-direction: column-reverse;
+  }
+
+  .product-availability-analysis__confirm-actions .app-button {
+    width: 100%;
+  }
+}

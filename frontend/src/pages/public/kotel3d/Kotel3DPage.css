@@ -1,0 +1,458 @@
+.kotel-page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px 0;
+  background: #eceff1;
+  color: #1e2e3a;
+}
+.kotel-page__top {
+  width: 80vw;
+  max-width: 1560px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.kotel-page__top a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #4e5d69;
+}
+.kotel-page__top > span {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #74818a;
+}
+.kotel-viewer {
+  width: 80vw;
+  max-width: 1560px;
+  height: 80dvh;
+  min-height: 500px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid #d9dfe3;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 20px 60px #1e2e3a0d;
+}
+.kotel-viewer__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 17px 26px;
+  border-bottom: 1px solid #e5e9eb;
+}
+.kotel-viewer__identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.kotel-viewer__brand {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  background: #fff0e5;
+  border-radius: 12px;
+  color: #d95a21;
+}
+.kotel-viewer h1 {
+  margin: 0;
+  font-size: 23px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+.kotel-viewer__identity p {
+  margin: 4px 0 0;
+  color: #7a858d;
+  font-size: 11px;
+}
+.kotel-viewer__badge {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: #52616b;
+}
+.kotel-viewer__badge span {
+  margin: 0 8px;
+  color: #c7cfd4;
+}
+.kotel-viewer__stage {
+  position: relative;
+  min-height: 0;
+  background: radial-gradient(ellipse at 50% 40%, #fafbfc, #e5eaed);
+  overflow: hidden;
+}
+.kotel-viewer__canvas {
+  position: absolute;
+  inset: 0;
+}
+.kotel-viewer__canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  outline: none;
+}
+.kotel-viewer__caption {
+  position: absolute;
+  top: 26px;
+  left: 28px;
+  width: 190px;
+  pointer-events: none;
+}
+.kotel-viewer__caption > span {
+  color: #a85a32;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.kotel-viewer__caption h2 {
+  margin: 10px 0 8px;
+  font-size: 22px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+.kotel-viewer__caption p {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #74808a;
+  margin: 0;
+}
+.kotel-viewer__view {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: absolute;
+  top: 20px;
+  right: 20px;
+}
+.kotel-viewer__view .app-button {
+  padding: 10px;
+  min-height: 38px;
+  background: #ffffffbd;
+}
+.kotel-viewer__gesture {
+  position: absolute;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #72808a;
+  pointer-events: none;
+}
+.kotel-viewer__footer {
+  display: block;
+  margin: 0;
+  background: #fff;
+  padding: 0 24px 16px;
+}
+.kotel-viewer__timeline {
+  display: flex;
+  align-items: center;
+  height: 27px;
+}
+.kotel-viewer__timeline input {
+  width: 100%;
+  height: 4px;
+  accent-color: #e97131;
+  cursor: pointer;
+}
+.kotel-viewer__controls {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+}
+.kotel-viewer__play {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.kotel-viewer__play .app-button {
+  min-height: 38px;
+  padding: 9px 14px;
+  font-size: 12px;
+}
+.kotel-viewer__steps {
+  display: flex;
+  gap: 6px;
+}
+.kotel-viewer__steps button {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  border: 1px solid transparent;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: transparent;
+  color: #6a7781;
+  font-size: 11px;
+  cursor: pointer;
+}
+.kotel-viewer__steps button span {
+  font-size: 9px;
+  color: #9cabb6;
+}
+.kotel-viewer__steps button[aria-pressed="true"] {
+  border-color: #f2d8c8;
+  background: #fff4ec;
+  color: #a54718;
+}
+.kotel-viewer__steps button:focus-visible,
+.kotel-page__top a:focus-visible {
+  outline: 2px solid #d85c20;
+  outline-offset: 3px;
+}
+.kotel-viewer__steps button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.kotel-page__note {
+  max-width: 80vw;
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.5;
+  text-align: center;
+  color: #7b8790;
+}
+.kotel-viewer__fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: #f7f9fa;
+  padding: 20px;
+}
+.kotel-viewer__fallback img {
+  max-width: 70%;
+  height: 70%;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+.kotel-viewer__fallback [role="status"] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+.kotel-viewer__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+@media (max-width: 1050px) {
+  .kotel-viewer__caption {
+    width: 150px;
+    left: 18px;
+    top: 20px;
+  }
+  .kotel-viewer__caption p {
+    font-size: 11px;
+  }
+  .kotel-viewer__steps button {
+    padding: 9px 7px;
+    font-size: 10px;
+  }
+  .kotel-viewer__controls {
+    gap: 8px;
+  }
+}
+@media (max-width: 700px) {
+  .kotel-page {
+    padding: 14px 0;
+    gap: 12px;
+  }
+  .kotel-page__top,
+  .kotel-viewer {
+    width: calc(100% - 24px);
+  }
+  .kotel-page__top > span {
+    font-size: 7px;
+  }
+  .kotel-viewer {
+    height: 82dvh;
+    min-height: 530px;
+    border-radius: 16px;
+  }
+  .kotel-viewer__header {
+    padding: 14px;
+  }
+  .kotel-viewer__badge {
+    font-size: 8px;
+  }
+  .kotel-viewer__caption {
+    top: 15px;
+    left: 16px;
+    width: auto;
+    right: 62px;
+  }
+  .kotel-viewer__caption h2 {
+    font-size: 17px;
+    margin-top: 6px;
+  }
+  .kotel-viewer__caption p {
+    display: none;
+  }
+  .kotel-viewer__caption > span {
+    font-size: 8px;
+  }
+  .kotel-viewer__view {
+    top: 12px;
+    right: 12px;
+  }
+  .kotel-viewer__gesture {
+    font-size: 8px;
+    bottom: 10px;
+  }
+  .kotel-viewer__footer {
+    display: block;
+    margin: 0;
+    background: #fff;
+    padding: 0 12px 12px;
+  }
+  .kotel-viewer__controls {
+    flex-wrap: wrap;
+  }
+  .kotel-viewer__steps {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2px;
+  }
+  .kotel-viewer__steps button {
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 9px;
+    padding: 7px 2px;
+  }
+  .kotel-page__note {
+    max-width: calc(100% - 32px);
+    font-size: 9px;
+  }
+}
+@media (max-height: 600px) and (min-width: 701px) {
+  .kotel-viewer {
+    min-height: 400px;
+    height: 85dvh;
+  }
+  .kotel-viewer__header {
+    padding: 10px 20px;
+  }
+}
+
+@media (min-width: 701px) and (max-width: 1200px) {
+  .kotel-viewer__controls {
+    flex-wrap: wrap;
+  }
+  .kotel-viewer__steps {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+.kotel-workspace {
+  width: 90vw;
+  max-width: 1780px;
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.kotel-workspace .kotel-viewer {
+  width: 100%;
+  min-width: 0;
+}
+.kotel-scenes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 20px;
+}
+.kotel-scenes__label {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: #7b8790;
+  padding: 0 14px 12px;
+}
+.kotel-scenes .app-button {
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
+  height: auto;
+  padding: 15px 12px;
+  gap: 10px;
+  color: #52616b;
+  border: 1px solid transparent;
+}
+.kotel-scenes .app-button[aria-pressed="true"] {
+  background: #fff4ec;
+  border-color: #edcbb5;
+  color: #a54718;
+}
+.kotel-scenes small {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  margin-top: 5px;
+  color: #7a858d;
+}
+.kotel-scenes__number {
+  align-self: flex-start;
+  font-size: 10px;
+  opacity: 0.65;
+  margin-top: 3px;
+}
+.kotel-workspace .kotel-viewer__controls {
+  flex-wrap: wrap;
+}
+.kotel-workspace .kotel-viewer__steps {
+  width: 100%;
+  justify-content: space-between;
+}
+@media (max-width: 1000px) {
+  .kotel-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .kotel-scenes {
+    flex-direction: row;
+    padding: 0;
+  }
+  .kotel-scenes__label {
+    display: none;
+  }
+  .kotel-scenes .app-button {
+    flex: 1;
+    font-size: 12px;
+    padding: 10px;
+  }
+}
+@media (max-width: 700px) {
+  .kotel-workspace {
+    width: calc(100% - 24px);
+  }
+  .kotel-scenes .app-button {
+    font-size: 11px;
+  }
+}

@@ -1,0 +1,8 @@
+[Unit]
+Description=Company Shop PostgreSQL %i backup
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ovoshi-help-db-backup %i

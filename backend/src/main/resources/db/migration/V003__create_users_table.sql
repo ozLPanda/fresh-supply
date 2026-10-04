@@ -1,0 +1,1 @@
+create table users (id bigserial primary key, name varchar(160) not null, email varchar(180) not null unique, phone varchar(40), password_hash varchar(120) not null, active boolean not null default true, created_at timestamptz not null default now(), updated_at timestamptz not null default now(), deleted_at timestamptz);

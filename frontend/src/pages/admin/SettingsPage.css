@@ -1,0 +1,5 @@
+.settings-page__analysis {
+  display: grid;
+  gap: 14px;
+  justify-items: start;
+}

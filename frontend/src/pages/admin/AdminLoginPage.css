@@ -1,0 +1,63 @@
+.login-page.admin-login-page {
+  min-height: 100dvh;
+  padding: var(--sp-6);
+  background: var(--shell);
+}
+
+.admin-login-page .admin-login-card {
+  width: min(440px, 100%);
+  padding: 32px;
+  border: 0;
+  border-radius: var(--r);
+  background: var(--panel);
+  box-shadow: var(--sh-2);
+}
+
+.admin-login-page .admin-login-card > div {
+  display: grid;
+  gap: var(--sp-3);
+}
+.admin-login-page .login-mark {
+  width: 44px;
+  height: 44px;
+  margin-bottom: var(--sp-1);
+  border-radius: var(--r-s);
+  background: var(--stamp);
+  color: var(--panel);
+  font-size: var(--fs-body);
+  font-weight: 600;
+}
+.admin-login-page .login-kicker {
+  color: var(--mut);
+  font: 500 var(--fs-sm)/1.4 var(--font);
+  letter-spacing: 0;
+}
+.admin-login-page .login-card h1 {
+  color: var(--ink);
+  font-size: var(--fs-h1);
+  font-weight: 600;
+  line-height: var(--lh-h1);
+  letter-spacing: var(--ls-h1);
+}
+.admin-login-page .login-card p {
+  color: var(--mut);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.admin-login-page .login-card form {
+  display: grid;
+  gap: var(--sp-4);
+  margin-top: var(--sp-3);
+}
+.admin-login-page .login-card form > button {
+  margin-top: var(--sp-1);
+}
+
+@media (max-width: 640px) {
+  .login-page.admin-login-page {
+    padding: var(--sp-4);
+  }
+  .admin-login-page .admin-login-card {
+    padding: var(--sp-6);
+  }
+}

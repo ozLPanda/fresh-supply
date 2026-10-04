@@ -1,0 +1,205 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+readonly REPOSITORY_DIR="/opt/ovoshi-help-repo"
+readonly BRANCH="main"
+readonly DEPLOY_USER="deploy"
+readonly STATE_DIR="/var/lib/ovoshi-help"
+readonly DEPLOYED_REVISION_FILE="$STATE_DIR/deployed-revision"
+readonly FAILED_REVISION_FILE="$STATE_DIR/failed-revision"
+readonly LOCK_FILE="/run/ovoshi-help-auto-deploy.lock"
+readonly PUBLIC_STATUS_DIR="$STATE_DIR/deploy-status"
+readonly STATUS_FILE="$PUBLIC_STATUS_DIR/status.json"
+readonly HISTORY_FILE="$PUBLIC_STATUS_DIR/history.jsonl"
+readonly LOG_DIR="$PUBLIC_STATUS_DIR/logs"
+readonly MAX_LOG_BYTES=$((8 * 1024 * 1024))
+readonly KEEP_LOG_BYTES=$((4 * 1024 * 1024))
+readonly MAX_LOG_FILES=100
+
+json_nullable() {
+  local value="$1"
+  if [[ -z "$value" ]]; then
+    printf 'null'
+  elif [[ "$value" =~ ^[a-f0-9]{40,64}$ || "$value" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ || "$value" =~ ^[0-9]{8}T[0-9]{6}Z-[0-9]+$ ]]; then
+    printf '"%s"' "$value"
+  else
+    echo "Invalid deployment status value" >&2
+    return 1
+  fi
+}
+
+write_status() {
+  local state="$1" deployed="$2" target="$3" checked_at="$4" started_at="$5" finished_at="$6" attempt_id="${7:-}" stage="${8:-}"
+  local temporary="${STATUS_FILE}.tmp.$$"
+  local deployed_json target_json checked_json started_json finished_json attempt_json stage_json
+  deployed_json="$(json_nullable "$deployed")"
+  target_json="$(json_nullable "$target")"
+  checked_json="$(json_nullable "$checked_at")"
+  started_json="$(json_nullable "$started_at")"
+  finished_json="$(json_nullable "$finished_at")"
+  attempt_json="$(json_nullable "$attempt_id")"
+  stage_json=null
+  [[ -z "$stage" ]] || stage_json="\"$stage\""
+  printf '{"state":"%s","deployedRevision":%s,"targetRevision":%s,"checkedAt":%s,"startedAt":%s,"finishedAt":%s,"attemptId":%s,"stage":%s}\n' \
+    "$state" "$deployed_json" "$target_json" "$checked_json" "$started_json" "$finished_json" "$attempt_json" "$stage_json" >"$temporary"
+  chmod 0644 "$temporary"
+  mv -f "$temporary" "$STATUS_FILE"
+}
+
+record_attempt() {
+  local revision="$1" state="$2" started_at="$3" finished_at="$4" attempt_id="$5"
+  local temporary="${HISTORY_FILE}.tmp.$$"
+  printf '{"revision":"%s","state":"%s","startedAt":"%s","finishedAt":"%s","attemptId":"%s"}\n' \
+    "$revision" "$state" "$started_at" "$finished_at" "$attempt_id" >>"$HISTORY_FILE"
+  tail -n 100 "$HISTORY_FILE" >"$temporary"
+  chmod 0644 "$temporary"
+  mv -f "$temporary" "$HISTORY_FILE"
+}
+
+stage_label() {
+  case "$1" in
+    preparing) printf 'Подготовка развёртывания' ;;
+    shared_services) printf 'Обновление общих сервисов' ;;
+    embedding) printf 'Обновление сервиса эмбеддингов' ;;
+    backend_build) printf 'Сборка backend' ;;
+    frontend_build) printf 'Сборка frontend' ;;
+    candidate) printf 'Запуск новой версии' ;;
+    health) printf 'Проверка работоспособности' ;;
+    switch) printf 'Переключение трафика' ;;
+    drain) printf 'Завершение запросов старой версии' ;;
+    cleanup) printf 'Очистка старой версии и образов' ;;
+    nginx) printf 'Обновление конфигурации Nginx' ;;
+    completed) printf 'Развёртывание завершено' ;;
+    *) return 1 ;;
+  esac
+}
+
+# Keep each public log bounded, including a single unexpectedly long output line.
+append_log_line() {
+  local line="$1" line_bytes temporary
+  local LC_ALL=C
+  if (( ${#line} > 65536 )); then
+    line="${line:0:65536} [строка обрезана]"
+  fi
+  printf '%s\n' "$line" >>"$attempt_log"
+  printf '%s\n' "$line"
+  line_bytes=$((${#line} + 1))
+  log_bytes=$((log_bytes + line_bytes))
+  if (( log_bytes > MAX_LOG_BYTES )); then
+    temporary="${attempt_log}.tmp.$$"
+    tail -c "$KEEP_LOG_BYTES" "$attempt_log" | sed '1d' >"$temporary"
+    chmod 0640 "$temporary"
+    mv -f "$temporary" "$attempt_log"
+    log_bytes="$(wc -c <"$attempt_log")"
+  fi
+}
+
+prune_attempt_logs() {
+  local logs=() excess index
+  shopt -s nullglob
+  logs=("$LOG_DIR"/*.log)
+  shopt -u nullglob
+  excess=$((${#logs[@]} - MAX_LOG_FILES))
+  for ((index = 0; index < excess; index++)); do
+    rm -f -- "${logs[$index]}"
+  done
+}
+
+install -d -m 0750 "$STATE_DIR"
+install -d -m 0755 "$PUBLIC_STATUS_DIR"
+install -d -m 0750 "$LOG_DIR"
+# The backend container reads as uid/gid 10001 through a read-only mount.
+# Group access keeps deployment output unavailable to unrelated host users.
+if (( EUID == 0 )); then
+  chgrp 10001 "$LOG_DIR"
+  chmod 2750 "$LOG_DIR"
+fi
+touch "$HISTORY_FILE"
+chmod 0644 "$HISTORY_FILE"
+exec 9>"$LOCK_FILE"
+flock -n 9 || exit 0
+
+run_as_deploy() {
+  runuser -u "$DEPLOY_USER" -- "$@"
+}
+
+if ! run_as_deploy git -C "$REPOSITORY_DIR" fetch --quiet origin "$BRANCH"; then
+  write_status unavailable "$(cat "$DEPLOYED_REVISION_FILE" 2>/dev/null || true)" "" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "" ""
+  exit 1
+fi
+target_revision="$(run_as_deploy git -C "$REPOSITORY_DIR" rev-parse "origin/$BRANCH")"
+repository_revision="$(run_as_deploy git -C "$REPOSITORY_DIR" rev-parse HEAD)"
+deployed_revision="$(cat "$DEPLOYED_REVISION_FILE" 2>/dev/null || true)"
+failed_revision="$(cat "$FAILED_REVISION_FILE" 2>/dev/null || true)"
+
+if [[ "$target_revision" == "$deployed_revision" ]]; then
+  write_status idle "$deployed_revision" "$target_revision" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "" ""
+  exit 0
+fi
+
+if [[ "${FORCE_RETRY_FAILED_REVISION:-false}" != true && "$target_revision" == "$failed_revision" ]]; then
+  write_status failed "$deployed_revision" "$target_revision" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "" ""
+  echo "Skipping $target_revision: the previous deployment of this revision failed. Push a new revision or rerun with FORCE_RETRY_FAILED_REVISION=true." >&2
+  exit 0
+fi
+
+force_rebuild=false
+if [[ -z "$deployed_revision" || "$repository_revision" != "$deployed_revision" ]]; then
+  force_rebuild=true
+fi
+
+echo "Deploying $target_revision from origin/$BRANCH"
+started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+attempt_id="$(date -u +%Y%m%dT%H%M%SZ)-$$"
+attempt_log="$LOG_DIR/$attempt_id.log"
+log_bytes=0
+(umask 027; : >"$attempt_log")
+chmod 0640 "$attempt_log"
+prune_attempt_logs
+stage="Подготовка развёртывания"
+last_status_refresh=$SECONDS
+write_status running "$deployed_revision" "$target_revision" "$started_at" "$started_at" "" "$attempt_id" "$stage"
+# Execute the target revision's script from a stable snapshot. The script checks
+# out its target; executing the checkout's older deploy.sh can run old build logic
+# (and modify a script while Bash is still reading it).
+if run_as_deploy env FORCE_APPLICATION_REBUILD="$force_rebuild" bash -c '
+  set -euo pipefail
+  deploy_script="$(mktemp)"
+  cleanup() { rm -f "$deploy_script"; }
+  trap cleanup EXIT
+  git -C "$1" show "$2:deploy/production/deploy.sh" >"$deploy_script"
+  bash "$deploy_script" "$2"
+' _ "$REPOSITORY_DIR" "$target_revision" 2>&1 | while IFS= read -r line || [[ -n "$line" ]]; do
+  if [[ "$line" == '::ovoshi-help-stage::'* ]]; then
+    stage_code="${line#::ovoshi-help-stage::}"
+    if stage="$(stage_label "$stage_code")"; then
+      write_status running "$deployed_revision" "$target_revision" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$started_at" "" "$attempt_id" "$stage"
+      last_status_refresh=$SECONDS
+    fi
+  fi
+  if (( SECONDS - last_status_refresh >= 60 )); then
+    write_status running "$deployed_revision" "$target_revision" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$started_at" "" "$attempt_id" "$stage"
+    last_status_refresh=$SECONDS
+  fi
+  append_log_line "$line"
+done; then
+  :
+else
+  finished_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  printf '%s\n' "$target_revision" >"${FAILED_REVISION_FILE}.tmp"
+  chmod 0640 "${FAILED_REVISION_FILE}.tmp"
+  mv "${FAILED_REVISION_FILE}.tmp" "$FAILED_REVISION_FILE"
+  record_attempt "$target_revision" failed "$started_at" "$finished_at" "$attempt_id"
+  write_status failed "$deployed_revision" "$target_revision" "$finished_at" "$started_at" "$finished_at" "$attempt_id" "Развёртывание завершилось ошибкой"
+  append_log_line "Deployment of $target_revision failed. Automatic retries are paused until a new revision is available." >&2
+  exit 1
+fi
+
+rm -f "$FAILED_REVISION_FILE"
+printf '%s\n' "$target_revision" >"${DEPLOYED_REVISION_FILE}.tmp"
+chmod 0640 "${DEPLOYED_REVISION_FILE}.tmp"
+mv "${DEPLOYED_REVISION_FILE}.tmp" "$DEPLOYED_REVISION_FILE"
+finished_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+record_attempt "$target_revision" succeeded "$started_at" "$finished_at" "$attempt_id"
+write_status succeeded "$target_revision" "$target_revision" "$finished_at" "$started_at" "$finished_at" "$attempt_id" "Развёртывание завершено"
+append_log_line "Deployment of $target_revision succeeded."

@@ -1,0 +1,26 @@
+.made-to-order-cart-confirmation__content {
+  display: grid;
+  gap: 20px;
+}
+
+.made-to-order-cart-confirmation__content > p {
+  margin: 0;
+  color: var(--muted, #64748b);
+  line-height: 1.55;
+}
+
+.made-to-order-cart-confirmation__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@media (max-width: 520px) {
+  .made-to-order-cart-confirmation__actions {
+    flex-direction: column-reverse;
+  }
+
+  .made-to-order-cart-confirmation__actions .app-button {
+    width: 100%;
+  }
+}

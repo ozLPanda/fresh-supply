@@ -1,0 +1,484 @@
+<!DOCTYPE html><html class="light" lang="ru" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Панель администратора | HeatFlow Solutions</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9ff;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #c5c6cd;
+            border-radius: 10px;
+        }
+        .table-row-hover:hover {
+            background-color: #F8FAFC;
+        }
+    </style>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "surface-container-low": "#eff4ff",
+                "outline-variant": "#c5c6cd",
+                "tertiary-container": "#5a0008",
+                "primary": "#091426",
+                "secondary": "#9d4300",
+                "on-secondary-container": "#5c2400",
+                "background": "#f8f9ff",
+                "surface-container-lowest": "#ffffff",
+                "primary-fixed": "#d8e3fb",
+                "error": "#ba1a1a",
+                "surface-variant": "#d5e3fd",
+                "on-primary": "#ffffff",
+                "on-primary-fixed": "#111c2d",
+                "error-container": "#ffdad6",
+                "on-tertiary-container": "#ff5250",
+                "on-surface": "#0d1c2f",
+                "inverse-on-surface": "#ebf1ff",
+                "status-success": "#10B981",
+                "on-primary-fixed-variant": "#3c475a",
+                "on-tertiary-fixed": "#410004",
+                "on-secondary-fixed": "#341100",
+                "heat-medium": "#F97316",
+                "on-primary-container": "#8590a6",
+                "on-secondary": "#ffffff",
+                "secondary-fixed-dim": "#ffb690",
+                "primary-fixed-dim": "#bcc7de",
+                "border-subtle": "#E2E8F0",
+                "surface-base": "#FFFFFF",
+                "tertiary-fixed-dim": "#ffb3ad",
+                "surface-muted": "#F8FAFC",
+                "heat-high": "#EF4444",
+                "secondary-fixed": "#ffdbca",
+                "surface-container-high": "#dde9ff",
+                "secondary-container": "#fd761a",
+                "surface": "#f8f9ff",
+                "outline": "#75777d",
+                "inverse-primary": "#bcc7de",
+                "primary-container": "#1e293b",
+                "on-background": "#0d1c2f",
+                "surface-container-highest": "#d5e3fd",
+                "surface-dim": "#ccdbf4",
+                "on-tertiary-fixed-variant": "#930013",
+                "tertiary": "#330002",
+                "surface-bright": "#f8f9ff",
+                "surface-tint": "#545f73",
+                "on-error": "#ffffff",
+                "on-tertiary": "#ffffff",
+                "inverse-surface": "#233144",
+                "surface-container": "#e6eeff",
+                "on-error-container": "#93000a",
+                "on-surface-variant": "#45474c",
+                "tertiary-fixed": "#ffdad7",
+                "on-secondary-fixed-variant": "#783200"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+            },
+            "spacing": {
+                "margin-desktop": "32px",
+                "sidebar-width": "280px",
+                "margin-mobile": "16px",
+                "container-max": "1280px",
+                "base": "4px",
+                "gutter": "16px"
+            },
+            "fontFamily": {
+                "headline-lg": ["Inter"],
+                "label-md": ["JetBrains Mono"],
+                "body-md": ["Inter"],
+                "title-md": ["Inter"],
+                "headline-md": ["Inter"]
+            }
+          }
+        }
+      }
+    </script>
+</head>
+<body class="bg-background text-on-surface">
+<!-- Sidebar Navigation Shell -->
+<aside class="fixed left-0 top-0 h-full flex flex-col py-4 bg-primary dark:bg-surface-container-lowest w-[280px] z-50 shadow-sm">
+<div class="px-6 mb-8 flex flex-col gap-1"><span class="font-headline-md text-headline-md font-black text-on-primary">Фирма Актив</span><span class="font-label-md text-label-md text-on-primary-container opacity-80 uppercase tracking-widest">PLUMBING PRO • АРТИКУЛЫ</span></div>
+<nav class="flex-1 overflow-y-auto custom-scrollbar">
+<!-- Navigation Items mapping from JSON -->
+<div class="space-y-1"><a class="flex items-center gap-3 px-6 py-3 text-on-primary-container dark:text-on-surface-variant hover:bg-primary-container mx-2 my-1 transition-all duration-200 ease-in-out rounded-lg" href="#"><span class="material-symbols-outlined">dashboard</span><span class="font-label-md text-label-md">Дашборд</span></a><a class="flex items-center gap-3 px-6 py-3 text-on-primary-container dark:text-on-surface-variant hover:bg-primary-container mx-2 my-1 transition-all duration-200 ease-in-out rounded-lg" href="#"><span class="material-symbols-outlined">shopping_bag</span><span class="font-label-md text-label-md">Заказы</span></a><a class="flex items-center gap-3 px-6 py-3 bg-secondary-container rounded-lg mx-2 my-1 transition-all duration-200 ease-in-out text-white" href="#"><span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">inventory_2</span><span class="font-label-md text-label-md">Товары</span></a><a class="flex items-center gap-3 px-6 py-3 text-on-primary-container dark:text-on-surface-variant hover:bg-primary-container mx-2 my-1 transition-all duration-200 ease-in-out rounded-lg" href="#"><span class="material-symbols-outlined">group</span><span class="font-label-md text-label-md">Клиенты</span></a><a class="flex items-center gap-3 px-6 py-3 text-on-primary-container dark:text-on-surface-variant hover:bg-primary-container mx-2 my-1 transition-all duration-200 ease-in-out rounded-lg" href="#"><span class="material-symbols-outlined">article</span><span class="font-label-md text-label-md">Контент</span></a><a class="flex items-center gap-3 px-6 py-3 text-on-primary-container dark:text-on-surface-variant hover:bg-primary-container mx-2 my-1 transition-all duration-200 ease-in-out rounded-lg" href="#"><span class="material-symbols-outlined">leaderboard</span><span class="font-label-md text-label-md">Аналитика</span></a><a class="flex items-center gap-3 px-6 py-3 text-on-primary-container dark:text-on-surface-variant hover:bg-primary-container mx-2 my-1 transition-all duration-200 ease-in-out rounded-lg" href="#"><span class="material-symbols-outlined">notifications</span><span class="font-label-md text-label-md">Уведомления</span></a><a class="flex items-center gap-3 px-6 py-3 text-on-primary-container dark:text-on-surface-variant hover:bg-primary-container mx-2 my-1 transition-all duration-200 ease-in-out rounded-lg" href="#"><span class="material-symbols-outlined">chat</span><span class="font-label-md text-label-md">Сообщения</span></a><a class="flex items-center gap-3 px-6 py-3 text-on-primary-container dark:text-on-surface-variant hover:bg-primary-container mx-2 my-1 transition-all duration-200 ease-in-out rounded-lg" href="#"><span class="material-symbols-outlined">key</span><span class="font-label-md text-label-md">Доступ</span></a><a class="flex items-center gap-3 px-6 py-3 text-on-primary-container dark:text-on-surface-variant hover:bg-primary-container mx-2 my-1 transition-all duration-200 ease-in-out rounded-lg" href="#"><span class="material-symbols-outlined">settings</span><span class="font-label-md text-label-md">Настройки</span></a><a class="flex items-center gap-3 px-6 py-3 text-on-primary-container dark:text-on-surface-variant hover:bg-primary-container mx-2 my-1 transition-all duration-200 ease-in-out rounded-lg" href="#"><span class="material-symbols-outlined">admin_panel_settings</span><span class="font-label-md text-label-md">Администрирование</span></a></div>
+<div class="mt-8 px-4">
+
+</div>
+</nav>
+<div class="mt-auto border-t border-primary-container pt-4"><div class="flex items-center gap-3 px-6 py-3 text-on-primary-container hover:bg-primary-container mx-2 my-1 rounded-lg cursor-pointer"><span class="material-symbols-outlined">help</span><div class="flex flex-col"><span class="font-label-md text-label-md">Поддержка</span></div></div><div class="flex items-center gap-3 px-6 py-3 text-on-primary-container hover:bg-primary-container mx-2 my-1 rounded-lg cursor-pointer"><span class="material-symbols-outlined">logout</span><span class="font-label-md text-label-md">Выйти</span></div><div class="mt-4 px-6 flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center overflow-hidden border-2 border-on-primary-container"><img alt="Admin Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDzjA1TyzijZmKpr6WqLcLYYO-jf7zyxcjgOeD7bkT1JtgPu-RO22QklkxByuxakOLJMEm-UAqHSgPgObO5LxS1hMHMVCFSHzn4wQYbRuXDyrrqONIqANviyjaDJ9yetuBrgE702yyx0A8g-D05vq-OF8Ma2cPL2FvI0XC8aITUagCgaeAH9b_ZX8a5ZA-3r7zYkXauXPUJkuqVgJcOPl8rdO6on0CRDJKxPk_-p4hOC9vsDM2zHJGr5Utuvp_oMIg5E24nfK-STMU"></div><div class="flex flex-col"><span class="text-white text-xs font-bold">Админ</span><span class="text-on-primary-container text-[10px] uppercase">Фирма Актив</span></div></div></div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-[280px] min-h-screen">
+<!-- Top Bar Header -->
+<header class="h-20 bg-surface-base border-b border-border-subtle flex items-center justify-between px-8 sticky top-0 z-40">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Товары</h1>
+<div class="flex items-center gap-4 flex-1 max-w-2xl px-8">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline" data-icon="search">search</span>
+<input class="w-full pl-10 pr-4 py-2.5 bg-surface-muted border border-border-subtle rounded-xl focus:ring-2 focus:ring-heat-medium focus:border-heat-medium outline-none transition-all" placeholder="Поиск по названию или артикулу..." type="text">
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="p-2 text-outline hover:bg-surface-muted rounded-full relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-heat-high rounded-full"></span>
+</button>
+<button class="bg-primary text-on-primary px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-transform active:scale-95">
+<span class="material-symbols-outlined text-[20px]" data-icon="add_circle">add_circle</span>
+                    Добавить товар
+                </button>
+</div>
+</header>
+<!-- Filters Section -->
+<section class="p-8 pb-0">
+<div class="bg-surface-base border border-border-subtle rounded-2xl p-6 shadow-sm">
+<div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-6">
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Категория</label>
+<select class="form-select bg-surface-muted border-border-subtle rounded-lg text-sm focus:border-heat-medium focus:ring-heat-medium">
+<option>Все категории</option>
+<option>Котлы</option>
+<option>Радиаторы</option>
+<option>Насосы</option>
+<option>Трубопровод</option>
+</select>
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Статус наличия</label>
+<select class="form-select bg-surface-muted border-border-subtle rounded-lg text-sm focus:border-heat-medium focus:ring-heat-medium">
+<option>Любой статус</option>
+<option>В наличии</option>
+<option>Мало ( &lt; 10 )</option>
+<option>Нет на складе</option>
+</select>
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Цена (₽)</label>
+<div class="flex items-center gap-2">
+<input class="w-full p-2 text-sm bg-surface-muted border-border-subtle rounded-lg" placeholder="От" type="number">
+<input class="w-full p-2 text-sm bg-surface-muted border-border-subtle rounded-lg" placeholder="До" type="number">
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Публикация</label>
+<select class="form-select bg-surface-muted border-border-subtle rounded-lg text-sm focus:border-heat-medium focus:ring-heat-medium">
+<option>Все</option>
+<option>Опубликован</option>
+<option>Черновик</option>
+<option>Скрыт</option>
+</select>
+</div>
+<div class="flex items-end">
+<button class="w-full py-2.5 border border-primary text-primary font-bold rounded-lg hover:bg-primary-container hover:text-white transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="filter_list">filter_list</span>
+                            Сбросить
+                        </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Bulk Actions Bar -->
+<section class="px-8 mt-6">
+<div class="bg-primary text-on-primary rounded-xl px-6 py-4 flex items-center justify-between opacity-0 translate-y-2 transition-all duration-300 pointer-events-none" id="bulk-bar">
+<div class="flex items-center gap-4">
+<span class="font-label-md text-label-md text-on-primary-container">Выбрано: <span class="text-white font-bold" id="selected-count">0</span></span>
+<div class="h-6 w-px bg-on-primary-container opacity-30"></div>
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-1.5 px-3 py-1.5 text-sm hover:bg-white/10 rounded-lg transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="publish">publish</span> Опубликовать
+                        </button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 text-sm hover:bg-white/10 rounded-lg transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="visibility_off">visibility_off</span> Скрыть
+                        </button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 text-sm hover:bg-white/10 rounded-lg transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="category">category</span> Изменить категорию
+                        </button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 text-sm hover:bg-error/20 text-error-container rounded-lg transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete">delete</span> Удалить
+                        </button>
+</div>
+</div>
+<button class="bg-on-primary text-primary font-bold px-4 py-1.5 rounded-lg text-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="description">description</span> Экспорт в Excel
+                </button>
+</div>
+</section>
+<!-- Product Table -->
+<section class="p-8 pt-4">
+<div class="bg-surface-base border border-border-subtle rounded-2xl overflow-hidden shadow-sm">
+<div class="overflow-x-auto">
+<table class="w-full border-collapse text-left">
+<thead>
+<tr class="bg-surface-muted border-b border-border-subtle">
+<th class="py-4 px-6 w-12">
+<input class="rounded border-outline-variant text-heat-medium focus:ring-heat-medium" id="master-checkbox" type="checkbox">
+</th>
+<th class="py-4 px-4 font-label-md text-label-md text-outline uppercase tracking-wider">Фото</th>
+<th class="py-4 px-4 font-label-md text-label-md text-outline uppercase tracking-wider">Товар &amp; Артикул</th>
+<th class="py-4 px-4 font-label-md text-label-md text-outline uppercase tracking-wider">Категория</th>
+<th class="py-4 px-4 font-label-md text-label-md text-outline uppercase tracking-wider text-right">Цена</th>
+<th class="py-4 px-4 font-label-md text-label-md text-outline uppercase tracking-wider">Склад</th>
+<th class="py-4 px-4 font-label-md text-label-md text-outline uppercase tracking-wider">Статус</th>
+<th class="py-4 px-4 font-label-md text-label-md text-outline uppercase tracking-wider">Обновлено</th>
+<th class="py-4 px-6 font-label-md text-label-md text-outline uppercase tracking-wider text-right">Действия</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-subtle">
+<!-- Table Row 1 -->
+<tr class="table-row-hover transition-colors">
+<td class="py-4 px-6">
+<input class="row-checkbox rounded border-outline-variant text-heat-medium focus:ring-heat-medium" type="checkbox">
+</td>
+<td class="py-4 px-4">
+<div class="w-12 h-12 rounded-lg bg-surface-muted flex items-center justify-center overflow-hidden border border-border-subtle">
+<img alt="Boiler" class="w-full h-full object-cover" data-alt="Close-up product photography of a modern high-efficiency gas boiler against a clean white background. The sleek metallic design and glowing digital display reflect industrial precision. The lighting is bright and even, matching a high-end HVAC catalog style with crisp details and high contrast." src="https://lh3.googleusercontent.com/aida-public/AB6AXuARZUIL1JUuQkHgpt8DPVoXgZyuzHIa70Z7IXzbwypBRWiESV5t66KXL9cSCPXLI18GdgilQmiXMvhZLCqQWLD33HAnGFRtvg73riWVb203mmjeKDM74mjvY2cUChs_wmjPRw-jstvSVlnNjMmTRVWvByChd9pUFJvSs7C2aa4xtYlt47rgqB7IJ0nYFo7yNBRTpY9GzDnDC5_ieB8vZpuEvwu5yGFo9NAlUu5BEAGv3GKCfOx25rg3orF0lDMDgqFgFdvmXNZ_2dM">
+</div>
+</td>
+<td class="py-4 px-4">
+<div class="flex flex-col">
+<span class="font-bold text-on-surface">Газовый котел Bosch Gaz 6000</span>
+<span class="font-label-md text-label-sm text-on-surface-variant">Артикул: BOSH-6000-W</span>
+</div>
+</td>
+<td class="py-4 px-4">
+<span class="px-2.5 py-1 bg-surface-container text-primary rounded-md text-xs font-semibold">Котлы</span>
+</td>
+<td class="py-4 px-4 text-right">
+<span class="font-label-md font-bold text-on-surface">74 900 ₽</span>
+</td>
+<td class="py-4 px-4">
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-center w-24">
+<span class="text-xs font-bold">42 шт.</span>
+<span class="text-[10px] text-status-success font-bold uppercase">В наличии</span>
+</div>
+<div class="w-24 h-1.5 bg-surface-muted rounded-full overflow-hidden">
+<div class="h-full bg-status-success w-[80%]"></div>
+</div>
+</div>
+</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-2 text-status-success">
+<span class="w-2 h-2 rounded-full bg-status-success"></span>
+<span class="text-xs font-bold">Опубликован</span>
+</div>
+</td>
+<td class="py-4 px-4">
+<span class="text-xs text-on-surface-variant">12 Окт 2023, 14:20</span>
+</td>
+<td class="py-4 px-6 text-right">
+<div class="flex items-center justify-end gap-2">
+<button class="p-2 text-outline hover:text-primary hover:bg-surface-muted rounded-lg transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="edit">edit</span>
+</button>
+<button class="p-2 text-outline hover:text-heat-high hover:bg-error-container/20 rounded-lg transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Table Row 2 -->
+<tr class="table-row-hover transition-colors">
+<td class="py-4 px-6">
+<input class="row-checkbox rounded border-outline-variant text-heat-medium focus:ring-heat-medium" type="checkbox">
+</td>
+<td class="py-4 px-4">
+<div class="w-12 h-12 rounded-lg bg-surface-muted flex items-center justify-center overflow-hidden border border-border-subtle">
+<img alt="Radiator" class="w-full h-full object-cover" data-alt="Professional studio shot of a sleek, white designer vertical radiator against a minimalist light grey wall. The lighting emphasizes the smooth metallic finish and elegant vertical fins. The aesthetic is clean, modern, and aligned with luxury HVAC interior design trends." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA3lkZn6Eue_nC_C3HgdDJHO6CG8zj9hN-AKZhWDnyFkd6Ef6in9XJykQD5apDs0AkyiKsaOWsnFsUM957Z20Po3VuPH39_5VrAr-PYW2ocwR8tq82r8n7YrV5mo2lOX0-o5cfulqnyirkXFBlzXcql7svW8Cv7jgol2_6CbvcN6Nf4jD7DSq0IfW3sBJQwWyRldcbdwgmWKfdTFSfiYnqVs2mUPxz7AWmVfOaRoDRi_GaT77xu0LCjF5sjnTfqwqkIlDuWXaMqRw0">
+</div>
+</td>
+<td class="py-4 px-4">
+<div class="flex flex-col">
+<span class="font-bold text-on-surface">Радиатор Global Style Plus 500</span>
+<span class="font-label-md text-label-sm text-on-surface-variant">Артикул: GLOB-ST-500</span>
+</div>
+</td>
+<td class="py-4 px-4">
+<span class="px-2.5 py-1 bg-surface-container text-primary rounded-md text-xs font-semibold">Радиаторы</span>
+</td>
+<td class="py-4 px-4 text-right">
+<span class="font-label-md font-bold text-on-surface">1 250 ₽</span>
+</td>
+<td class="py-4 px-4">
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-center w-24">
+<span class="text-xs font-bold">5 шт.</span>
+<span class="text-[10px] text-heat-medium font-bold uppercase">Мало</span>
+</div>
+<div class="w-24 h-1.5 bg-surface-muted rounded-full overflow-hidden">
+<div class="h-full bg-heat-medium w-[15%]"></div>
+</div>
+</div>
+</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+<span class="text-xs font-bold">Черновик</span>
+</div>
+</td>
+<td class="py-4 px-4">
+<span class="text-xs text-on-surface-variant">Вчера, 09:15</span>
+</td>
+<td class="py-4 px-6 text-right">
+<div class="flex items-center justify-end gap-2">
+<button class="p-2 text-outline hover:text-primary hover:bg-surface-muted rounded-lg transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="edit">edit</span>
+</button>
+<button class="p-2 text-outline hover:text-heat-high hover:bg-error-container/20 rounded-lg transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Table Row 3 -->
+<tr class="table-row-hover transition-colors">
+<td class="py-4 px-6">
+<input class="row-checkbox rounded border-outline-variant text-heat-medium focus:ring-heat-medium" type="checkbox">
+</td>
+<td class="py-4 px-4">
+<div class="w-12 h-12 rounded-lg bg-surface-muted flex items-center justify-center overflow-hidden border border-border-subtle">
+<img alt="Pump" class="w-full h-full object-cover" data-alt="A technical macro shot of a circulation pump for heating systems, showcasing the detailed metal casting and high-quality wiring connections. The lighting is precise, emphasizing the industrial build quality and robustness. The background is a clean, dark industrial gray, creating a professional and reliable atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCAn8QKSjEODGftVuL5YieN3PBDzkAqBahVnw995MH9_fAEVj7q5LNFKFtICGwuv0PlqzskDoV_uVZu-CHOBbjt15qPV3g9TAn79iFK9Rcnuk6A9c_5jXSBt1jr3VQ0iaKQJc0MnQlfZd4qMVMLthyNo_o5aaWkR3YYnYzmAm6bxZXB94jfh25dhGzJuiuPMH3FApoHcsc4Bl_Yb2SnuwzNBem1_kXliJpalsiF2HxyKOPIaNWhITX66XrS990Orv1JCV5qmVnRUp8">
+</div>
+</td>
+<td class="py-4 px-4">
+<div class="flex flex-col">
+<span class="font-bold text-on-surface">Насос Grundfos UPS 25-40</span>
+<span class="font-label-md text-label-sm text-on-surface-variant">Артикул: GRUN-UPS-2540</span>
+</div>
+</td>
+<td class="py-4 px-4">
+<span class="px-2.5 py-1 bg-surface-container text-primary rounded-md text-xs font-semibold">Насосы</span>
+</td>
+<td class="py-4 px-4 text-right">
+<span class="font-label-md font-bold text-on-surface">12 400 ₽</span>
+</td>
+<td class="py-4 px-4">
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-center w-24">
+<span class="text-xs font-bold text-error">0 шт.</span>
+<span class="text-[10px] text-error font-bold uppercase">Нет</span>
+</div>
+<div class="w-24 h-1.5 bg-surface-muted rounded-full overflow-hidden">
+<div class="h-full bg-error w-0"></div>
+</div>
+</div>
+</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-2 text-secondary">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-xs font-bold">Скрыт</span>
+</div>
+</td>
+<td class="py-4 px-4">
+<span class="text-xs text-on-surface-variant">08 Окт 2023, 11:45</span>
+</td>
+<td class="py-4 px-6 text-right">
+<div class="flex items-center justify-end gap-2">
+<button class="p-2 text-outline hover:text-primary hover:bg-surface-muted rounded-lg transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="edit">edit</span>
+</button>
+<button class="p-2 text-outline hover:text-heat-high hover:bg-error-container/20 rounded-lg transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination Footer -->
+<div class="bg-surface-muted border-t border-border-subtle p-6 flex items-center justify-between">
+<span class="text-sm text-on-surface-variant">Показано 1-10 из 248 товаров</span>
+<div class="flex items-center gap-2">
+<button class="p-2 border border-border-subtle rounded-lg bg-surface-base hover:bg-surface-muted transition-colors disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined text-[20px]" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-10 h-10 rounded-lg bg-primary text-on-primary font-bold text-sm">1</button>
+<button class="w-10 h-10 rounded-lg border border-border-subtle bg-surface-base text-sm hover:bg-surface-muted transition-colors">2</button>
+<button class="w-10 h-10 rounded-lg border border-border-subtle bg-surface-base text-sm hover:bg-surface-muted transition-colors">3</button>
+<span class="text-on-surface-variant px-2">...</span>
+<button class="w-10 h-10 rounded-lg border border-border-subtle bg-surface-base text-sm hover:bg-surface-muted transition-colors">25</button>
+<button class="p-2 border border-border-subtle rounded-lg bg-surface-base hover:bg-surface-muted transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Technical Footer -->
+
+</main>
+<script>
+        // Micro-interactions for Selection & Bulk Actions
+        const masterCheckbox = document.getElementById('master-checkbox');
+        const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+        const bulkBar = document.getElementById('bulk-bar');
+        const selectedCount = document.getElementById('selected-count');
+
+        function updateBulkBar() {
+            const checkedCount = Array.from(rowCheckboxes).filter(cb => cb.checked).length;
+            selectedCount.textContent = checkedCount;
+
+            if (checkedCount > 0) {
+                bulkBar.classList.remove('opacity-0', 'translate-y-2', 'pointer-events-none');
+                bulkBar.classList.add('opacity-100', 'translate-y-0');
+            } else {
+                bulkBar.classList.add('opacity-0', 'translate-y-2', 'pointer-events-none');
+                bulkBar.classList.remove('opacity-100', 'translate-y-0');
+            }
+        }
+
+        masterCheckbox.addEventListener('change', (e) => {
+            rowCheckboxes.forEach(cb => {
+                cb.checked = e.target.checked;
+            });
+            updateBulkBar();
+        });
+
+        rowCheckboxes.forEach(cb => {
+            cb.addEventListener('change', () => {
+                const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
+                masterCheckbox.checked = allChecked;
+                masterCheckbox.indeterminate = !allChecked && Array.from(rowCheckboxes).some(cb => cb.checked);
+                updateBulkBar();
+            });
+        });
+
+        // Search highlight effect
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.addEventListener('focus', () => {
+            searchInput.parentElement.classList.add('scale-[1.02]');
+        });
+        searchInput.addEventListener('blur', () => {
+            searchInput.parentElement.classList.remove('scale-[1.02]');
+        });
+    </script>
+
+
+
+
+
+
+
+
+</body></html>

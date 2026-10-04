@@ -1,0 +1,1 @@
+create table roles (id bigserial primary key, code varchar(80) not null unique, name_ru varchar(160) not null, name_kk varchar(160), active boolean not null default true, created_at timestamptz not null default now(), updated_at timestamptz not null default now());

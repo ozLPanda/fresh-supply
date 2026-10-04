@@ -1,0 +1,1 @@
+create table role_permissions (role_id bigint not null references roles(id) on delete cascade, permission_id bigint not null references permissions(id) on delete cascade, primary key (role_id, permission_id));

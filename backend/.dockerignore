@@ -1,0 +1,9 @@
+target/
+.idea/
+.vscode/
+*.log
+uploads/
+price-importer/__pycache__/
+price-importer/.pytest_cache/
+price-importer/test_*.py
+price-importer/README.md

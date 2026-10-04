@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+readonly REPOSITORY_DIR="/opt/ovoshi-help-repo"
+readonly BACKUP_ROOT="/var/backups/ovoshi-help/postgres"
+readonly DAILY_RETENTION=5
+readonly MONTHLY_RETENTION=2
+
+if [[ $# -ne 1 || ( "$1" != "daily" && "$1" != "monthly" ) ]]; then
+  echo "Usage: $0 <daily|monthly>" >&2
+  exit 64
+fi
+
+readonly BACKUP_TYPE="$1"
+readonly BACKUP_DIR="$BACKUP_ROOT/$BACKUP_TYPE"
+readonly RETENTION="$([[ "$BACKUP_TYPE" == "daily" ]] && echo "$DAILY_RETENTION" || echo "$MONTHLY_RETENTION")"
+
+exec 9>/run/lock/ovoshi-help-db-backup.lock
+flock 9
+
+cd "$REPOSITORY_DIR"
+set -a
+. ./.env.production
+set +a
+
+install -d -m 0700 "$BACKUP_DIR"
+
+readonly TIMESTAMP="$(date +%Y-%m-%d_%H-%M-%S)"
+readonly BACKUP_FILE="$BACKUP_DIR/${BACKUP_TYPE}-${TIMESTAMP}.dump"
+readonly TEMP_FILE="${BACKUP_FILE}.partial"
+
+cleanup() {
+  rm -f -- "$TEMP_FILE"
+}
+trap cleanup EXIT
+
+docker compose --env-file .env.production -f docker-compose.prod.yml exec -T postgres \
+  pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom --compress=9 >"$TEMP_FILE"
+
+[[ -s "$TEMP_FILE" ]] || {
+  echo "Database backup is empty" >&2
+  exit 1
+}
+
+mv -- "$TEMP_FILE" "$BACKUP_FILE"
+sha256sum "$BACKUP_FILE" >"${BACKUP_FILE}.sha256"
+
+mapfile -t backups < <(
+  find "$BACKUP_DIR" -maxdepth 1 -type f -name "${BACKUP_TYPE}-*.dump" -printf '%f\n' | sort
+)
+if (( ${#backups[@]} > RETENTION )); then
+  for ((index = 0; index < ${#backups[@]} - RETENTION; index++)); do
+    rm -f -- "$BACKUP_DIR/${backups[index]}" "$BACKUP_DIR/${backups[index]}.sha256"
+  done
+fi
+
+echo "Database backup written to $BACKUP_FILE"

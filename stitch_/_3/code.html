@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+
+<html class="light" lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Аналитика | Фирма Актив</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=Manrope:wght@600;700;800&amp;family=JetBrains+Mono:wght@500&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary-fixed": "#131b2e",
+                    "tertiary-container": "#485066",
+                    "surface-variant": "#e0e3e5",
+                    "error": "#ba1a1a",
+                    "tertiary": "#31394e",
+                    "surface-container": "#eceef0",
+                    "on-primary": "#ffffff",
+                    "on-secondary-fixed": "#0b1c30",
+                    "on-primary-fixed-variant": "#003ea6",
+                    "secondary-container": "#d0e1fb",
+                    "on-surface": "#191c1e",
+                    "on-error": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "on-tertiary": "#ffffff",
+                    "secondary-fixed-dim": "#b7c8e1",
+                    "on-primary-container": "#8590a6",
+                    "on-secondary": "#ffffff",
+                    "primary-fixed": "#dbe1ff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-fixed-variant": "#38485d",
+                    "surface-container-highest": "#e0e3e5",
+                    "outline": "#737685",
+                    "on-background": "#191c1e",
+                    "surface-bright": "#f7f9fb",
+                    "background": "#f8f9ff",
+                    "tertiary-fixed": "#dae2fd",
+                    "tertiary-fixed-dim": "#bec6e0",
+                    "on-surface-variant": "#434653",
+                    "surface-container-high": "#e6e8ea",
+                    "primary-fixed-dim": "#b3c5ff",
+                    "primary": "#091426",
+                    "secondary": "#9d4300",
+                    "inverse-primary": "#b3c5ff",
+                    "surface-container-low": "#f2f4f6",
+                    "outline-variant": "#c3c6d6",
+                    "on-tertiary-container": "#bbc2dc",
+                    "surface-tint": "#2156ca",
+                    "surface-dim": "#d8dadc",
+                    "on-error-container": "#93000a",
+                    "primary-container": "#1e293b",
+                    "secondary-fixed": "#d3e4fe",
+                    "on-secondary-container": "#54647a",
+                    "on-primary-fixed": "#111c2d",
+                    "inverse-on-surface": "#ebf1ff",
+                    "surface": "#f8f9ff",
+                    "inverse-surface": "#2d3133",
+                    "on-tertiary-fixed-variant": "#3f465c",
+                    "brand-orange": "#F97316",
+                    "heat-medium": "#F97316"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "margin-mobile": "16px",
+                    "margin-desktop": "64px",
+                    "gutter": "24px",
+                    "container-max": "1280px",
+                    "unit": "4px",
+                    "sidebar-width": "280px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Inter"],
+                    "body-md": ["Inter"],
+                    "label-sm": ["JetBrains Mono"],
+                    "label-md": ["JetBrains Mono"]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9ff;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface flex overflow-hidden">
+<!-- SideNavBar -->
+<aside class="bg-primary h-screen w-sidebar-width fixed left-0 top-0 overflow-y-auto border-r border-primary-container flex flex-col py-6 z-50">
+<div class="px-6 mb-10 flex flex-col gap-1">
+<h1 class="text-[24px] leading-8 font-black text-on-primary">Фирма Актив</h1>
+<p class="text-[12px] font-label-md text-on-primary-container opacity-80 uppercase tracking-widest">PLUMBING PRO • АРТИКУЛЫ</p>
+</div>
+<nav class="flex-1 space-y-1 px-2">
+<a class="flex items-center px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-colors group" href="#">
+<span class="material-symbols-outlined mr-3">dashboard</span>
+<span class="text-body-md font-body-md">Дашборд</span>
+</a>
+<a class="flex items-center px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-colors group" href="#">
+<span class="material-symbols-outlined mr-3">shopping_cart</span>
+<span class="text-body-md font-body-md">Заказы</span>
+</a>
+<a class="flex items-center px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-colors group" href="#">
+<span class="material-symbols-outlined mr-3">inventory_2</span>
+<span class="text-body-md font-body-md">Товары</span>
+</a>
+<a class="flex items-center px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-colors group" href="#">
+<span class="material-symbols-outlined mr-3">group</span>
+<span class="text-body-md font-body-md">Клиенты</span>
+</a>
+<a class="flex items-center px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-colors group" href="#">
+<span class="material-symbols-outlined mr-3">description</span>
+<span class="text-body-md font-body-md">Контент</span>
+</a>
+<!-- Active Tab: Аналитика -->
+<a class="flex items-center px-4 py-3 bg-heat-medium text-white rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined mr-3">monitoring</span>
+<span class="text-body-md font-body-md">Аналитика</span>
+</a>
+<a class="flex items-center px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-colors group" href="#">
+<span class="material-symbols-outlined mr-3">notifications</span>
+<span class="text-body-md font-body-md">Уведомления</span>
+</a>
+<a class="flex items-center px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-colors group" href="#">
+<span class="material-symbols-outlined mr-3">mail</span>
+<span class="text-body-md font-body-md">Сообщения</span>
+</a>
+<a class="flex items-center px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-colors group" href="#">
+<span class="material-symbols-outlined mr-3">lock_person</span>
+<span class="text-body-md font-body-md">Доступ</span>
+</a>
+<a class="flex items-center px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-colors group" href="#">
+<span class="material-symbols-outlined mr-3">settings</span>
+<span class="text-body-md font-body-md">Настройки</span>
+</a>
+<a class="flex items-center px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-colors group" href="#">
+<span class="material-symbols-outlined mr-3">admin_panel_settings</span>
+<span class="text-body-md font-body-md">Администрирование</span>
+</a>
+</nav>
+<div class="px-2 mt-auto border-t border-primary-container pt-4">
+<a class="flex items-center px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-colors mb-1" href="#">
+<span class="material-symbols-outlined mr-3">support_agent</span>
+<span class="text-body-md font-body-md">Поддержка</span>
+</a>
+<a class="flex items-center px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-colors mb-4" href="#">
+<span class="material-symbols-outlined mr-3">logout</span>
+<span class="text-body-md font-body-md">Выйти</span>
+</a>
+<!-- Admin Profile -->
+<div class="px-4 py-4 rounded-xl flex items-center gap-3 mx-2 bg-transparent">
+<div class="w-10 h-10 rounded-full bg-surface-container-high border border-white/20 flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7WK2GoGIEGusA_p57nD8A9OHnoWvV_-msVdOaLKydMXMMbDudPdARoGllA-CZ1jotWMkL9A7Utq6dI2D887CVZj9v2ILRsu_UeOvlhwAoRYu-ewYKQUz5eoAwvA4gj7bOuWsXM0QQGq7vysdo2ibkMou1rssbF86IrXCjSfdYfDPVz_Y_SMXP6bXNe5tz8TcQUtzwSDaVJNazNvKH61Diy7XUyUdRt83R1ypOsLL-qsHvXWwJF7DYnuBl0K9ttpx2AmKVEl5YmOc"/>
+</div>
+<div class="flex flex-col">
+<span class="text-white font-medium text-label-md">Админ</span>
+<span class="text-on-primary-container/60 text-[11px]">Фирма Актив</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-[280px] flex-1 h-screen overflow-y-auto custom-scrollbar bg-background">
+<!-- TopNavBar -->
+<header class="sticky top-0 z-40 bg-white border-b border-outline-variant flex justify-between items-center h-16 px-gutter w-full shadow-sm">
+<div class="flex items-center flex-1 max-w-xl">
+<div class="relative w-full focus-within:ring-2 focus-within:ring-primary/20 rounded-lg transition-all">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full bg-slate-50 border-none rounded-lg py-2 pl-10 text-body-md focus:ring-0" placeholder="Поиск по аналитике..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-4">
+<button class="p-2 hover:bg-slate-50 rounded-full transition-colors relative">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-brand-orange rounded-full"></span>
+</button>
+<button class="p-2 hover:bg-slate-50 rounded-full transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">apps</span>
+</button>
+<div class="flex items-center space-x-3 ml-2 pl-4 border-l border-outline-variant">
+<div class="text-right">
+<p class="text-label-sm font-bold">Алексей К.</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Администратор</p>
+</div>
+<span class="material-symbols-outlined text-4xl text-primary" style="font-variation-settings: 'FILL' 1;">account_circle</span>
+</div>
+</div>
+</header>
+<!-- Dashboard Content -->
+<div class="p-8 max-w-[1600px] mx-auto">
+<!-- Page Header & Period Picker -->
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+<div>
+<h2 class="text-[32px] leading-10 font-bold text-primary mb-1">Аналитика продаж</h2>
+<p class="text-body-md text-on-surface-variant">Обзор ключевых показателей эффективности компании</p>
+</div>
+<div class="bg-slate-100 p-1 rounded-lg flex items-center shadow-sm">
+<button class="px-4 py-2 text-label-sm rounded bg-white text-primary shadow-sm font-bold">Неделя</button>
+<button class="px-4 py-2 text-label-sm text-on-surface-variant hover:text-on-surface transition-colors">Месяц</button>
+<button class="px-4 py-2 text-label-sm text-on-surface-variant hover:text-on-surface transition-colors">Год</button>
+<div class="mx-2 h-4 w-px bg-outline-variant"></div>
+<button class="flex items-center px-3 py-2 text-label-sm text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined text-sm mr-1">calendar_today</span>
+                    Календарь
+                </button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Main Linear Sales Chart -->
+<div class="col-span-12 lg:col-span-8 bg-white border border-border-subtle rounded-xl p-6 relative overflow-hidden hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-8">
+<div>
+<p class="text-label-sm text-on-surface-variant uppercase tracking-widest mb-1">Выручка за период</p>
+<h3 class="text-[24px] font-bold text-primary">4 820 000 ₽ <span class="text-emerald-600 text-sm font-normal ml-2">+12.4%</span></h3>
+</div>
+<div class="flex space-x-2">
+<span class="w-3 h-3 rounded-full bg-brand-orange mt-1.5"></span>
+<span class="text-label-sm text-on-surface-variant">Текущий период</span>
+</div>
+</div>
+<!-- Simplified Visual Graph Placeholder -->
+<div class="h-64 w-full flex items-end gap-1 relative">
+<div class="absolute inset-0 flex flex-col justify-between pointer-events-none">
+<div class="border-t border-slate-50 w-full"></div>
+<div class="border-t border-slate-50 w-full"></div>
+<div class="border-t border-slate-50 w-full"></div>
+<div class="border-t border-slate-50 w-full"></div>
+</div>
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 800 200">
+<defs>
+<lineargradient id="line-grad" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#F97316" stop-opacity="0.2"></stop>
+<stop offset="100%" stop-color="#F97316" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M0,150 Q100,120 200,160 T400,100 T600,130 T800,40 L800,200 L0,200 Z" fill="url(#line-grad)"></path>
+<path d="M0,150 Q100,120 200,160 T400,100 T600,130 T800,40" fill="none" stroke="#F97316" stroke-width="3"></path>
+<circle cx="200" cy="160" fill="#F97316" r="4"></circle>
+<circle cx="400" cy="100" fill="#F97316" r="4"></circle>
+<circle cx="800" cy="40" fill="#F97316" r="6" stroke="white" stroke-width="2"></circle>
+</svg>
+</div>
+<div class="flex justify-between mt-4 px-2">
+<span class="text-label-sm text-on-surface-variant">ПН</span>
+<span class="text-label-sm text-on-surface-variant">ВТ</span>
+<span class="text-label-sm text-on-surface-variant">СР</span>
+<span class="text-label-sm text-on-surface-variant">ЧТ</span>
+<span class="text-label-sm text-on-surface-variant">ПТ</span>
+<span class="text-label-sm text-on-surface-variant font-bold text-on-surface">СБ</span>
+<span class="text-label-sm text-on-surface-variant">ВС</span>
+</div>
+</div>
+<!-- Pie Chart Categories -->
+<div class="col-span-12 lg:col-span-4 bg-white border border-border-subtle rounded-xl p-6 hover:shadow-md transition-shadow">
+<h3 class="text-[18px] font-bold text-primary mb-6">Категории товаров</h3>
+<div class="relative h-56 flex items-center justify-center mb-8">
+<!-- Custom Pie Chart Visualization -->
+<div class="w-48 h-48 rounded-full border-[24px] border-slate-100 flex items-center justify-center relative">
+<div class="absolute inset-0 rounded-full border-[24px] border-brand-orange" style="clip-path: polygon(50% 50%, 50% 0, 100% 0, 100% 100%, 0 100%, 0 70%);"></div>
+<div class="absolute inset-0 rounded-full border-[24px] border-primary" style="clip-path: polygon(50% 50%, 50% 0, 0 0, 0 30%);"></div>
+<div class="text-center">
+<span class="block text-headline-md font-bold">100%</span>
+<span class="text-label-sm text-on-surface-variant">Всего</span>
+</div>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center">
+<span class="w-2 h-2 rounded-full bg-brand-orange mr-3"></span>
+<span class="text-body-md">Котлы</span>
+</div>
+<span class="font-bold text-on-surface">42%</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center">
+<span class="w-2 h-2 rounded-full bg-primary mr-3"></span>
+<span class="text-body-md">Радиаторы</span>
+</div>
+<span class="font-bold text-on-surface">28%</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center">
+<span class="w-2 h-2 rounded-full bg-primary/40 mr-3"></span>
+<span class="text-body-md">Насосы</span>
+</div>
+<span class="font-bold text-on-surface">15%</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center">
+<span class="w-2 h-2 rounded-full bg-outline mr-3"></span>
+<span class="text-body-md">Прочее</span>
+</div>
+<span class="font-bold text-on-surface">15%</span>
+</div>
+</div>
+</div>
+<!-- Top Products Table -->
+<div class="col-span-12 lg:col-span-7 bg-white border border-border-subtle rounded-xl overflow-hidden hover:shadow-md transition-shadow">
+<div class="px-6 py-5 flex justify-between items-center border-b border-border-subtle">
+<h3 class="text-[18px] font-bold text-primary">Топ проданных товаров</h3>
+<button class="text-secondary font-bold text-label-sm hover:underline">Весь список</button>
+</div>
+<table class="w-full text-left">
+<thead>
+<tr class="bg-slate-50">
+<th class="px-6 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase">Товар</th>
+<th class="px-6 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase">Кол-во</th>
+<th class="px-6 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase">Сумма</th>
+<th class="px-6 py-3 text-label-sm font-label-sm text-on-surface-variant uppercase">Динамика</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100">
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center">
+<div class="w-10 h-10 bg-slate-100 rounded flex items-center justify-center mr-3 text-primary">
+<span class="material-symbols-outlined">mode_fan</span>
+</div>
+<span class="text-body-md font-medium">Газовый котел HeatMaster X</span>
+</div>
+</td>
+<td class="px-6 py-4 font-label-sm">124 шт</td>
+<td class="px-6 py-4 font-label-sm">2 140 000 ₽</td>
+<td class="px-6 py-4">
+<span class="text-emerald-600 flex items-center text-label-sm font-bold">
+<span class="material-symbols-outlined text-sm mr-1">trending_up</span> +8%
+                                </span>
+</td>
+</tr>
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center">
+<div class="w-10 h-10 bg-slate-100 rounded flex items-center justify-center mr-3 text-primary">
+<span class="material-symbols-outlined">heat_pump</span>
+</div>
+<span class="text-body-md font-medium">Радиатор биметаллический v.2</span>
+</div>
+</td>
+<td class="px-6 py-4 font-label-sm">450 шт</td>
+<td class="px-6 py-4 font-label-sm">980 000 ₽</td>
+<td class="px-6 py-4">
+<span class="text-emerald-600 flex items-center text-label-sm font-bold">
+<span class="material-symbols-outlined text-sm mr-1">trending_up</span> +15%
+                                </span>
+</td>
+</tr>
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center">
+<div class="w-10 h-10 bg-slate-100 rounded flex items-center justify-center mr-3 text-primary">
+<span class="material-symbols-outlined">water_damage</span>
+</div>
+<span class="text-body-md font-medium">Циркуляционный насос Pro</span>
+</div>
+</td>
+<td class="px-6 py-4 font-label-sm">82 шт</td>
+<td class="px-6 py-4 font-label-sm">420 000 ₽</td>
+<td class="px-6 py-4">
+<span class="text-error flex items-center text-label-sm font-bold">
+<span class="material-symbols-outlined text-sm mr-1">trending_down</span> -3%
+                                </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Regional Statistics -->
+<div class="col-span-12 lg:col-span-5 bg-white border border-border-subtle rounded-xl p-6 hover:shadow-md transition-shadow flex flex-col">
+<h3 class="text-[18px] font-bold text-primary mb-6">Продажи по регионам</h3>
+<div class="flex-1 space-y-6">
+<div>
+<div class="flex justify-between mb-2">
+<span class="text-body-md font-medium">Центральный ФО</span>
+<span class="text-label-sm text-on-surface-variant">2.1 млн ₽</span>
+</div>
+<div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+<div class="bg-brand-orange h-full rounded-full" style="width: 75%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between mb-2">
+<span class="text-body-md font-medium">Северо-Западный ФО</span>
+<span class="text-label-sm text-on-surface-variant">1.4 млн ₽</span>
+</div>
+<div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 55%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between mb-2">
+<span class="text-body-md font-medium">Приволжский ФО</span>
+<span class="text-label-sm text-on-surface-variant">0.8 млн ₽</span>
+</div>
+<div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+<div class="bg-primary/60 h-full rounded-full" style="width: 35%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between mb-2">
+<span class="text-body-md font-medium">Южный ФО</span>
+<span class="text-label-sm text-on-surface-variant">0.5 млн ₽</span>
+</div>
+<div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+<div class="bg-outline h-full rounded-full" style="width: 25%"></div>
+</div>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-slate-100">
+<div class="flex items-center justify-between text-body-md p-4 bg-slate-50 rounded-lg">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-primary mr-2">public</span>
+<span>Активных регионов</span>
+</div>
+<span class="font-bold">12</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Meta -->
+<footer class="mt-12 mb-8 pt-8 border-t border-outline-variant flex flex-col md:flex-row justify-between items-center gap-4 text-on-surface-variant">
+<p class="text-label-sm">© 2024 Фирма Актив. Данные обновлены 5 минут назад.</p>
+<div class="flex space-x-6">
+<a class="text-label-sm hover:text-primary transition-colors" href="#">Политика конфиденциальности</a>
+<a class="text-label-sm hover:text-primary transition-colors" href="#">Условия использования</a>
+</div>
+</footer>
+</div>
+</main>
+<!-- Contextual FAB -->
+<button class="fixed bottom-8 right-8 w-14 h-14 bg-brand-orange text-white rounded-full shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50 group">
+<span class="material-symbols-outlined">add</span>
+<span class="absolute right-16 bg-primary text-white px-3 py-1 rounded text-label-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Новый отчет</span>
+</button>
+<script>
+    // Simple interactive elements for the UI
+    document.querySelectorAll('button, a').forEach(el => {
+        el.addEventListener('click', (e) => {
+            if (el.tagName === 'A' && el.getAttribute('href') === '#') e.preventDefault();
+            // Add ripple or visual feedback if needed
+        });
+    });
+</script>
+</body></html>

@@ -1,0 +1,17 @@
+.store-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  padding: 42px 20px;
+  text-align: center;
+}
+
+.store-empty-state__icon {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 20px;
+  background: var(--ac-soft);
+  color: var(--orange-dark, #b24900);
+}

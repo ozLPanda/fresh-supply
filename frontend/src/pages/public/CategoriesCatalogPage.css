@@ -1,0 +1,116 @@
+.categories-page {
+  width: min(1280px, calc(100% - 32px));
+  margin: 28px auto 0;
+  display: grid;
+  gap: 24px;
+}
+
+.categories-page__hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.categories-page__hero p {
+  margin: 0 0 10px;
+  color: var(--orange-dark, #b24900);
+  font: 500 11px var(--font, system-ui, sans-serif);
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+.categories-page__hero h1 {
+  margin: 0;
+  color: var(--navy, #091426);
+  font-size: clamp(30px, 4vw, 44px);
+  line-height: 1.04;
+  font-weight: 600;
+}
+
+.categories-page__hero span {
+  display: block;
+  max-width: 760px;
+  margin-top: 12px;
+  color: var(--muted, #6b7280);
+  font-size: 16px;
+  line-height: 26px;
+}
+
+.categories-page__search-card {
+  display: grid;
+  gap: 16px;
+}
+
+.categories-page__search-head div {
+  display: grid;
+  gap: 6px;
+}
+
+.categories-page__search-head strong {
+  color: var(--navy, #091426);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.categories-page__search-head span {
+  color: var(--muted, #6b7280);
+  font-size: 14px;
+}
+
+.categories-page__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.categories-page__results {
+  display: grid;
+  gap: 24px;
+  padding-bottom: 18px;
+}
+
+.categories-page__grid--loading {
+  align-items: stretch;
+}
+
+@media (max-width: 1024px) {
+  .categories-page {
+    width: min(100% - 24px, 1280px);
+  }
+
+  .categories-page__hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .categories-page__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .categories-page {
+    width: min(100% - 20px, 1280px);
+    margin-top: 18px;
+    gap: 18px;
+  }
+
+  .categories-page__hero h1 {
+    font-size: 28px;
+    line-height: 34px;
+  }
+
+  .categories-page__hero span {
+    font-size: 15px;
+    line-height: 24px;
+  }
+
+  .categories-page__results {
+    gap: 18px;
+  }
+
+  .categories-page__grid {
+    grid-template-columns: 1fr;
+  }
+}

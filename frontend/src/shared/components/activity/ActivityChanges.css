@@ -1,0 +1,30 @@
+.activity-changes {
+  display: grid;
+  gap: 6px;
+  min-width: 280px;
+}
+
+.activity-changes__item {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+}
+
+.activity-changes__value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-changes__value.is-before {
+  color: var(--muted, #6b7280);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+}
+
+.activity-changes__value.is-after {
+  color: var(--text, #172033);
+  font-weight: 650;
+}

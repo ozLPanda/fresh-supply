@@ -1,0 +1,45 @@
+.warehouse-document-editor__reorder-hint {
+  margin: 0;
+  color: var(--muted, #64748b);
+  font-size: 12px;
+}
+
+.warehouse-document-editor__reorder-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.warehouse-document-editor__reorder-button,
+.warehouse-document-editor__drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  color: var(--muted, #64748b);
+}
+
+.warehouse-document-editor__drag-handle[draggable="true"] {
+  cursor: grab;
+}
+
+.warehouse-document-editor__drag-handle[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.warehouse-document-editor__drag-handle[draggable="false"] {
+  opacity: 0.4;
+}
+
+.warehouse-document-editor__line--dragging {
+  opacity: 0.5;
+}
+
+.warehouse-document-editor__line--drop-target {
+  box-shadow: inset 0 3px 0 var(--orange, var(--ac-ink));
+}

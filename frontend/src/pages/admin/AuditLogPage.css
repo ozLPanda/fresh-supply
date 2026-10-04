@@ -1,0 +1,62 @@
+.audit-log-page__metrics {
+  margin-bottom: 4px;
+}
+
+.audit-log-page__table {
+  margin: 0;
+}
+
+.audit-log-page__date-filter {
+  min-width: 168px;
+  flex: 0 1 184px;
+}
+
+.audit-log-page__date-filter .app-date-input {
+  min-height: 42px;
+}
+
+.audit-log-page__actor,
+.audit-log-page__entity {
+  display: grid;
+  gap: 3px;
+}
+
+.audit-log-page__actor strong,
+.audit-log-page__entity span,
+.audit-log-page__description {
+  color: var(--text, #111827);
+}
+
+.audit-log-page__actor span,
+.audit-log-page__entity code {
+  color: var(--muted, #6b7280);
+  font-size: 0.82rem;
+}
+
+.audit-log-page__entity code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.audit-log-page__description {
+  display: block;
+  max-width: 42rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 720px) {
+  .audit-log-page__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 2px;
+  }
+
+  .audit-log-page__date-filter {
+    width: 100%;
+    min-width: 100%;
+    flex-basis: 100%;
+  }
+
+  .audit-log-page__table .app-data-table__table td[data-column-id="description"] {
+    max-width: none;
+  }
+}

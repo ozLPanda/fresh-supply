@@ -1,0 +1,165 @@
+.roles-page__hint {
+  color: var(--muted, #64748b);
+  font-size: 13px;
+}
+.roles-page__name {
+  display: grid;
+  gap: 3px;
+}
+.roles-page__name code {
+  color: var(--muted, #64748b);
+  font-size: 11px;
+}
+.roles-page__edit {
+  min-height: 34px;
+  padding: 0 8px;
+}
+.roles-page__editor,
+.roles-page__fields,
+.roles-page__permissions,
+.roles-page__permission-group {
+  display: grid;
+  gap: 16px;
+}
+
+.roles-page__editor {
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 24px;
+  min-height: 0;
+}
+
+.roles-page__details-card {
+  align-self: start;
+}
+
+.roles-page__details-card .app-card__content {
+  display: grid;
+  gap: 20px;
+  padding: 24px;
+}
+
+.roles-page__fields {
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+.roles-page__status {
+  padding-top: 20px;
+  border-top: 1px solid var(--line, #d8dee8);
+}
+
+.roles-page__permissions-card {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.roles-page__permissions-card .app-card__header {
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.roles-page__permissions-card .app-card__header > .field {
+  width: min(100%, 280px);
+  min-width: min(100%, 260px);
+}
+
+.roles-page__permissions-card .app-card__content {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  padding: 0;
+}
+
+@media (min-width: 961px) {
+  .admin-page:has(.roles-page__editor) {
+    height: calc(100dvh - 80px);
+    overflow: hidden;
+    grid-template-rows: auto minmax(0, 1fr);
+    align-content: stretch;
+  }
+
+  .admin-page:has(.roles-page__editor) .roles-page__editor,
+  .admin-page:has(.roles-page__editor) .roles-page__permissions-card {
+    min-height: 0;
+  }
+
+  .admin-page:has(.roles-page__editor) .roles-page__permissions {
+    height: auto;
+    flex: 1 1 auto;
+  }
+}
+
+.roles-page__permissions {
+  height: min(560px, max(320px, 56dvh));
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  align-content: start;
+  padding: 20px;
+}
+
+.roles-page__empty {
+  margin: auto;
+  color: var(--muted, #64748b);
+  font-size: 14px;
+  text-align: center;
+}
+
+.roles-page__permission-group {
+  align-content: start;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--line, #d8dee8);
+  border-radius: 12px;
+  background: var(--surface-muted, #f8fafc);
+}
+.roles-page__permission-group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.roles-page__permission-group-title h3 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.roles-page__permission-group-title .app-button {
+  min-height: 32px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+@media (max-width: 960px) {
+  .roles-page__editor {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .roles-page__details-card .app-card__content {
+    padding: 16px;
+  }
+
+  .roles-page__permissions-card .app-card__header {
+    align-items: stretch;
+  }
+
+  .roles-page__permissions-card .app-card__header > .field {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .roles-page__permissions {
+    height: min(46dvh, 360px);
+    min-height: 200px;
+    padding: 12px;
+  }
+
+  .roles-page__hint {
+    display: none;
+  }
+}

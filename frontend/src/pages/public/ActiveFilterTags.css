@@ -1,0 +1,50 @@
+.active-filter-tags {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.active-filter-tags > span {
+  color: var(--muted-strong, #434653);
+  font: 500 11px var(--font, system-ui, sans-serif);
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+.active-filter-tags__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.active-filter-tags__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.active-filter-tags__tag .app-badge {
+  display: block;
+  max-width: min(620px, calc(100vw - 96px));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.active-filter-tags__tag > svg {
+  flex: 0 0 auto;
+}
+
+.active-filter-tags__reset {
+  min-height: 34px;
+  padding: 0 12px;
+}

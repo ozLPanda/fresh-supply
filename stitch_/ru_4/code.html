@@ -1,0 +1,431 @@
+<!DOCTYPE html><html class="light" lang="ru" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>HeatFlow Solutions - Admin Console</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#eff4ff",
+                        "outline-variant": "#c5c6cd",
+                        "tertiary-container": "#5a0008",
+                        "primary": "#091426",
+                        "secondary": "#9d4300",
+                        "on-secondary-container": "#5c2400",
+                        "background": "#f8f9ff",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#d8e3fb",
+                        "error": "#ba1a1a",
+                        "surface-variant": "#d5e3fd",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed": "#111c2d",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-container": "#ff5250",
+                        "on-surface": "#0d1c2f",
+                        "inverse-on-surface": "#ebf1ff",
+                        "status-success": "#10B981",
+                        "on-primary-fixed-variant": "#3c475a",
+                        "on-tertiary-fixed": "#410004",
+                        "on-secondary-fixed": "#341100",
+                        "heat-medium": "#F97316",
+                        "on-primary-container": "#8590a6",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed-dim": "#ffb690",
+                        "primary-fixed-dim": "#bcc7de",
+                        "border-subtle": "#E2E8F0",
+                        "surface-base": "#FFFFFF",
+                        "tertiary-fixed-dim": "#ffb3ad",
+                        "surface-muted": "#F8FAFC",
+                        "heat-high": "#EF4444",
+                        "secondary-fixed": "#ffdbca",
+                        "surface-container-high": "#dde9ff",
+                        "secondary-container": "#fd761a",
+                        "surface": "#f8f9ff",
+                        "outline": "#75777d",
+                        "inverse-primary": "#bcc7de",
+                        "primary-container": "#1e293b",
+                        "on-background": "#0d1c2f",
+                        "surface-container": "#e6eeff",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#45474c",
+                        "tertiary-fixed": "#ffdad7",
+                        "on-secondary-fixed-variant": "#783200"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-desktop": "32px",
+                        "sidebar-width": "280px",
+                        "margin-mobile": "16px",
+                        "container-max": "1280px",
+                        "base": "4px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter"],
+                        "label-md": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "title-md": ["Inter"],
+                        "headline-md": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-background text-on-surface flex min-h-screen">
+<!-- Sidebar Section -->
+<aside class="fixed left-0 top-0 h-full flex flex-col py-4 bg-primary dark:bg-surface-container-lowest shadow-sm w-sidebar-width z-50" id="main-sidebar">
+<div class="px-6 mb-8 flex flex-col gap-1">
+<span class="font-headline-md text-headline-md font-black text-on-primary">Фирма Актив</span>
+<span class="font-label-md text-label-md text-on-primary-container opacity-80 uppercase tracking-widest">PLUMBING PRO • АРТИКУЛЫ</span>
+</div>
+<nav class="flex-1 overflow-y-auto custom-scrollbar px-2">
+<!-- Navigation Items Mapping from JSON Logic -->
+<div class="space-y-1">
+<!-- Dashboard (Active) -->
+<a class="flex items-center gap-3 px-4 py-3 bg-heat-medium text-white rounded-lg transition-all duration-200 ease-in-out font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="">Дашборд</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-all duration-200 ease-in-out font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">shopping_bag</span>
+<span class="">Заказы</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-all duration-200 ease-in-out font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="">Товары</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-all duration-200 ease-in-out font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="">Клиенты</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-all duration-200 ease-in-out font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">article</span>
+<span class="">Контент</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-all duration-200 ease-in-out font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="">Аналитика</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-all duration-200 ease-in-out font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">notifications</span>
+<span class="">Уведомления</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-all duration-200 ease-in-out font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">mail</span>
+<span class="">Сообщения</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-all duration-200 ease-in-out font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">lock_person</span>
+<span class="">Доступ</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-all duration-200 ease-in-out font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="">Настройки</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-all duration-200 ease-in-out font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">admin_panel_settings</span>
+<span class="">Администрирование</span>
+</a>
+</div>
+</nav>
+<div class="px-2 mt-auto border-t border-primary-container pt-4"><a href="tel:+77774593233" class="w-full flex items-center gap-3 px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-all duration-200 ease-in-out font-label-md text-label-md mb-1"><span class="material-symbols-outlined">support_agent</span><span class="">Поддержка</span></a><button class="w-full flex items-center gap-3 px-4 py-3 text-on-primary-container hover:bg-primary-container rounded-lg transition-all duration-200 ease-in-out font-label-md text-label-md mb-4"><span class="material-symbols-outlined">logout</span><span class="">Выйти</span></button><div class="px-4 py-4 rounded-xl flex items-center gap-3 mx-2 border-none"><div class="w-10 h-10 rounded-full bg-surface-container-high border border-white/20 flex items-center justify-center overflow-hidden"><img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7WK2GoGIEGusA_p57nD8A9OHnoWvV_-msVdOaLKydMXMMbDudPdARoGllA-CZ1jotWMkL9A7Utq6dI2D887CVZj9v2ILRsu_UeOvlhwAoRYu-ewYKQUz5eoAwvA4gj7bOuWsXM0QQGq7vysdo2ibkMou1rssbF86IrXCjSfdYfDPVz_Y_SMXP6bXNe5tz8TcQUtzwSDaVJNazNvKH61Diy7XUyUdRt83R1ypOsLL-qsHvXWwJF7DYnuBl0K9ttpx2AmKVEl5YmOc"></div><div class="flex flex-col"><span class="text-white font-label-md text-label-md">Админ</span><span class="text-on-primary-container/60 text-[11px]">Фирма Актив</span></div></div></div>
+</aside>
+<!-- Main Canvas -->
+<main class="flex-1 ml-[280px] p-8 max-w-[1600px]">
+<!-- Header Section -->
+<header class="flex justify-between items-center mb-8">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-primary">Панель управления</h1>
+<p class="text-on-surface-variant font-body-md text-body-md mt-1">Добро пожаловать обратно, Админ Фирма Актив</p>
+</div>
+<div class="flex items-center gap-4">
+<!-- Alerts Indicators -->
+<div class="flex gap-2">
+<div class="flex items-center gap-2 bg-error-container text-on-error-container px-3 py-1.5 rounded-lg border border-error/10">
+<span class="material-symbols-outlined text-[18px]">photo_library</span>
+<span class="font-label-md text-label-md">Без фото (12)</span>
+</div>
+<div class="flex items-center gap-2 bg-error-container text-on-error-container px-3 py-1.5 rounded-lg border border-error/10">
+<span class="material-symbols-outlined text-[18px]">warning</span>
+<span class="font-label-md text-label-md">Ошибки импорта (3)</span>
+</div>
+</div>
+<div class="w-10 h-10 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a corporate administrator in a modern office environment, high resolution with soft natural lighting and professional attire." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7WK2GoGIEGusA_p57nD8A9OHnoWvV_-msVdOaLKydMXMMbDudPdARoGllA-CZ1jotWMkL9A7Utq6dI2D887CVZj9v2ILRsu_UeOvlhwAoRYu-ewYKQUz5eoAwvA4gj7bOuWsXM0QQGq7vysdo2ibkMou1rssbF86IrXCjSfdYfDPVz_Y_SMXP6bXNe5tz8TcQUtzwSDaVJNazNvKH61Diy7XUyUdRt83R1ypOsLL-qsHvXWwJF7DYnuBl0K9ttpx2AmKVEl5YmOc">
+</div>
+</div>
+</header>
+<!-- KPI Grid -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+<div class="bg-surface-base border border-border-subtle p-6 rounded-xl hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-surface-container-low rounded-lg text-primary">
+<span class="material-symbols-outlined">add_shopping_cart</span>
+</div>
+<span class="text-status-success font-label-md text-label-md flex items-center gap-1">
+                        +12% <span class="material-symbols-outlined text-[16px]">trending_up</span>
+</span>
+</div>
+<h3 class="text-on-surface-variant font-label-md text-label-md uppercase mb-1">Новые заказы</h3>
+<p class="font-headline-md text-headline-md text-primary">128</p>
+</div>
+<div class="bg-surface-base border border-border-subtle p-6 rounded-xl hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-surface-container-low rounded-lg text-primary">
+<span class="material-symbols-outlined">sync</span>
+</div>
+</div>
+<h3 class="text-on-surface-variant font-label-md text-label-md uppercase mb-1">В обработке</h3>
+<p class="font-headline-md text-headline-md text-primary">42</p>
+</div>
+<div class="bg-surface-base border border-border-subtle p-6 rounded-xl hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-surface-container-low rounded-lg text-heat-medium">
+<span class="material-symbols-outlined">payments</span>
+</div>
+<span class="text-status-success font-label-md text-label-md flex items-center gap-1">
+                        +5.4% <span class="material-symbols-outlined text-[16px]">trending_up</span>
+</span>
+</div>
+<h3 class="text-on-surface-variant font-label-md text-label-md uppercase mb-1">Продажи сегодня</h3>
+<p class="font-headline-md text-headline-md text-primary">₸ 1,240,000</p>
+</div>
+<div class="bg-surface-base border border-border-subtle p-6 rounded-xl hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-surface-container-low rounded-lg text-primary">
+<span class="material-symbols-outlined">visibility</span>
+</div>
+</div>
+<h3 class="text-on-surface-variant font-label-md text-label-md uppercase mb-1">Просмотры товаров</h3>
+<p class="font-headline-md text-headline-md text-primary">3,842</p>
+</div>
+</div>
+<!-- Main Content Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+<!-- Sales Dynamics Chart Area -->
+<div class="lg:col-span-8 bg-surface-base border border-border-subtle rounded-xl p-6 flex flex-col min-h-[400px]">
+<div class="flex justify-between items-center mb-6">
+<h2 class="font-title-md text-title-md text-primary">Динамика продаж</h2>
+<select class="bg-surface-muted border-none font-label-md text-label-md rounded-lg py-1 px-3 focus:ring-2 focus:ring-heat-medium">
+<option>Последние 30 дней</option>
+<option>За неделю</option>
+<option>За год</option>
+</select>
+</div>
+<div class="flex-1 flex items-end gap-2 px-2 relative">
+<!-- Chart Placeholder Logic -->
+<div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+<span class="material-symbols-outlined text-[200px]">show_chart</span>
+</div>
+<div class="w-full h-full flex items-end gap-[4%]">
+<div class="bg-primary/10 w-full h-[30%] rounded-t hover:bg-heat-medium transition-colors"></div>
+<div class="bg-primary/10 w-full h-[45%] rounded-t hover:bg-heat-medium transition-colors"></div>
+<div class="bg-primary/10 w-full h-[40%] rounded-t hover:bg-heat-medium transition-colors"></div>
+<div class="bg-primary/10 w-full h-[65%] rounded-t hover:bg-heat-medium transition-colors"></div>
+<div class="bg-primary/10 w-full h-[80%] rounded-t hover:bg-heat-medium transition-colors"></div>
+<div class="bg-primary/10 w-full h-[55%] rounded-t hover:bg-heat-medium transition-colors"></div>
+<div class="bg-primary/10 w-full h-[70%] rounded-t hover:bg-heat-medium transition-colors"></div>
+<div class="bg-primary/10 w-full h-[90%] rounded-t hover:bg-heat-medium transition-colors"></div>
+<div class="bg-primary/10 w-full h-[75%] rounded-t hover:bg-heat-medium transition-colors"></div>
+<div class="bg-primary/10 w-full h-[60%] rounded-t hover:bg-heat-medium transition-colors"></div>
+<div class="bg-primary/10 w-full h-[85%] rounded-t hover:bg-heat-medium transition-colors"></div>
+<div class="bg-primary/10 w-full h-[100%] rounded-t hover:bg-heat-medium transition-colors"></div>
+</div>
+</div>
+<div class="mt-4 flex justify-between font-label-sm text-label-sm text-on-surface-variant px-2">
+<span class="">01 Янв</span><span class="">07 Янв</span><span class="">14 Янв</span><span class="">21 Янв</span><span class="">30 Янв</span>
+</div>
+</div>
+<!-- Traffic Sources & Actions -->
+<div class="lg:col-span-4 flex flex-col gap-6">
+<!-- Quick Actions -->
+<div class="bg-primary p-6 rounded-xl shadow-lg">
+<h2 class="text-on-primary font-title-md text-title-md mb-4">Быстрые действия</h2>
+<div class="grid grid-cols-1 gap-3">
+<button class="flex items-center gap-3 w-full bg-secondary hover:bg-heat-medium text-white px-4 py-3 rounded-lg font-label-md text-label-md transition-transform active:scale-95">
+<span class="material-symbols-outlined">add_box</span>
+                            Добавить товар
+                        </button>
+<button class="flex items-center gap-3 w-full bg-white/10 hover:bg-white/20 text-white px-4 py-3 rounded-lg font-label-md text-label-md transition-transform active:scale-95">
+<span class="material-symbols-outlined">file_upload</span>
+                            Импорт данных
+                        </button>
+<button class="flex items-center gap-3 w-full bg-white/10 hover:bg-white/20 text-white px-4 py-3 rounded-lg font-label-md text-label-md transition-transform active:scale-95">
+<span class="material-symbols-outlined">insights</span>
+                            Аналитика
+                        </button>
+</div>
+</div>
+<!-- Traffic Sources Small Card -->
+<div class="bg-surface-base border border-border-subtle rounded-xl p-6">
+<h2 class="font-title-md text-title-md text-primary mb-4">Источники трафика</h2>
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-primary"></span>
+<span class="font-body-md text-body-md">Google Ads</span>
+</div>
+<span class="font-label-md text-label-md font-bold">45%</span>
+</div>
+<div class="w-full bg-surface-muted h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[45%]"></div>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-heat-medium"></span>
+<span class="font-body-md text-body-md">Прямые переходы</span>
+</div>
+<span class="font-label-md text-label-md font-bold">30%</span>
+</div>
+<div class="w-full bg-surface-muted h-2 rounded-full overflow-hidden">
+<div class="bg-heat-medium h-full w-[30%]"></div>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-outline"></span>
+<span class="font-body-md text-body-md">Органический поиск</span>
+</div>
+<span class="font-label-md text-label-md font-bold">25%</span>
+</div>
+<div class="w-full bg-surface-muted h-2 rounded-full overflow-hidden">
+<div class="bg-outline h-full w-[25%]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Tables Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<!-- New Orders Table -->
+<div class="bg-surface-base border border-border-subtle rounded-xl overflow-hidden">
+<div class="p-6 border-b border-border-subtle flex justify-between items-center">
+<h2 class="font-title-md text-title-md text-primary">Новые заказы</h2>
+<button class="text-secondary font-label-md text-label-md hover:underline">Все заказы</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead class="bg-surface-muted">
+<tr>
+<th class="px-6 py-3 font-label-md text-label-md text-on-surface-variant uppercase">ID</th>
+<th class="px-6 py-3 font-label-md text-label-md text-on-surface-variant uppercase">Клиент</th>
+<th class="px-6 py-3 font-label-md text-label-md text-on-surface-variant uppercase">Сумма</th>
+<th class="px-6 py-3 font-label-md text-label-md text-on-surface-variant uppercase">Статус</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-subtle">
+<tr class="hover:bg-surface-muted transition-colors">
+<td class="px-6 py-4 font-label-md text-label-md">#HF-2931</td>
+<td class="px-6 py-4 font-body-md text-body-md text-primary">Иван Петров</td>
+<td class="px-6 py-4 font-label-md text-label-md">₸ 450,000</td>
+<td class="px-6 py-4">
+<span class="bg-surface-container text-primary px-2 py-1 rounded text-[11px] font-bold uppercase">Ожидание</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-muted transition-colors">
+<td class="px-6 py-4 font-label-md text-label-md">#HF-2930</td>
+<td class="px-6 py-4 font-body-md text-body-md text-primary">ТОО "СтройПро"</td>
+<td class="px-6 py-4 font-label-md text-label-md">₸ 1,280,000</td>
+<td class="px-6 py-4">
+<span class="bg-surface-container text-primary px-2 py-1 rounded text-[11px] font-bold uppercase">Ожидание</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-muted transition-colors">
+<td class="px-6 py-4 font-label-md text-label-md">#HF-2929</td>
+<td class="px-6 py-4 font-body-md text-body-md text-primary">Мария Сидорова</td>
+<td class="px-6 py-4 font-label-md text-label-md">₸ 85,000</td>
+<td class="px-6 py-4">
+<span class="bg-surface-container text-primary px-2 py-1 rounded text-[11px] font-bold uppercase">Ожидание</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Recent Actions Table -->
+<div class="bg-surface-base border border-border-subtle rounded-xl overflow-hidden">
+<div class="p-6 border-b border-border-subtle flex justify-between items-center">
+<h2 class="font-title-md text-title-md text-primary">Действия пользователей</h2>
+<button class="text-secondary font-label-md text-label-md hover:underline">Лог событий</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead class="bg-surface-muted">
+<tr>
+<th class="px-6 py-3 font-label-md text-label-md text-on-surface-variant uppercase">Время</th>
+<th class="px-6 py-3 font-label-md text-label-md text-on-surface-variant uppercase">Сотрудник</th>
+<th class="px-6 py-3 font-label-md text-label-md text-on-surface-variant uppercase">Действие</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-subtle">
+<tr class="hover:bg-surface-muted transition-colors">
+<td class="px-6 py-4 font-label-md text-label-md text-on-surface-variant">14:25</td>
+<td class="px-6 py-4 font-body-md text-body-md text-primary">Александр К.</td>
+<td class="px-6 py-4 font-body-md text-body-md">Обновил цену: Бойлер Ariston 80L</td>
+</tr>
+<tr class="hover:bg-surface-muted transition-colors">
+<td class="px-6 py-4 font-label-md text-label-md text-on-surface-variant">14:10</td>
+<td class="px-6 py-4 font-body-md text-body-md text-primary">Елена М.</td>
+<td class="px-6 py-4 font-body-md text-body-md">Подтвердила заказ #HF-2928</td>
+</tr>
+<tr class="hover:bg-surface-muted transition-colors">
+<td class="px-6 py-4 font-label-md text-label-md text-on-surface-variant">13:45</td>
+<td class="px-6 py-4 font-body-md text-body-md text-primary">System</td>
+<td class="px-6 py-4 font-body-md text-body-md">Авто-импорт завершен: 154 товара</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Footer Section -->
+
+</main>
+<script>
+        // Micro-interaction: Chart Bar Hover Logic (visual only)
+        document.querySelectorAll('.lg\\:col-span-8 .bg-primary\\/10').forEach(bar => {
+            bar.addEventListener('mouseenter', () => {
+                bar.classList.add('scale-y-105');
+                bar.style.transition = 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            });
+            bar.addEventListener('mouseleave', () => {
+                bar.classList.remove('scale-y-105');
+            });
+        });
+
+        // Quick action active state simulation
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.classList.add('scale-95');
+                setTimeout(() => this.classList.remove('scale-95'), 100);
+            });
+        });
+    </script>
+
+
+
+
+
+
+</body></html>

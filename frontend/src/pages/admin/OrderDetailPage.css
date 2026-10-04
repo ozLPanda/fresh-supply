@@ -1,0 +1,1327 @@
+.order-detail-tabs .app-tabs__content {
+  display: grid;
+  min-width: 0;
+  max-width: 100%;
+  gap: 24px;
+}
+
+.order-detail-tabs {
+  position: relative;
+}
+
+.order-detail-tabs__comparison-pdf {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 56px;
+  min-height: 56px;
+  padding: 0;
+}
+
+.order-detail-tabs .app-tabs__list {
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  padding-right: 64px;
+}
+
+.order-detail-tabs .app-table-wrap {
+  max-width: 100%;
+  overscroll-behavior-inline: contain;
+}
+
+.order-fulfillment {
+  display: grid;
+  gap: 18px;
+}
+
+.order-fulfillment__summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.order-fulfillment__step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  padding: 18px;
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.order-fulfillment__step:last-child {
+  border-right: 0;
+}
+
+.order-fulfillment__step > span {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 7px;
+  background: var(--sunken);
+  color: var(--blue);
+}
+
+.order-fulfillment__step.is-active > span {
+  background: var(--ac-soft);
+  color: var(--orange-dark);
+}
+
+.order-fulfillment__step.is-complete > span {
+  background: #dff7ed;
+  color: #047857;
+}
+
+.order-fulfillment__step div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.order-fulfillment__step b,
+.order-fulfillment__step small {
+  color: var(--muted);
+  font: 500 11px var(--font);
+  text-transform: none;
+}
+
+.order-fulfillment__step strong {
+  color: var(--navy);
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+.order-fulfillment__step small {
+  overflow-wrap: anywhere;
+  text-transform: none;
+}
+
+.order-fulfillment__assignees {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 0 18px;
+}
+
+.order-fulfillment__hint {
+  padding: 0 18px;
+}
+
+.order-payment-confirmation__actions {
+  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.order-reservation-form {
+  display: grid;
+  gap: 20px;
+  padding-top: 4px;
+}
+
+.order-reservation-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.order-payment-confirmation__actions .app-button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.order-payment-confirmation__completion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+
+.order-payment-confirmation-modal {
+  width: min(920px, calc(100vw - 32px));
+}
+
+.order-manual-item-form {
+  display: grid;
+  gap: 16px;
+}
+
+.order-payment-confirmation__amounts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.order-payment-confirmation__amount-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 6px;
+}
+
+.order-payment-confirmation__remainder-button.app-button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-color: var(--orange);
+  color: var(--orange-dark);
+}
+
+.order-payment-confirmation__remainder-button.app-button:hover {
+  border-color: var(--orange-dark);
+  background: #fff5ed;
+}
+
+.order-payment-confirmation__amounts > span,
+.order-payment-confirmation__amounts > .app-alert {
+  grid-column: 1 / -1;
+}
+
+.order-payment-confirmation__amounts > span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-order-payment-method {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  width: 100%;
+  gap: 4px 8px;
+}
+
+.admin-order-payment-method__edit.app-button {
+  min-height: 28px;
+  padding: 2px 9px;
+  border-color: var(--orange);
+  background: var(--surface);
+  color: var(--orange-dark);
+  font-size: 12px;
+}
+
+.admin-order-payment-method__edit.app-button:hover {
+  border-color: var(--orange-dark);
+  background: #fff5ed;
+}
+
+.order-comment-form {
+  display: grid;
+}
+
+.order-invoice-print-options-modal {
+  width: min(860px, calc(100vw - 32px));
+}
+
+.order-invoice-print-options__actions {
+  display: grid;
+  grid-template-columns: max-content max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.order-invoice-print-options__close {
+  justify-self: end;
+  margin-left: 20px;
+}
+
+@media (max-width: 720px) {
+  .order-invoice-print-options__actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .order-invoice-print-options__close {
+    grid-column: 1 / -1;
+    justify-self: end;
+    margin-left: 0;
+  }
+}
+
+.order-comment-panel .data-panel__content {
+  padding: 18px;
+  background: #fbfcfe;
+}
+
+.order-items-table.app-table {
+  min-width: 900px;
+  table-layout: auto;
+}
+
+.order-items-table th:first-child,
+.order-items-table td:first-child {
+  width: 36%;
+}
+
+.order-items-table-scroll:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: -2px;
+}
+
+.order-items-table th:nth-last-child(2),
+.order-items-table td:nth-last-child(2) {
+  width: 116px;
+  text-align: center;
+}
+
+.order-items-table th:last-child,
+.order-items-table td:last-child {
+  width: 52px;
+  text-align: center;
+}
+
+.order-item-name {
+  display: grid;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.order-item-name strong {
+  color: var(--navy);
+  overflow-wrap: anywhere;
+}
+
+.order-item-name--below-incoming,
+.order-item-price--below-incoming {
+  border-radius: 8px;
+  background: #fff1f0;
+  color: #a73b37;
+  cursor: help;
+}
+
+.order-item-name--below-incoming {
+  padding: 8px 10px;
+  margin: -8px -10px;
+}
+
+.order-item-name--below-incoming strong {
+  color: #8d332f;
+}
+
+.order-item-price--below-incoming {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 7px;
+  font-weight: 600;
+}
+
+.order-item-made-to-order.app-badge {
+  justify-self: start;
+}
+
+.admin-price-review-form__product .order-item-made-to-order.app-badge {
+  color: var(--orange-dark, #b24900);
+  font: 500 11px var(--font);
+}
+
+.order-items-table-scroll {
+  max-height: min(58vh, 560px);
+  overflow: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-gutter: stable;
+}
+
+.order-items-search {
+  width: min(100%, 460px);
+  margin: 0;
+}
+
+.order-items-table-scroll .app-table-wrap {
+  max-width: none;
+  overflow: visible;
+}
+
+.order-items-table-scroll .order-items-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  box-shadow: 0 1px 0 var(--line);
+}
+
+.order-item-quantity {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.order-item-return-summary {
+  display: grid;
+  gap: 4px;
+  min-width: 160px;
+}
+.order-item-return-summary strong {
+  color: var(--navy);
+}
+.order-item-return-summary small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.order-return-total {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+}
+.order-return-total span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.order-return-documents {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-muted, #f8fafc);
+}
+.order-return-document {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.order-return-document:last-child {
+  border-bottom: 0;
+}
+.order-return-document .app-button {
+  justify-self: start;
+  min-height: 30px;
+  padding: 3px 8px;
+}
+.order-return-document span,
+.order-return-document small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.order-return-document small {
+  grid-column: 1 / -1;
+  overflow-wrap: anywhere;
+}
+
+.order-item-quantity__button.app-button {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  border-radius: 0;
+}
+
+.order-item-quantity__input {
+  width: 40px;
+  height: 30px;
+  padding: 0 2px;
+  border: 0;
+  border-inline: 1px solid var(--line);
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.order-item-quantity__input:disabled {
+  color: var(--muted);
+}
+
+.order-item-delete.app-button {
+  min-width: 34px;
+  height: 34px;
+  padding: 0;
+  color: #dc2626;
+}
+
+.order-item-order-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.order-item-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 30px;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: grab;
+}
+
+.order-item-drag-handle:active {
+  cursor: grabbing;
+}
+
+.order-item-drag-handle[draggable="false"] {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.order-items-table tbody tr.order-items-table__drop-target td {
+  background: #fff4eb;
+  box-shadow: inset 0 2px 0 var(--orange);
+}
+
+.order-item-order-controls__button.app-button {
+  min-width: 30px;
+  height: 30px;
+  padding: 0;
+}
+
+.order-item-delete-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.admin-price-review-form__tier > div > span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+div.admin-price-modal {
+  width: min(1440px, calc(100vw - 32px));
+  max-width: calc(100vw - 24px);
+  height: 90dvh;
+  max-height: 90dvh;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.admin-price-review-form {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 16px;
+}
+
+.admin-price-review-form__scroll-content {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+  align-content: start;
+  gap: 16px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
+.admin-price-review-form__scroll-content > .app-table-wrap {
+  overflow: visible;
+}
+
+.admin-price-review-form__controls {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: grid;
+  gap: 16px;
+  padding-bottom: 16px;
+  background: var(--surface, #fff);
+  box-shadow: 0 12px 14px -16px rgb(15 23 42 / 55%);
+}
+
+.admin-price-review-form__change-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 16px;
+  border: 1px solid color-mix(in srgb, var(--orange, #ea580c) 35%, var(--line, #e2e8f0));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--orange, #ea580c) 9%, var(--surface, #fff));
+}
+
+.admin-price-review-form__change-summary > div {
+  display: grid;
+  gap: 3px;
+}
+
+.admin-price-review-form__change-summary > div > span,
+.admin-price-review-form__change-totals {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.admin-price-review-form__change-summary > div > strong,
+.admin-price-review-form__change-totals > strong {
+  color: var(--orange-dark);
+}
+
+.admin-price-review-form__change-totals {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.admin-price-review-form__table th {
+  position: sticky;
+  top: var(--admin-price-review-controls-height, 0px);
+  z-index: 3;
+  background: var(--surface-muted, #f1f5f9);
+  box-shadow: 0 1px 0 var(--line);
+}
+
+.admin-price-review-form__table th:first-child,
+.admin-price-review-form__table td:first-child {
+  width: 50px;
+  padding-inline: 12px;
+  text-align: center;
+}
+
+.admin-price-review-form__table td:first-child .app-checkbox {
+  vertical-align: middle;
+}
+
+.admin-price-review-form__unit-price,
+.admin-price-review-form__line-total {
+  min-width: 132px;
+}
+
+.admin-price-review-form__unit-price.is-changed .app-input-shell,
+.admin-price-review-form__line-total.is-changed .app-input-shell {
+  border-color: color-mix(in srgb, var(--orange, #ea580c) 65%, var(--line, #e2e8f0));
+  background: #fff8f3;
+}
+
+.admin-price-review-form__change {
+  display: grid;
+  justify-items: start;
+  gap: 3px;
+  min-width: 124px;
+}
+
+.admin-price-review-form__change > strong {
+  color: var(--orange-dark);
+  font-size: 13px;
+}
+
+.admin-price-review-form__change.is-decrease > strong {
+  color: #b45309;
+}
+
+.admin-price-review-form__change > span,
+.admin-price-review-form__no-change {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.admin-price-review-form__change .app-badge {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-price-review-form__table tr:has(.admin-price-review-form__change) td {
+  background: color-mix(in srgb, var(--orange, #ea580c) 6%, var(--surface, #fff));
+}
+
+.admin-price-review-form__table tr:has(.admin-price-review-form__change):hover td {
+  background: color-mix(in srgb, var(--orange, #ea580c) 11%, var(--surface, #fff));
+}
+
+.admin-price-review-form__bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-price-review-form__bulk-selection {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-price-review-form__bulk-icon.app-button {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0;
+}
+
+.admin-price-review-form__bulk-operation {
+  width: 230px;
+}
+
+.admin-price-review-form__bulk-value {
+  width: 150px;
+}
+
+.admin-price-review-form__bulk-value .app-input-shell {
+  min-height: 42px;
+}
+
+div.admin-price-modal .admin-price-review-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+div.admin-price-modal .admin-price-review-form__summary {
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
+  align-items: center;
+  gap: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+div.admin-price-modal .admin-price-review-form__summary div {
+  display: grid;
+  gap: 3px;
+}
+
+div.admin-price-modal .admin-price-review-form__action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+div.admin-price-modal .admin-price-review-form__action-buttons .app-button {
+  min-width: 160px;
+}
+
+.admin-price-review-form__tier {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-muted);
+}
+
+.admin-price-review-form__tier > div {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-price-review-form__tier-select {
+  width: min(100%, 320px);
+}
+
+.admin-price-review-form__tier-select .app-select-trigger {
+  width: 100%;
+}
+
+.admin-price-review-form__tier strong {
+  color: var(--navy);
+  font-size: 14px;
+}
+
+.admin-price-review-form__document-source {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(260px, 340px) auto;
+  align-items: end;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-muted);
+}
+
+.admin-price-review-form__document-source > div:first-child {
+  display: grid;
+  align-self: center;
+  gap: 4px;
+}
+
+.admin-price-review-form__document-source strong {
+  color: var(--navy);
+  font-size: 14px;
+}
+
+.admin-price-review-form__document-source span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.admin-price-review-form__document-select {
+  min-width: 0;
+}
+
+.order-fulfillment-table .app-choice {
+  align-items: center;
+}
+
+.order-fulfillment-table .app-choice label span {
+  display: none;
+}
+
+@media (max-height: 800px), (max-width: 1000px) {
+  /* Let the controls leave the viewport so short screens still have room for rows. */
+  .admin-price-review-form__controls {
+    position: static;
+  }
+
+  .admin-price-review-form__table th {
+    top: 0;
+  }
+
+  div.admin-price-modal {
+    height: calc(100dvh - 24px);
+    max-height: calc(100dvh - 24px);
+    gap: 12px;
+  }
+
+  div.admin-price-modal .admin-price-review-form__actions {
+    gap: 12px;
+    padding-top: 12px;
+  }
+
+  div.admin-price-modal .admin-price-review-form__summary {
+    gap: 16px;
+  }
+}
+
+@media (max-width: 900px) {
+  .order-fulfillment__summary,
+  .order-fulfillment__assignees {
+    grid-template-columns: 1fr;
+  }
+
+  .order-fulfillment__step {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .order-fulfillment__step:last-child {
+    border-bottom: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .order-detail-tabs__comparison-pdf {
+    position: static;
+    margin-top: 6px;
+    width: 100%;
+  }
+
+  .order-detail-tabs .app-tabs__list {
+    padding-right: 0;
+  }
+
+  div.admin-price-modal {
+    width: calc(100vw - 24px);
+  }
+
+  .order-items-table-scroll {
+    max-height: min(52vh, 420px);
+    scrollbar-gutter: auto;
+  }
+
+  .order-payment-confirmation__amounts {
+    grid-template-columns: 1fr;
+  }
+
+  .order-payment-confirmation-modal {
+    width: calc(100vw - 24px);
+  }
+
+  .order-invoice-print-options-modal {
+    width: calc(100vw - 24px);
+  }
+
+  .order-payment-confirmation__actions {
+    display: flex;
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .order-payment-confirmation__actions > .app-button,
+  .order-payment-confirmation__completion-actions .app-button {
+    width: 100%;
+  }
+
+  .order-payment-confirmation__completion-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .order-comment-panel .data-panel__content {
+    padding: 14px;
+  }
+
+  .order-item-delete-modal__actions {
+    flex-direction: column-reverse;
+  }
+
+  .order-item-delete-modal__actions .app-button {
+    width: 100%;
+    height: auto;
+    min-height: 44px;
+    padding-block: 10px;
+    white-space: normal;
+  }
+
+  .order-item-delete-modal__actions .app-button__state {
+    white-space: normal;
+  }
+
+  .order-detail-tabs .app-tabs.variant-card .app-tabs__list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    overflow: visible;
+  }
+
+  .order-detail-tabs .app-tabs.variant-card .app-tabs__trigger {
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    gap: 5px;
+    padding-inline: 6px;
+    font-size: 10px;
+  }
+
+  .order-detail-tabs .app-tabs.variant-card .app-tabs__trigger.is-aligned-end {
+    grid-column: auto;
+    margin-left: 0;
+  }
+
+  .order-detail-tabs .app-tabs__count {
+    min-width: 18px;
+    height: 18px;
+    padding-inline: 4px;
+    font-size: 9px;
+  }
+
+  .order-detail-tabs .app-tabs__content {
+    gap: 16px;
+  }
+
+  .order-fulfillment__step {
+    padding: 14px;
+  }
+
+  .order-fulfillment__assignees,
+  .order-fulfillment__hint {
+    padding-inline: 14px;
+  }
+
+  .admin-price-review-form__tier {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-price-review-form__document-source {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .admin-price-review-form__document-source .app-button {
+    width: 100%;
+  }
+
+  .admin-price-review-form__tier-select {
+    width: 100%;
+  }
+
+  .admin-price-review-form__bulk-actions {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .admin-price-review-form__bulk-selection {
+    flex: 0 0 auto;
+  }
+
+  .admin-price-review-form__bulk-operation {
+    flex: 1 1 190px;
+    width: auto;
+  }
+
+  .admin-price-review-form__bulk-value {
+    flex: 1 1 120px;
+    width: auto;
+  }
+
+  div.admin-price-modal .admin-price-review-form__actions {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  div.admin-price-modal .admin-price-review-form__summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+  }
+
+  div.admin-price-modal .admin-price-review-form__summary > div > strong {
+    font-size: 15px;
+  }
+
+  div.admin-price-modal .admin-price-review-form__action-buttons {
+    width: 100%;
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  div.admin-price-modal .admin-price-review-form__action-buttons .app-button {
+    min-width: 0;
+    flex: 0 0 auto;
+    width: 100%;
+    height: auto;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+.order-item-progress-mobile {
+  display: none;
+}
+
+.order-item-explicit-actions {
+  display: none;
+  justify-self: end;
+}
+
+.order-item-explicit-actions .app-action-menu.app-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.order-item-details {
+  display: none;
+  max-width: 100%;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.order-item-details summary {
+  min-height: 44px;
+  display: list-item;
+  padding: 12px 4px;
+  cursor: pointer;
+  color: var(--orange-dark);
+  font-weight: 700;
+}
+
+.order-item-details p {
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 721px) {
+  .admin-price-review-form__table td:first-child .app-choice label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}
+
+@media (max-width: 720px) {
+  .order-item-quantity__button.app-button {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+
+  .order-item-quantity__input {
+    width: 76px;
+    height: 44px;
+    font-size: 16px;
+  }
+
+  .order-item-delete.app-button,
+  .order-item-order-controls__button.app-button {
+    min-width: 44px;
+    min-height: 44px;
+    height: 44px;
+  }
+
+  .order-item-details,
+  .order-item-explicit-actions {
+    display: block;
+  }
+
+  .order-item-stock-shortage-desktop {
+    display: none;
+  }
+
+  /* Preserve the same table cells and handlers while presenting each row as a card. */
+  .order-items-table-scroll {
+    max-height: none;
+    overflow: visible;
+    scrollbar-gutter: auto;
+  }
+
+  .order-detail-tabs .app-table-wrap:has(> .order-fulfillment-table),
+  .order-items-table-scroll .app-table-wrap,
+  .admin-price-review-form__scroll-content > .app-table-wrap {
+    overflow: visible;
+  }
+
+  .order-items-table.app-table,
+  .order-fulfillment-table.app-table,
+  .admin-price-review-form__table.app-table {
+    display: block;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .order-items-table thead,
+  .order-fulfillment-table thead,
+  .admin-price-review-form__table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .order-items-table tbody,
+  .order-fulfillment-table tbody,
+  .admin-price-review-form__table tbody {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .order-items-table tbody tr,
+  .order-fulfillment-table tbody tr,
+  .admin-price-review-form__table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+  }
+
+  .order-items-table tbody td,
+  .order-fulfillment-table tbody td,
+  .admin-price-review-form__table tbody td {
+    display: block;
+    min-width: 0;
+    width: auto;
+    padding: 0;
+    border: 0;
+    text-align: left;
+    background: transparent;
+  }
+
+  /* Explicitly override desktop first-cell widths and padding on mobile. */
+  .order-items-table tbody td:first-child,
+  .order-fulfillment-table tbody td:first-child,
+  .admin-price-review-form__table tbody td:first-child {
+    width: auto;
+    min-width: 0;
+    padding: 0;
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    text-align: left;
+  }
+
+  .admin-price-review-form__table tbody td:first-child .app-choice label {
+    min-width: 0;
+    white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .order-items-table tbody td::before,
+  .order-fulfillment-table tbody td::before,
+  .admin-price-review-form__table tbody td::before {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .order-items-table td:first-child,
+  .order-items-table td:nth-child(4),
+  .order-items-table td:nth-child(5),
+  .order-fulfillment-table td:first-child,
+  .admin-price-review-form__table td:first-child,
+  .admin-price-review-form__table td:nth-child(2),
+  .admin-price-review-form__table td:nth-child(5),
+  .admin-price-review-form__table td:nth-child(7) {
+    grid-column: 1 / -1;
+  }
+
+  .order-items-table td:nth-child(2)::before {
+    content: "Артикул";
+  }
+  .order-items-table td:nth-child(3)::before {
+    content: "Цена";
+  }
+  .order-items-table td:nth-child(4)::before {
+    content: "Количество";
+  }
+  .order-items-table td:nth-child(5)::before {
+    content: "Сумма";
+  }
+  .order-items-table td:nth-child(6)::before {
+    content: "Порядок";
+  }
+  .order-items-table td:last-child {
+    align-self: end;
+    justify-self: end;
+  }
+
+  .order-item-name,
+  .order-item-return-summary {
+    min-width: 0;
+  }
+
+  .order-item-name--below-incoming {
+    margin: 0;
+    padding: 10px;
+  }
+
+  .order-item-drag-handle {
+    display: none;
+  }
+
+  .order-item-progress-mobile {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+  }
+
+  .order-item-progress-mobile .app-choice,
+  .order-fulfillment-table .app-choice,
+  .admin-price-review-form__table .app-choice {
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .order-item-progress-mobile .app-choice label,
+  .order-fulfillment-table .app-choice label,
+  .admin-price-review-form__table .app-choice label {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    cursor: pointer;
+  }
+
+  .order-fulfillment-table td:nth-child(2)::before {
+    content: "Количество";
+  }
+  .order-fulfillment-table td:nth-child(2) {
+    grid-column: 1 / -1;
+  }
+  .order-fulfillment-table .app-choice label b {
+    font-size: 13px;
+  }
+
+  .admin-price-review-form__table td:nth-child(3)::before {
+    content: "Текущая цена";
+  }
+  .admin-price-review-form__table td:nth-child(4)::before {
+    content: "Новая цена";
+  }
+  .admin-price-review-form__table td:nth-child(5)::before {
+    content: "Изменение";
+  }
+  .admin-price-review-form__table td:nth-child(6)::before {
+    content: "Количество";
+  }
+  .admin-price-review-form__table td:nth-child(7)::before {
+    content: "Новая сумма";
+  }
+
+  .admin-price-review-form__unit-price,
+  .admin-price-review-form__line-total,
+  .admin-price-review-form__change {
+    min-width: 0;
+  }
+
+  .admin-price-modal .admin-price-review-form .field {
+    min-width: 0;
+  }
+
+  .admin-price-review-form__table .app-input {
+    font-size: 16px;
+  }
+
+  div.admin-price-modal .admin-price-review-form__action-buttons .app-button__layout {
+    width: 100%;
+    min-width: 0;
+  }
+
+  div.admin-price-modal .admin-price-review-form__action-buttons .app-button__state {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-price-review-form__change .app-badge {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-price-review-form__change-summary {
+    flex-wrap: wrap;
+  }
+
+  .order-detail-tabs .app-tabs.variant-card .app-tabs__indicator {
+    display: none;
+  }
+
+  .order-detail-tabs .app-tabs.variant-card .app-tabs__trigger[data-state="active"] {
+    border-color: var(--orange);
+    background: var(--ac-soft);
+  }
+
+  div.admin-price-modal .admin-price-review-form__summary > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  div.admin-price-modal .admin-price-review-form__actions {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+.admin-price-review-form__conflict {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+
+.admin-price-review-form__conflict .app-button__state {
+  white-space: normal;
+}

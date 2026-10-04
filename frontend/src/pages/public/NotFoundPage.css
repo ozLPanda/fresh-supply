@@ -1,0 +1,53 @@
+.not-found-page {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(135deg, #f8fafc 0%, #eef3fb 100%);
+}
+
+.not-found-page__card {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  width: min(440px, 100%);
+  padding: 36px;
+  text-align: center;
+}
+
+.not-found-page__icon {
+  color: var(--orange, #f97316);
+}
+
+.not-found-page__code {
+  margin: 0;
+  color: var(--orange-dark, #c2410c);
+  font:
+    800 56px/1 "JetBrains Mono",
+    Consolas,
+    monospace;
+}
+
+.not-found-page__card h1,
+.not-found-page__card p {
+  margin: 0;
+}
+
+.not-found-page__card > p:last-of-type {
+  max-width: 340px;
+  color: var(--muted, #64748b);
+}
+
+.not-found-page__card .app-button {
+  margin-top: 8px;
+}
+
+@media (max-width: 480px) {
+  .not-found-page {
+    padding: 16px;
+  }
+
+  .not-found-page__card {
+    padding: 28px 20px;
+  }
+}

@@ -1,0 +1,24 @@
+FROM python:3.12-slim
+
+ARG MODEL_NAME=intfloat/multilingual-e5-base
+ENV MODEL_NAME=${MODEL_NAME} \
+    MODEL_DIR=/models/multilingual-e5-base \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.5.1+cpu \
+    && pip install --no-cache-dir -r requirements.txt \
+    && python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('${MODEL_NAME}').save('${MODEL_DIR}')" \
+    && groupadd --system --gid 10001 app \
+    && useradd --system --uid 10001 --gid app --home-dir /app --shell /usr/sbin/nologin app \
+    && chown -R app:app /app /models
+
+COPY --chown=app:app app.py ./
+
+USER 10001:10001
+EXPOSE 8000
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--no-access-log"]

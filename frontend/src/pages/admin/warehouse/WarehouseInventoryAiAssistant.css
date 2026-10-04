@@ -1,0 +1,303 @@
+.warehouse-inventory-ai {
+  display: flex;
+  flex-direction: column;
+  width: min(1100px, calc(100vw - 24px));
+  max-width: none;
+  gap: 0;
+  max-height: min(92dvh, 1000px);
+  overflow: hidden;
+}
+
+.warehouse-inventory-ai--has-result {
+  height: min(92dvh, 1000px);
+  max-height: none;
+}
+
+.warehouse-inventory-ai > .app-modal__header {
+  flex: none;
+  min-width: 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line, #e2e8f0);
+}
+
+.warehouse-inventory-ai__content {
+  display: grid;
+  flex: 1 1 auto;
+  align-content: start;
+  gap: 24px;
+  padding: 16px 2px;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.warehouse-inventory-ai__upload,
+.warehouse-inventory-ai__preview,
+.warehouse-inventory-ai__questions,
+.warehouse-inventory-ai__chat {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.warehouse-inventory-ai__upload > .app-button {
+  justify-self: start;
+}
+
+.warehouse-inventory-ai__files {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.warehouse-inventory-ai__files li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 8px;
+}
+
+.warehouse-inventory-ai__file-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.warehouse-inventory-ai__file-info > span {
+  overflow-wrap: anywhere;
+}
+
+.warehouse-inventory-ai__thumbnail {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 6px;
+  background: var(--surface-soft, #f1f5f9);
+  cursor: zoom-in;
+}
+
+.warehouse-inventory-ai__thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.warehouse-inventory-ai__thumbnail:focus-visible {
+  outline: 2px solid var(--orange, var(--ac-ink));
+  outline-offset: 2px;
+}
+
+.warehouse-inventory-ai__files li > div:last-child {
+  display: flex;
+  flex: none;
+}
+
+.warehouse-inventory-ai__photo-modal {
+  width: min(1500px, calc(100vw - 24px));
+  max-width: none;
+  height: min(94dvh, 1100px);
+  max-height: none;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 12px;
+  overflow: hidden;
+}
+
+.warehouse-inventory-ai__photo-toolbar,
+.warehouse-inventory-ai__zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.warehouse-inventory-ai__photo-toolbar {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.warehouse-inventory-ai__photo-toolbar > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.warehouse-inventory-ai__zoom-controls {
+  flex-wrap: wrap;
+}
+
+.warehouse-inventory-ai__zoom-controls > span {
+  min-width: 44px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.warehouse-inventory-ai__photo-viewport {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 8px;
+  background: var(--surface-soft, #f1f5f9);
+}
+
+.warehouse-inventory-ai__photo-canvas {
+  display: grid;
+  place-items: center;
+}
+
+.warehouse-inventory-ai__photo-canvas img {
+  display: block;
+  max-width: none;
+  max-height: none;
+}
+
+.warehouse-inventory-ai__summary,
+.warehouse-inventory-ai__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.warehouse-inventory-ai__summary span,
+.warehouse-inventory-ai__actions span {
+  color: var(--muted, #64748b);
+  font-size: 13px;
+}
+
+.warehouse-inventory-ai__preview .app-table-wrap {
+  max-height: 360px;
+  overflow: auto;
+}
+
+.warehouse-inventory-ai__preview .app-table td {
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.warehouse-inventory-ai__suggestion {
+  display: grid;
+  gap: 3px;
+}
+
+.warehouse-inventory-ai__suggestion small {
+  color: var(--muted, #64748b);
+}
+
+.warehouse-inventory-ai__questions {
+  padding: 14px;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 10px;
+}
+
+.warehouse-inventory-ai__questions ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.warehouse-inventory-ai__question-suggestion {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.warehouse-inventory-ai__question-suggestion .app-button {
+  white-space: normal;
+  text-align: left;
+}
+
+.warehouse-inventory-ai__chat-hint {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-soft, #f1f5f9);
+  color: var(--muted, #64748b);
+  overflow-wrap: anywhere;
+}
+
+.warehouse-inventory-ai__messages {
+  display: grid;
+  gap: 8px;
+  max-height: 200px;
+  overflow: auto;
+}
+
+.warehouse-inventory-ai__message {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: var(--surface-soft, #f1f5f9);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.warehouse-inventory-ai__message--user {
+  background: #e8f2ff;
+}
+
+.warehouse-inventory-ai__answer {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 10px;
+}
+
+.warehouse-inventory-ai__answer .app-button {
+  justify-self: end;
+}
+
+.warehouse-inventory-ai__actions {
+  flex: none;
+  min-width: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--line, #e2e8f0);
+}
+
+@media (max-width: 600px) {
+  .warehouse-inventory-ai {
+    width: calc(100vw - 12px);
+    max-height: 96dvh;
+  }
+
+  .warehouse-inventory-ai--has-result {
+    height: 96dvh;
+    max-height: none;
+  }
+
+  .warehouse-inventory-ai__content {
+    gap: 18px;
+  }
+
+  .warehouse-inventory-ai__photo-modal {
+    width: calc(100vw - 12px);
+    height: 96dvh;
+    padding: 14px;
+  }
+
+  .warehouse-inventory-ai__photo-toolbar {
+    align-items: flex-start;
+  }
+
+  .warehouse-inventory-ai__upload > .app-button,
+  .warehouse-inventory-ai__answer .app-button,
+  .warehouse-inventory-ai__actions .app-button {
+    width: 100%;
+  }
+}

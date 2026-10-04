@@ -1,0 +1,26 @@
+.push-notification-prompt__content {
+  display: grid;
+  gap: 20px;
+}
+
+.push-notification-prompt__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.push-notification-prompt__actions .app-button {
+  min-height: 44px;
+  white-space: normal;
+}
+
+@media (max-width: 480px) {
+  .push-notification-prompt__actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .push-notification-prompt__actions .app-button {
+    width: 100%;
+  }
+}

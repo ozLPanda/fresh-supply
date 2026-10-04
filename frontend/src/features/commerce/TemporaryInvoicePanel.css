@@ -1,0 +1,59 @@
+.temporary-invoice .app-card__content,
+.temporary-invoice__content {
+  display: grid;
+  gap: 18px;
+}
+
+.temporary-invoice__metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.temporary-invoice__metrics > div {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--line, #d8dee8);
+  border-radius: 8px;
+  background: var(--surface-soft, var(--sunken));
+}
+
+.temporary-invoice__metrics span,
+.temporary-invoice__metrics small,
+.temporary-invoice__footer > span {
+  color: var(--muted, #6b7280);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.temporary-invoice__metrics strong {
+  color: var(--navy, #091426);
+  font-size: 22px;
+}
+
+.temporary-invoice__metrics strong.is-profit {
+  color: #0b7a55;
+}
+
+.temporary-invoice__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+}
+
+@media (max-width: 620px) {
+  .temporary-invoice__metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .temporary-invoice__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .temporary-invoice__footer .app-button {
+    width: 100%;
+  }
+}

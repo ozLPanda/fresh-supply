@@ -1,0 +1,8 @@
+[Unit]
+Description=Deploy Company Shop from origin/main when a new revision is available
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ovoshi-help-auto-deploy

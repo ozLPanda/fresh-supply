@@ -1,0 +1,132 @@
+.app-chart {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  color: var(--text, #111827);
+  --chart-grid: var(--line, #d8dee8);
+  --chart-axis: var(--muted, #6b7280);
+}
+
+.app-chart__viewport {
+  width: 100%;
+  height: var(--app-chart-height, 320px);
+  min-width: 0;
+}
+
+.app-chart__a11y {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.app-chart .recharts-cartesian-grid line,
+.app-chart .recharts-polar-grid-angle line,
+.app-chart .recharts-polar-grid-concentric-polygon {
+  stroke: var(--chart-grid);
+}
+
+.app-chart .recharts-text {
+  fill: var(--chart-axis);
+  font-size: 12px;
+}
+
+.app-chart-tooltip {
+  min-width: 176px;
+  padding: 12px 14px;
+  border: 1px solid var(--line, #d8dee8);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--surface, #ffffff) 96%, transparent);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  backdrop-filter: blur(8px);
+}
+
+.app-chart-tooltip > strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text, #111827);
+  font-size: 13px;
+}
+
+.app-chart-tooltip > div {
+  display: grid;
+  gap: 7px;
+}
+
+.app-chart-tooltip span {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-strong, #434653);
+  font-size: 12px;
+}
+
+.app-chart-tooltip i,
+.app-chart-legend i {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.app-chart-tooltip b {
+  font-weight: 600;
+}
+
+.app-chart-tooltip em {
+  color: var(--text, #111827);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.app-chart-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  padding-top: 10px;
+}
+
+.app-chart-legend button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+  padding: 3px 7px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted-strong, #434653);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.app-chart-legend button:hover {
+  background: var(--surface-soft, var(--sunken));
+}
+
+.app-chart-legend button:focus-visible {
+  outline: 2px solid var(--orange, var(--ac-ink));
+  outline-offset: 1px;
+}
+
+.app-chart-legend button.is-hidden {
+  opacity: 0.42;
+  text-decoration: line-through;
+}
+
+@media (max-width: 640px) {
+  .app-chart {
+    --app-chart-height: 280px !important;
+  }
+
+  .app-chart-tooltip {
+    min-width: 150px;
+  }
+}

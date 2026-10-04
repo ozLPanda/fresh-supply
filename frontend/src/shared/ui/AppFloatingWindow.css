@@ -1,0 +1,79 @@
+.app-floating-window {
+  position: fixed;
+  z-index: 80;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: min(360px, calc(100vw - 24px));
+  min-height: 220px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100dvh - 16px);
+  overflow: hidden;
+  resize: both;
+  border: 1px solid var(--line-strong, #b6c2d4);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  box-shadow: 0 22px 56px rgba(15, 23, 42, 0.26);
+}
+
+.app-floating-window__titlebar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 8px 0 12px;
+  border-bottom: 1px solid var(--line, #d8dee8);
+  background: var(--surface-soft, #eff4fb);
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+}
+
+.app-floating-window__titlebar > svg {
+  color: var(--muted, #64748b);
+}
+
+.app-floating-window__titlebar b {
+  overflow: hidden;
+  color: var(--text, #0f172a);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-floating-window__titlebar button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-s);
+  background: transparent;
+  color: var(--muted, #64748b);
+  cursor: pointer;
+}
+
+.app-floating-window__titlebar button:hover,
+.app-floating-window__titlebar button:focus-visible {
+  background: color-mix(in srgb, var(--orange, #ff6b0b) 12%, transparent);
+  color: var(--text, #0f172a);
+  outline: none;
+}
+
+.app-floating-window__body {
+  min-height: 0;
+  overflow: auto;
+  padding: 18px;
+}
+
+@media (max-width: 640px) {
+  .app-floating-window {
+    top: 8px !important;
+    left: 8px !important;
+    width: calc(100vw - 16px) !important;
+    height: calc(100dvh - 16px) !important;
+    min-width: 0;
+    resize: none;
+  }
+}

@@ -1,0 +1,486 @@
+<!DOCTYPE html><html class="light" lang="ru" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#eff4ff",
+                        "outline-variant": "#c5c6cd",
+                        "tertiary-container": "#5a0008",
+                        "primary": "#091426",
+                        "secondary": "#9d4300",
+                        "on-secondary-container": "#5c2400",
+                        "background": "#f8f9ff",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#d8e3fb",
+                        "error": "#ba1a1a",
+                        "surface-variant": "#d5e3fd",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed": "#111c2d",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-container": "#ff5250",
+                        "on-surface": "#0d1c2f",
+                        "inverse-on-surface": "#ebf1ff",
+                        "status-success": "#10B981",
+                        "on-primary-fixed-variant": "#3c475a",
+                        "on-tertiary-fixed": "#410004",
+                        "on-secondary-fixed": "#341100",
+                        "heat-medium": "#F97316",
+                        "on-primary-container": "#8590a6",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed-dim": "#ffb690",
+                        "primary-fixed-dim": "#bcc7de",
+                        "border-subtle": "#E2E8F0",
+                        "surface-base": "#FFFFFF",
+                        "tertiary-fixed-dim": "#ffb3ad",
+                        "surface-muted": "#F8FAFC",
+                        "heat-high": "#EF4444",
+                        "secondary-fixed": "#ffdbca",
+                        "surface-container-high": "#dde9ff",
+                        "secondary-container": "#fd761a",
+                        "surface": "#f8f9ff",
+                        "outline": "#75777d",
+                        "inverse-primary": "#bcc7de",
+                        "primary-container": "#1e293b",
+                        "on-background": "#0d1c2f",
+                        "surface-container-highest": "#d5e3fd",
+                        "surface-dim": "#ccdbf4",
+                        "on-tertiary-fixed-variant": "#930013",
+                        "tertiary": "#330002",
+                        "surface-bright": "#f8f9ff",
+                        "surface-tint": "#545f73",
+                        "on-error": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "inverse-surface": "#233144",
+                        "surface-container": "#e6eeff",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#45474c",
+                        "tertiary-fixed": "#ffdad7",
+                        "on-secondary-fixed-variant": "#783200"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-desktop": "32px",
+                        "sidebar-width": "280px",
+                        "margin-mobile": "16px",
+                        "container-max": "1280px",
+                        "base": "4px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Inter"],
+                        "label-md": ["JetBrains Mono"],
+                        "display-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "title-md": ["Inter"],
+                        "label-sm": ["JetBrains Mono"],
+                        "headline-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "label-sm": ["11px", {"lineHeight": "14px", "fontWeight": "500"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8f9ff; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .filter-scrollbar::-webkit-scrollbar { width: 4px; }
+        .filter-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<!-- Top Navigation Shell -->
+<header class="bg-surface-base border-b border-border-subtle fixed top-0 w-full z-50">
+<div class="flex justify-between items-center w-full px-margin-desktop max-w-container-max mx-auto h-16">
+<div class="flex items-center gap-8">
+<span class="font-headline-md text-headline-md font-bold text-secondary">Фирма Актив</span>
+<nav class="hidden md:flex items-center gap-6">
+<a class="font-body-md text-body-md text-secondary border-b-2 border-secondary font-bold pb-1 transition-colors duration-200" href="#">Котлы</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-secondary transition-colors duration-200" href="#">Радиаторы</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-secondary transition-colors duration-200" href="#">Насосы</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-secondary transition-colors duration-200" href="#">Трубы</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-secondary transition-colors duration-200" href="#">Клапаны</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-secondary transition-colors duration-200" href="#">Инструменты</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+
+<button class="flex items-center gap-2 px-3 py-2 text-on-surface hover:bg-surface-muted transition-colors rounded">
+<span class="material-symbols-outlined" data-icon="phone">phone</span>
+<span class="hidden sm:inline font-body-md">Связаться</span>
+</button>
+<button class="flex items-center gap-2 px-3 py-2 text-on-surface hover:bg-surface-muted transition-colors rounded">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="hidden sm:inline font-body-md">Вход</span>
+</button>
+<button class="relative bg-primary text-on-primary w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-transform"><span class="material-symbols-outlined text-[20px]" data-icon="shopping_cart">shopping_cart</span><span class="absolute -top-1 -right-1 bg-secondary text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full border-2 border-surface-base">3</span></button>
+</div>
+</div>
+</header>
+<main class="pt-24 pb-12 px-margin-desktop max-w-container-max mx-auto min-h-screen">
+<div class="flex flex-col md:flex-row gap-gutter">
+<!-- Left Sidebar Filters -->
+<aside class="w-full md:w-sidebar-width flex-shrink-0 space-y-6">
+<div class="bg-surface-base border border-border-subtle rounded p-5 shadow-sm">
+<div class="flex items-center justify-between mb-6">
+<h2 class="font-title-md text-title-md text-primary font-bold">Фильтры</h2>
+<button class="text-label-sm font-label-sm text-on-secondary-container hover:underline">Сбросить</button>
+</div>
+<!-- Filter Groups -->
+<div class="space-y-8 filter-scrollbar max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
+<!-- Category -->
+<div>
+<h3 class="font-label-md text-label-md uppercase tracking-wider text-outline mb-3">Категория</h3>
+<ul class="space-y-2">
+<li class="flex items-center gap-2 text-body-md text-on-surface cursor-pointer hover:text-secondary">
+<span class="material-symbols-outlined text-secondary text-[18px]">chevron_right</span> Газовые котлы
+                                </li>
+<li class="flex items-center gap-2 text-body-md text-on-surface cursor-pointer hover:text-secondary">
+<span class="material-symbols-outlined text-outline text-[18px]">chevron_right</span> Электрические котлы
+                                </li>
+<li class="flex items-center gap-2 text-body-md text-on-surface cursor-pointer hover:text-secondary">
+<span class="material-symbols-outlined text-outline text-[18px]">chevron_right</span> Твердотопливные
+                                </li>
+</ul>
+</div>
+<!-- Price Slider -->
+<div>
+<h3 class="font-label-md text-label-md uppercase tracking-wider text-outline mb-3">Цена (₽)</h3>
+<div class="flex gap-2 mb-4">
+<input class="w-1/2 bg-surface-muted border border-border-subtle rounded p-2 text-label-md" type="number" value="12000">
+<input class="w-1/2 bg-surface-muted border border-border-subtle rounded p-2 text-label-md" type="number" value="450000">
+</div>
+<div class="h-1 bg-surface-container rounded-full relative">
+<div class="absolute left-1/4 right-1/4 h-full bg-secondary"></div>
+<div class="absolute left-1/4 top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-secondary rounded-full shadow cursor-pointer"></div>
+<div class="absolute right-1/4 top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-secondary rounded-full shadow cursor-pointer"></div>
+</div>
+</div>
+<!-- Brand Checkboxes -->
+<div>
+<h3 class="font-label-md text-label-md uppercase tracking-wider text-outline mb-3">Бренд</h3>
+<div class="space-y-2">
+<label class="flex items-center gap-3 cursor-pointer group">
+<input checked="" class="rounded border-border-subtle text-secondary focus:ring-secondary" type="checkbox">
+<span class="text-body-md group-hover:text-secondary">Baxi (124)</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="rounded border-border-subtle text-secondary focus:ring-secondary" type="checkbox">
+<span class="text-body-md group-hover:text-secondary">Vaillant (86)</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="rounded border-border-subtle text-secondary focus:ring-secondary" type="checkbox">
+<span class="text-body-md group-hover:text-secondary">Bosch (52)</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="rounded border-border-subtle text-secondary focus:ring-secondary" type="checkbox">
+<span class="text-body-md group-hover:text-secondary">Viessmann (31)</span>
+</label>
+</div>
+</div>
+<!-- Technical Specs -->
+<div>
+<h3 class="font-label-md text-label-md uppercase tracking-wider text-outline mb-3">Мощность (кВт)</h3>
+<div class="grid grid-cols-2 gap-2">
+<button class="px-2 py-1 border border-border-subtle rounded text-label-sm hover:border-secondary transition-colors">12-18</button>
+<button class="px-2 py-1 border border-secondary bg-secondary-container text-on-secondary-container rounded text-label-sm">24-30</button>
+<button class="px-2 py-1 border border-border-subtle rounded text-label-sm hover:border-secondary transition-colors">32-40</button>
+<button class="px-2 py-1 border border-border-subtle rounded text-label-sm hover:border-secondary transition-colors">45+</button>
+</div>
+</div>
+<div>
+<h3 class="font-label-md text-label-md uppercase tracking-wider text-outline mb-3">Площадь (м²)</h3>
+<div class="space-y-2">
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="text-secondary focus:ring-secondary" name="area" type="radio">
+<span class="text-body-md">до 100 м²</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="text-secondary focus:ring-secondary" name="area" type="radio">
+<span class="text-body-md">100 - 200 м²</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="text-secondary focus:ring-secondary" name="area" type="radio">
+<span class="text-body-md">свыше 200 м²</span>
+</label>
+</div>
+</div>
+<div>
+<h3 class="font-label-md text-label-md uppercase tracking-wider text-outline mb-3">Наличие</h3>
+<div class="flex items-center justify-between p-2 bg-surface-muted rounded">
+<span class="text-body-md">Только в наличии</span>
+<div class="w-10 h-5 bg-secondary rounded-full relative cursor-pointer">
+<div class="absolute right-1 top-1 w-3 h-3 bg-white rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col gap-6">
+<!-- Sorting Bar -->
+<div class="bg-surface-base border border-border-subtle rounded p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+<div class="flex items-center gap-4">
+<span class="text-body-md font-medium text-outline">Сортировать:</span>
+<div class="flex bg-surface-muted rounded p-1 border border-border-subtle">
+<button class="px-4 py-1.5 text-label-md font-bold text-on-surface bg-white shadow-sm rounded">Популярные</button>
+<button class="px-4 py-1.5 text-label-md text-on-surface-variant hover:text-secondary transition-colors">Цена</button>
+<button class="px-4 py-1.5 text-label-md text-on-surface-variant hover:text-secondary transition-colors">Новинки</button>
+</div>
+</div>
+<div class="text-body-md text-on-surface-variant">
+                        Найдено товаров: <span class="font-bold text-primary">248</span>
+</div>
+<div class="flex items-center bg-surface-muted rounded px-3 py-1.5 border border-border-subtle w-full sm:w-64"><span class="material-symbols-outlined text-outline text-[20px] mr-2">search</span><input class="bg-transparent border-none focus:ring-0 text-body-md w-full" placeholder="Поиск по названию или артикулу..." type="text"></div></div>
+<!-- Product Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Product Card 1 -->
+<div class="bg-surface-base border border-border-subtle rounded group hover:shadow-lg transition-all duration-300 flex flex-col overflow-hidden">
+<div class="relative aspect-square bg-white p-6 overflow-hidden">
+<img alt="Baxi Eco Nova" class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" data-alt="A high-end modern gas boiler mounted on a clean minimalist wall. The lighting is crisp and cool, highlighting the metallic white finish and digital control panel of the unit. The overall aesthetic is industrial yet sophisticated, following a professional B2B engineering style with neutral grey tones and orange accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuADDKDP5vSFOSXHRYaSaW5RGs92oCVvv2V7pmEyC8wzvCV-nS7D4j_TJHboXX6pMGKClbMtl93QjpcoHg4TlzprJNbZPD01_Cswjcp2-irbeS5mLLFtNvhEU17TF6m0SSccPmWeiKp1rr1PX5ATqow5Lae2N0ApCpbOye4oB6g4HZ7d0DhqXDD0vrTygS5PeXAE2Gnd1vKtvQTRhN76KFr1eIEoJlmcgjOS8UaNI6KZx-gCWy_6_1WESmfSxnwS3n6CPaMu3fSobeM">
+<div class="absolute top-2 left-2">
+<span class="bg-status-success/10 text-status-success text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">В наличии</span>
+</div>
+<button class="absolute top-2 right-2 p-2 bg-white/80 backdrop-blur rounded-full text-outline hover:text-heat-high transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 0;">favorite</span>
+</button>
+</div>
+<div class="p-5 flex-1 flex flex-col">
+<span class="font-label-sm text-label-sm text-outline mb-1 uppercase">Артикул: 721955301</span>
+<h3 class="font-title-md text-title-md text-primary font-bold mb-2 group-hover:text-secondary transition-colors">Baxi Eco Nova 24F</h3>
+<p class="text-body-md text-on-surface-variant mb-4 line-clamp-2">Двухконтурный газовый котел с закрытой камерой сгорания. Мощность 24 кВт.</p>
+<div class="mt-auto">
+<div class="flex items-end justify-between gap-2 mb-4">
+<div>
+<span class="block text-label-sm text-outline line-through">84 500 ₽</span>
+<span class="text-headline-md font-bold text-primary">72 900 ₽</span>
+</div>
+<div class="text-secondary font-label-md font-bold text-xs">-14%</div>
+</div>
+<button class="w-full bg-primary text-on-primary py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-primary-container transition-colors active:scale-[0.98]">
+<span class="material-symbols-outlined text-[20px]" data-icon="shopping_cart">shopping_cart</span>
+                                    Купить
+                                </button>
+</div>
+</div>
+</div>
+<!-- Product Card 2 (Out of stock) -->
+<div class="bg-surface-base border border-border-subtle rounded group hover:shadow-lg transition-all duration-300 flex flex-col overflow-hidden">
+<div class="relative aspect-square bg-white p-6 overflow-hidden opacity-80">
+<img alt="Wilo Stratos" class="w-full h-full object-contain" data-alt="A professional technical shot of a high-performance industrial water pump. The lighting is cinematic with sharp highlights on the red cast iron surface and stainless steel bolts. The background is a blurred industrial workshop environment, emphasizing precision engineering and rugged durability within a modern corporate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBos_kadpH37bikjw8dTh-be7iZDx6OmIA1O7VnpsVTB6zW39_DHw7UIoLmi1WHYhpmUG05YaFUy7V3yQ0AIMS66RYCW7uTlSRE0Cnqp9qWZl1zaPywC2QNeCFFGigF2W-MFu7q1kgc-fY-jO0UcKB-RA6_wVCA17Z7qt5PC-LWH5GcYWgEv7dCbgkkPM3t9yShEEOsFq_4jY581918qGW2nLSicNv_t-uO9f7jvLu1JLOIUKBA50rOsHDsLA1WEljueKbG-Un91I0">
+<div class="absolute top-2 left-2">
+<span class="bg-outline-variant/20 text-on-surface-variant text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Под заказ</span>
+</div>
+</div>
+<div class="p-5 flex-1 flex flex-col">
+<span class="font-label-sm text-label-sm text-outline mb-1 uppercase">Артикул: 2153204</span>
+<h3 class="font-title-md text-title-md text-primary font-bold mb-2">Wilo Stratos PICO 25/1-6</h3>
+<p class="text-body-md text-on-surface-variant mb-4">Циркуляционный насос с мокрым ротором для систем отопления.</p>
+<div class="mt-auto">
+<div class="flex items-end justify-between gap-2 mb-4">
+<span class="text-headline-md font-bold text-on-surface-variant">Цена по запросу</span>
+</div>
+<button class="w-full border-2 border-primary text-primary py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-primary hover:text-white transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined text-[20px]" data-icon="mail">mail</span>
+                                    Запросить цену
+                                </button>
+</div>
+</div>
+</div>
+<!-- Product Card 3 -->
+<div class="bg-surface-base border border-border-subtle rounded group hover:shadow-lg transition-all duration-300 flex flex-col overflow-hidden">
+<div class="relative aspect-square bg-white p-6 overflow-hidden">
+<img alt="Kermi Line" class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" data-alt="A sleek white modern panel radiator positioned in a minimalist architectural space. The image focuses on the clean vertical lines and smooth powder-coated finish of the product. The lighting is soft and airy, creating a high-end catalog feel that highlights the precision manufacturing and modern design suited for contemporary homes." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_hOJpJhCXKimCrCcWlGQt5Tfd2RpTTaXEIKW4gd6JOTgn_FvwKyAAqfo0q6aeFWb4nxJMUIMbPRiLAI8kmz3LwTNm6pNLRbP8A8020RpydQJWtR8NhXt9iY5lT89IAhuLMxE0ZP5vZHYarSViJwQo5Y8aCKNnvrEacUOxamsTW1D6YdCZHYGZLZsOYwEm9qI9XdZ1vDPfP7c-bE3g3cSl3bqOzcw5okVKJyXa9Cthpt5T5nuIO-3IVNfApSTkd6R9AvA1dXMmfew">
+<div class="absolute top-2 left-2">
+<span class="bg-status-success/10 text-status-success text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">В наличии</span>
+</div>
+</div>
+<div class="p-5 flex-1 flex flex-col">
+<span class="font-label-sm text-label-sm text-outline mb-1 uppercase">Артикул: PLV22060120</span>
+<h3 class="font-title-md text-title-md text-primary font-bold mb-2 group-hover:text-secondary transition-colors">Kermi Line-V PLV 22 600x1200</h3>
+<p class="text-body-md text-on-surface-variant mb-4">Стальной панельный радиатор с нижним подключением.</p>
+<div class="mt-auto">
+<div class="flex items-end justify-between gap-2 mb-4">
+<span class="text-headline-md font-bold text-primary">32 420 ₽</span>
+</div>
+<button class="w-full bg-primary text-on-primary py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-primary-container transition-colors active:scale-[0.98]">
+<span class="material-symbols-outlined text-[20px]" data-icon="shopping_cart">shopping_cart</span>
+                                    Купить
+                                </button>
+</div>
+</div>
+</div>
+<!-- Additional items for the grid... -->
+<!-- Repeat logic for other 3 cards to fill the 12-col grid flow -->
+<div class="bg-surface-base border border-border-subtle rounded group hover:shadow-lg transition-all duration-300 flex flex-col overflow-hidden">
+<div class="relative aspect-square bg-white p-6 overflow-hidden">
+<img alt="Rehau Raupink" class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" data-alt="A detailed macro photograph of professional brass and copper pipe fittings arranged on a blueprint. The warm metallic tones of the brass contrast beautifully with the technical blue lines of the drawing. Soft overhead lighting minimizes glare, creating a clean, high-density informational image that signifies quality and professional-grade HVAC components." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAaQvMJQnCZdcd8BT6LxGpjWaqzeE4NsytuTcKNaKE7k75UjNaQSpn-TENDbGt9YygMHB8S1pVzoPmlbm_cPyIHW07NS04okeOY2LsyhWl7MGXISjLIZZSjKj9dkprXvCcLOVyiZ_27mgpKJpI7ZDl_ML5b8g9j8pkXVg29wP8D2nNiB3vIql6Pfft23HzDjivQu3qJihdaFtASlAkAG-zg_WlpD8vMkIW8qGJOR9f7Mcg-nXEH1Ua6l3JHKHl50n3XPzyq8WNJnJQ">
+<div class="absolute top-2 left-2">
+<span class="bg-status-success/10 text-status-success text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">В наличии</span>
+</div>
+</div>
+<div class="p-5 flex-1 flex flex-col">
+<span class="font-label-sm text-label-sm text-outline mb-1 uppercase">Артикул: 130101-50</span>
+<h3 class="font-title-md text-title-md text-primary font-bold mb-2 group-hover:text-secondary transition-colors">Rehau Rautitan Stabil 16</h3>
+<p class="text-body-md text-on-surface-variant mb-4">Универсальная труба для отопления и водоснабжения (50м бухта).</p>
+<div class="mt-auto">
+<div class="flex items-end justify-between gap-2 mb-4">
+<span class="text-headline-md font-bold text-primary">18 950 ₽</span>
+</div>
+<button class="w-full bg-primary text-on-primary py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-primary-container transition-colors active:scale-[0.98]">
+<span class="material-symbols-outlined text-[20px]" data-icon="shopping_cart">shopping_cart</span>
+                                    Купить
+                                </button>
+</div>
+</div>
+</div>
+<div class="bg-surface-base border border-border-subtle rounded group hover:shadow-lg transition-all duration-300 flex flex-col overflow-hidden">
+<div class="relative aspect-square bg-white p-6 overflow-hidden">
+<img alt="Danfoss Valve" class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" data-alt="A precision analog pressure gauge with a stainless steel housing. The dial is clean with high-contrast black markings and a red danger zone. The lighting is studio-quality, emphasizing the reflective metallic surfaces and the functional, industrial nature of the component. The aesthetic is clean, modern, and trustworthy." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCIH-ERo7-uXMHYZq0NZjuauS7qYYiL2HDJz68rW65SqilkTk-EdpMTvI4PwqGcIWlO643nfZyJIL0gHkvN9SjSigGxwt8UP_T5TLPl00sESTpMLiUdqRBWc4aaKE7BWOXqcx7_YH-iErVAa_8rZnrIvugmc7TrCf8cZj6LoUjahPTex_qMrf3SkDYJEA6UjhTyTSzVZFZXDpvDLztWsU4nBkdIun9vQ4d76_9slQJBZBeptRMDDIBrDTyW6851HLLlH9qoDv1qa_s">
+<div class="absolute top-2 left-2">
+<span class="bg-status-success/10 text-status-success text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">В наличии</span>
+</div>
+</div>
+<div class="p-5 flex-1 flex flex-col">
+<span class="font-label-sm text-label-sm text-outline mb-1 uppercase">Артикул: 003Z5502</span>
+<h3 class="font-title-md text-title-md text-primary font-bold mb-2 group-hover:text-secondary transition-colors">Danfoss ASV-P DN20</h3>
+<p class="text-body-md text-on-surface-variant mb-4">Автоматический балансировочный клапан, внутренняя резьба.</p>
+<div class="mt-auto">
+<div class="flex items-end justify-between gap-2 mb-4">
+<span class="text-headline-md font-bold text-primary">12 400 ₽</span>
+</div>
+<button class="w-full bg-primary text-on-primary py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-primary-container transition-colors active:scale-[0.98]">
+<span class="material-symbols-outlined text-[20px]" data-icon="shopping_cart">shopping_cart</span>
+                                    Купить
+                                </button>
+</div>
+</div>
+</div>
+<div class="bg-surface-base border border-border-subtle rounded group hover:shadow-lg transition-all duration-300 flex flex-col overflow-hidden">
+<div class="relative aspect-square bg-white p-6 overflow-hidden">
+<img alt="Rothenberger Tool" class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" data-alt="A professional heavy-duty pipe wrench resting on a concrete floor next to industrial plumbing pipes. The lighting is directional and moody, highlighting the texture of the weathered tool and the metallic sheen of the pipes. The palette is dominated by industrial greys and deep blues with small accents of rust and orange, creating a sense of reliability and hard work." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCyZS5BQkAKEpVchTj-93OCEFaW4a4IW_RkcN2edT9dcfRPeiCZoWwkrmFA8xLV0-53td6fz9lIkjaordUQ1P94MTQzZ9-ZBDaangMK2F1qa3rnztGkAVlyBXA6mLztujKer2xFRVPW7238KrRTYR3CqcFCmg_Muyhmncnc2Vskhyqz6TMGiMKXEM_r0iWjwf-LnwnkNWTOklm56U7a_f07xaC05GjxGR-5-jNAm-HvqgevJyhkeMOg01_zkB1rIeGvvenIcYKAXD0">
+<div class="absolute top-2 left-2">
+<span class="bg-status-success/10 text-status-success text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">В наличии</span>
+</div>
+</div>
+<div class="p-5 flex-1 flex flex-col">
+<span class="font-label-sm text-label-sm text-outline mb-1 uppercase">Артикул: 7.0243</span>
+<h3 class="font-title-md text-title-md text-primary font-bold mb-2 group-hover:text-secondary transition-colors">Rothenberger Rogrip M 10"</h3>
+<p class="text-body-md text-on-surface-variant mb-4">Профессиональные сантехнические клещи с быстрой регулировкой.</p>
+<div class="mt-auto">
+<div class="flex items-end justify-between gap-2 mb-4">
+<span class="text-headline-md font-bold text-primary">4 150 ₽</span>
+</div>
+<button class="w-full bg-primary text-on-primary py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-primary-container transition-colors active:scale-[0.98]">
+<span class="material-symbols-outlined text-[20px]" data-icon="shopping_cart">shopping_cart</span>
+                                    Купить
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Pagination -->
+<div class="mt-8 flex justify-center items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded border border-border-subtle hover:bg-surface-muted transition-colors text-outline">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded border-2 border-secondary bg-secondary text-white font-bold">1</button>
+<button class="w-10 h-10 flex items-center justify-center rounded border border-border-subtle hover:bg-surface-muted transition-colors">2</button>
+<button class="w-10 h-10 flex items-center justify-center rounded border border-border-subtle hover:bg-surface-muted transition-colors">3</button>
+<span class="px-2 text-outline">...</span>
+<button class="w-10 h-10 flex items-center justify-center rounded border border-border-subtle hover:bg-surface-muted transition-colors">24</button>
+<button class="w-10 h-10 flex items-center justify-center rounded border border-border-subtle hover:bg-surface-muted transition-colors text-outline">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer Shell -->
+<footer class="bg-surface-container-low border-t border-border-subtle mt-12">
+<div class="w-full py-12 px-margin-desktop grid grid-cols-1 md:grid-cols-4 gap-gutter max-w-container-max mx-auto">
+<div class="col-span-1 md:col-span-1">
+<span class="font-title-md text-title-md font-bold text-secondary mb-4 block">Фирма Актив</span>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">Профессиональное оборудование для систем отопления, водоснабжения и канализации. Только проверенные бренды и сертифицированная продукция.</p>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-outline cursor-pointer hover:text-secondary">face_nod</span>
+<span class="material-symbols-outlined text-outline cursor-pointer hover:text-secondary">send</span>
+</div>
+</div>
+<div>
+<h4 class="font-bold text-primary mb-4">Продукция</h4>
+<ul class="space-y-2">
+<li class=""><a class="text-body-md text-on-surface-variant hover:text-secondary underline decoration-2 transition-opacity" href="#">Котлы отопления</a></li>
+<li class=""><a class="text-body-md text-on-surface-variant hover:text-secondary underline decoration-2 transition-opacity" href="#">Насосное оборудование</a></li>
+<li class=""><a class="text-body-md text-on-surface-variant hover:text-secondary underline decoration-2 transition-opacity" href="#">Радиаторы</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-bold text-primary mb-4">Поддержка</h4>
+<ul class="space-y-2">
+<li class=""><a class="text-body-md text-on-surface-variant hover:text-secondary underline decoration-2 transition-opacity" href="#">Техподдержка</a></li>
+<li class=""><a class="text-body-md text-on-surface-variant hover:text-secondary underline decoration-2 transition-opacity" href="#">Условия доставки</a></li>
+<li class=""><a class="text-body-md text-on-surface-variant hover:text-secondary underline decoration-2 transition-opacity" href="#">Возврат товара</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-bold text-primary mb-4">Контакты</h4>
+<p class="text-body-md text-on-surface-variant mb-2">Казахстан, г. Павлодар, ул. Генерала Дюсенова, 154</p>
+<p class="text-body-md font-bold text-primary mb-2">+7 777 459 32 33</p>
+<p class="text-body-md text-on-surface-variant">sales@heatflow.pro</p><p class="text-body-md text-on-surface-variant mt-2">Пн-Пт: 09:00 - 18:00, Суб: 10:00 - 17:00, Вс: по предварительному звонку</p>
+</div>
+</div>
+<div class="max-w-container-max mx-auto px-margin-desktop py-6 border-t border-border-subtle/50 text-center md:text-left">
+<p class="text-body-md text-on-surface-variant">© 2024 Фирма Актив. Профессиональное оборудование для отопления и водоснабжения. Все права защищены.</p>
+</div>
+</footer>
+<script>
+        // Micro-interaction for filter toggles
+        document.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(input => {
+            input.addEventListener('change', (e) => {
+                // Future implementation: Trigger AJAX refresh of product grid
+                console.log('Filter updated:', e.target.checked);
+            });
+        });
+
+        // Search bar interaction
+        const searchInput = document.querySelector('input[placeholder="Поиск оборудования..."]');
+        searchInput.addEventListener('focus', () => {
+            searchInput.parentElement.classList.add('border-secondary', 'ring-2', 'ring-secondary/20');
+        });
+        searchInput.addEventListener('blur', () => {
+            searchInput.parentElement.classList.remove('border-secondary', 'ring-2', 'ring-secondary/20');
+        });
+    </script>
+
+
+
+
+
+
+</body></html>

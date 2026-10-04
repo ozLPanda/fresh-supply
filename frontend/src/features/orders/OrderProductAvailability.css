@@ -1,0 +1,80 @@
+.order-product-availability {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.order-product-availability .app-badge {
+  white-space: nowrap;
+}
+
+.order-product-availability__details {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .order-product-availability .order-product-availability__desktop {
+    display: none;
+  }
+
+  .order-product-availability .app-badge {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .order-product-availability__details {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .order-product-availability__details summary {
+    display: flex;
+    min-height: 44px;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .order-product-availability__details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .order-product-availability__details summary:focus-visible {
+    outline: 2px solid var(--navy-2, #1e3a8a);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  .order-product-availability__details-label {
+    color: var(--navy-2, #1e3a8a);
+    font-size: 12px;
+    text-decoration: underline;
+  }
+
+  .order-product-availability__details dl {
+    display: grid;
+    gap: 4px;
+    margin: 4px 0 0;
+    padding: 10px;
+    border: 1px solid var(--line, #e2e8f0);
+    border-radius: 6px;
+    background: var(--surface-soft, #f8fafc);
+  }
+
+  .order-product-availability__details dl > div {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 12px;
+  }
+
+  .order-product-availability__details dd {
+    margin: 0;
+    font-weight: 700;
+  }
+}

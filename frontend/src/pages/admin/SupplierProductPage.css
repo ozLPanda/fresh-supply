@@ -1,0 +1,122 @@
+.supplier-product {
+  min-width: 0;
+}
+.supplier-product__overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 28px;
+  max-width: 1280px;
+}
+.supplier-product__gallery,
+.supplier-product__summary {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  min-width: 0;
+}
+.supplier-product__image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 320px;
+  padding: 18px;
+  border: 1px solid var(--line, #e5e7eb);
+  border-radius: 10px;
+}
+.supplier-product__image img {
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+}
+.supplier-product__placeholder {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  color: var(--muted, #6b7280);
+  text-align: center;
+}
+.supplier-product__thumbnails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.supplier-product__thumbnail.app-button {
+  width: 64px;
+  height: 64px;
+  padding: 6px;
+}
+.supplier-product__thumbnail[aria-pressed="true"] {
+  border-color: var(--orange, var(--ac-ink));
+}
+.supplier-product__thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.supplier-product__prices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 18px;
+  background: var(--surface-subtle, #f8fafc);
+  border-radius: 10px;
+}
+.supplier-product__prices dt {
+  color: var(--muted, #6b7280);
+  font-size: 13px;
+}
+.supplier-product__prices dd {
+  margin: 8px 0 0;
+  font-size: 23px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.supplier-product__facts {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  max-width: 1080px;
+}
+.supplier-product__facts > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line, #e5e7eb);
+  overflow-wrap: anywhere;
+}
+.supplier-product__facts dt {
+  color: var(--muted, #6b7280);
+}
+.supplier-product__facts dd {
+  margin: 0;
+}
+.supplier-product__text {
+  white-space: pre-wrap;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  max-width: 1080px;
+}
+.supplier-product__section {
+  margin-top: 24px;
+  display: grid;
+  gap: 12px;
+}
+@media (max-width: 900px) {
+  .supplier-product__overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 480px) {
+  .supplier-product__prices {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .supplier-product__facts > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  .supplier-product__image {
+    height: 260px;
+  }
+}

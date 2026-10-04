@@ -1,0 +1,168 @@
+.user-wallet-history__empty {
+  display: grid;
+  min-height: 176px;
+  place-items: center;
+  gap: 12px;
+  padding: 28px;
+  color: var(--muted, #64748b);
+  text-align: center;
+  background: linear-gradient(135deg, #fbfcff, var(--surface-muted, #f8fafc));
+}
+
+.user-detail-grid > .data-panel:first-child .data-panel__content {
+  padding: 20px;
+}
+
+.user-profile-form {
+  display: grid;
+  gap: 16px;
+}
+
+.user-profile-form__fields {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.user-profile-form__fields .field:last-child {
+  grid-column: 1 / -1;
+}
+
+.user-profile-form__actions,
+.user-password-form__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.user-roles-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-top: 18px;
+}
+
+.user-roles-form .field {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.user-roles-form .field__label {
+  white-space: nowrap;
+}
+
+.user-roles-form .field__message {
+  display: none;
+}
+
+.user-roles-form .app-select-trigger {
+  height: 44px;
+  min-height: 44px !important;
+  box-sizing: border-box;
+}
+
+.user-roles-form__save.app-button {
+  width: 44px;
+  height: 44px;
+  min-height: 44px !important;
+  padding: 0;
+  font-size: 0;
+}
+
+.user-roles-form__save .app-button__state {
+  gap: 0;
+}
+
+.user-password-modal {
+  max-width: 520px;
+}
+
+.user-password-form {
+  display: grid;
+  gap: 18px;
+}
+
+.user-password-form__notice {
+  align-items: center;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 9px;
+  color: #1d4f91;
+  display: flex;
+  font-size: 13px;
+  gap: 9px;
+  line-height: 19px;
+  padding: 10px 12px;
+}
+
+.user-password-form__notice svg {
+  flex: 0 0 auto;
+}
+
+.user-wallet-history__empty-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--orange, var(--ac-ink)) 20%, var(--line, #d8dee8));
+  border-radius: 16px;
+  color: var(--orange-dark, #b24900);
+  background: color-mix(in srgb, var(--orange, var(--ac-ink)) 9%, var(--surface, #fff));
+}
+
+.user-wallet-history__empty > div {
+  display: grid;
+  gap: 5px;
+  max-width: 440px;
+}
+
+.user-wallet-history__empty strong {
+  color: var(--text, #0f172a);
+  font-size: 16px;
+}
+
+.user-wallet-history__empty p {
+  margin: 0;
+  line-height: 21px;
+}
+
+@media (max-width: 640px) {
+  .user-wallet-history__empty {
+    min-height: 156px;
+    padding: 24px 16px;
+  }
+
+  .user-detail-grid > .data-panel:first-child .data-panel__content {
+    padding: 16px;
+  }
+
+  .user-roles-form {
+    gap: 10px;
+  }
+
+  .user-roles-form .field {
+    gap: 10px;
+  }
+
+  .user-profile-form__fields {
+    grid-template-columns: 1fr;
+  }
+
+  .user-profile-form__fields .field:last-child {
+    grid-column: auto;
+  }
+
+  .user-profile-form__actions,
+  .user-password-form__actions {
+    display: grid;
+    width: 100%;
+  }
+
+  .user-profile-form__actions .app-button,
+  .user-password-form__actions .app-button {
+    width: 100%;
+  }
+}

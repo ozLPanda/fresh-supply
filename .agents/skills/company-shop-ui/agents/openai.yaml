@@ -1,0 +1,4 @@
+interface:
+  display_name: "Company Shop UI"
+  short_description: "Переиспользование компонентов Company Shop"
+  default_prompt: "Use $company-shop-ui to build or refactor Company Shop UI with the existing reusable App* components."

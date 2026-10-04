@@ -1,0 +1,105 @@
+.one-c-credential-name {
+  display: grid;
+  gap: 3px;
+}
+
+.one-c-credentials-panel .one-c-credentials-description {
+  color: var(--muted, #64748b);
+  margin: 0;
+  padding: 20px 24px 18px;
+}
+
+.one-c-credential-name strong {
+  color: var(--text, #172033);
+}
+
+.one-c-credential-name span {
+  color: var(--muted, #64748b);
+  font-size: 12px;
+}
+
+.one-c-token {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  max-width: 240px;
+}
+
+.one-c-token code,
+.one-c-revoke-modal code {
+  background: #f1f5f9;
+  border-radius: 6px;
+  color: #334155;
+  font-size: 12px;
+  overflow: hidden;
+  padding: 5px 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.one-c-token code {
+  flex: 1;
+}
+
+.one-c-token__copy {
+  flex: 0 0 auto;
+  min-height: 32px;
+  width: 32px;
+}
+
+.one-c-permissions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.one-c-credential-modal {
+  max-width: 560px;
+}
+
+.one-c-credential-form {
+  display: grid;
+  gap: 20px;
+}
+
+.one-c-credential-form__section {
+  display: grid;
+  gap: 12px;
+}
+
+.one-c-credential-form__label {
+  color: var(--text, #172033);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.one-c-credential-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.one-c-revoke-modal {
+  display: grid;
+  gap: 14px;
+}
+
+.one-c-revoke-modal code {
+  display: block;
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  .one-c-credentials-panel .one-c-credentials-description {
+    padding: 16px;
+  }
+
+  .one-c-credential-form__actions {
+    flex-direction: column-reverse;
+  }
+
+  .one-c-credential-form__actions .app-button {
+    width: 100%;
+  }
+}
