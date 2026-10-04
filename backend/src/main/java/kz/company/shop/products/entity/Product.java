@@ -16,6 +16,10 @@ public class Product {
     @Column(nullable = false, unique = true)
     public String sku;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "measurement_unit", nullable = false)
+    public MeasurementUnit measurementUnit = MeasurementUnit.KG;
+
     @Column(nullable = false)
     public String nameRu;
 

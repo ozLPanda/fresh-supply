@@ -33,8 +33,6 @@ public class OrderInvoicePdfService {
     private static final String TENGE_SYMBOL = "₸";
     private static final ZoneId TIME_ZONE = ZoneId.of("Asia/Almaty");
     private static final Locale RUSSIAN_LOCALE = Locale.forLanguageTag("ru-RU");
-    private static final DateTimeFormatter DATE_FORMATTER =
-            DateTimeFormatter.ofPattern("d MMMM yyyy 'г.'", RUSSIAN_LOCALE);
     private static final float PAGE_WIDTH = PDRectangle.A4.getWidth();
     private static final float PAGE_HEIGHT = PDRectangle.A4.getHeight();
     private static final float MARGIN = 40;
@@ -63,16 +61,6 @@ public class OrderInvoicePdfService {
 
     public byte[] generate(
             OrderDto order, OrderReturnSummaryDto returnSummary, boolean includePrintComment) {
-        String number = order.displayCode().replaceAll("\\D", "");
-        number =
-                number.isEmpty()
-                        ? order.displayCode()
-                        : String.format("%010d", Long.parseLong(number));
-        String title =
-                "Товарная накладная № "
-                        + number
-                        + " от "
-                        + DATE_FORMATTER.format(order.createdAt().atZone(TIME_ZONE));
         Map<Long, OrderReturnSummaryDto.Item> returnsByItemId =
                 returnSummary == null
                         ? Map.of()
@@ -81,13 +69,519 @@ public class OrderInvoicePdfService {
                                         java.util.stream.Collectors.toMap(
                                                 OrderReturnSummaryDto.Item::orderItemId,
                                                 item -> item));
-        return generate(
-                title,
+        return generateRelease(
+                order,
                 order.items().stream()
                         .map(item -> invoiceItem(item, returnsByItemId.get(item.id())))
                         .toList(),
                 InvoiceTotals.from(order.total(), returnSummary),
                 includePrintComment ? order.printComment() : null);
+    }
+
+    private static final float FORM_MARGIN = 24;
+    private static final float FORM_WIDTH = PAGE_WIDTH - 2 * FORM_MARGIN;
+    private static final float[] FORM_COLUMNS = {32, 137, 47, 43, 49, 49, 60, 73, FORM_WIDTH - 490};
+    private static final float FORM_FONT = 7.5f;
+
+    private byte[] generateRelease(
+            OrderDto order, List<InvoiceItem> items, InvoiceTotals totals, String printComment) {
+        try (PDDocument document = new PDDocument();
+                ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            InvoiceFonts fonts = loadUnicodeFonts(document);
+            PageState page = newPage(document);
+            drawReleaseHeader(page, order, fonts);
+            drawReleaseTableHeader(page, fonts);
+            for (int index = 0; index < items.size(); index++) {
+                List<List<InvoiceCellLine>> cells =
+                        releaseCells(index + 1, items.get(index), fonts);
+                int lineCount = cells.stream().mapToInt(List::size).max().orElse(1);
+                // Split unusually long product names across pages instead of drawing beyond the
+                // sheet.
+                int offset = 0;
+                while (offset < lineCount) {
+                    int available = (int) ((page.y - FORM_MARGIN - 6) / 10);
+                    if (available < 2) {
+                        page.close();
+                        page = newPage(document);
+                        text(
+                                page,
+                                "Накладная № " + order.displayCode() + " (продолжение)",
+                                FORM_MARGIN,
+                                page.y,
+                                fonts,
+                                9,
+                                true);
+                        page.y -= 18;
+                        drawReleaseTableHeader(page, fonts);
+                        available = (int) ((page.y - FORM_MARGIN - 6) / 10);
+                    }
+                    int count = Math.min(lineCount - offset, available);
+                    List<List<InvoiceCellLine>> part = new ArrayList<>();
+                    for (List<InvoiceCellLine> cell : cells) {
+                        part.add(
+                                cell.subList(
+                                        Math.min(offset, cell.size()),
+                                        Math.min(offset + count, cell.size())));
+                    }
+                    drawReleaseRow(page, part, Math.max(17, count * 10 + 5), fonts, false);
+                    offset += count;
+                }
+            }
+            BigDecimal quantity =
+                    items.stream()
+                            .map(InvoiceItem::remainingQuantity)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+            String quantityWords = releaseQuantityWords(items);
+            String moneyWords =
+                    RussianInvoiceWords.capitalize(
+                            RussianInvoiceWords.money(totals.remainingTotal()));
+            int footerLines =
+                    wrap(quantityWords, fonts.bold(), 8, FORM_WIDTH).size()
+                            + wrap(
+                                            "На сумму (прописью), в KZT: " + moneyWords,
+                                            fonts.regular(),
+                                            8,
+                                            FORM_WIDTH)
+                                    .size();
+            float footerHeight = 165 + footerLines * 11 + (totals.hasReturns() ? 36 : 0);
+            if (page.y - footerHeight < FORM_MARGIN) {
+                page.close();
+                page = newPage(document);
+                text(
+                        page,
+                        "Накладная № " + order.displayCode() + " - итоги",
+                        FORM_MARGIN,
+                        page.y,
+                        fonts,
+                        9,
+                        true);
+                page.y -= 18;
+            }
+            drawReleaseRow(
+                    page,
+                    simpleCells(
+                            new String[] {
+                                "",
+                                "Итого",
+                                "",
+                                "",
+                                quantity(quantity),
+                                quantity(quantity),
+                                "x",
+                                money(totals.remainingTotal()),
+                                "0,00"
+                            }),
+                    18,
+                    fonts,
+                    true);
+            if (totals.hasReturns()) {
+                page.y -= 12;
+                text(
+                        page,
+                        "Сумма до возврата: "
+                                + money(totals.originalTotal())
+                                + " KZT; К возврату: "
+                                + money(totals.returnedTotal())
+                                + " KZT",
+                        FORM_MARGIN,
+                        page.y,
+                        fonts,
+                        8,
+                        false);
+                page.y -= 12;
+                text(
+                        page,
+                        "Итого после возврата: " + money(totals.remainingTotal()) + " KZT",
+                        FORM_MARGIN,
+                        page.y,
+                        fonts,
+                        8,
+                        true);
+            }
+            page.y -= 17;
+            drawReleaseParagraph(
+                    page, "Всего отпущено количество запасов (прописью):", fonts, false);
+            drawReleaseParagraph(page, quantityWords, fonts, true);
+            page.y -= 5;
+            drawReleaseParagraph(page, "На сумму (прописью), в KZT: " + moneyWords, fonts, false);
+            page.y -= 15;
+            drawReleaseSignatures(page, fonts);
+            page = drawPrintComment(document, page, printComment, fonts);
+            page.close();
+            for (int index = 0; index < document.getNumberOfPages(); index++) {
+                PDPage pdfPage = document.getPage(index);
+                try (PDPageContentStream content =
+                        new PDPageContentStream(
+                                document, pdfPage, PDPageContentStream.AppendMode.APPEND, true)) {
+                    PageState footer = new PageState(content, 13);
+                    text(
+                            footer,
+                            "Страница " + (index + 1) + " из " + document.getNumberOfPages(),
+                            FORM_MARGIN,
+                            13,
+                            fonts,
+                            7,
+                            false);
+                }
+            }
+            document.save(output);
+            return output.toByteArray();
+        } catch (IOException exception) {
+            throw new IllegalStateException("Не удалось сформировать PDF накладной", exception);
+        }
+    }
+
+    private void drawReleaseHeader(PageState page, OrderDto order, InvoiceFonts fonts)
+            throws IOException {
+        float right = PAGE_WIDTH - FORM_MARGIN;
+        float y = PAGE_HEIGHT - 29;
+        for (String line :
+                List.of(
+                        "Приложение 26",
+                        "к приказу Министра финансов",
+                        "Республики Казахстан",
+                        "от 20 декабря 2012 года № 562",
+                        "",
+                        "Форма З-2")) {
+            text(page, line, right - width(fonts.regular(), line, 7.5f), y, fonts, 7.5f, false);
+            y -= 10;
+        }
+        page.y = y - 15;
+        text(
+                page,
+                "Организация (индивидуальный предприниматель)",
+                FORM_MARGIN,
+                page.y,
+                fonts,
+                7.5f,
+                false);
+        page.y -= 13;
+        text(
+                page,
+                "Индивидуальный предприниматель \"GASTROFLOW\"",
+                FORM_MARGIN,
+                page.y,
+                fonts,
+                9,
+                true);
+        text(page, "ИИН/БИН 910818451048", right - 130, page.y, fonts, 8, true);
+        page.y -= 20;
+        float boxX = right - 178;
+        formBox(page, boxX, page.y, 84, 22, "Номер документа", fonts, 7.5f, false);
+        formBox(page, boxX + 84, page.y, 94, 22, "Дата составления", fonts, 7.5f, false);
+        String date =
+                DateTimeFormatter.ofPattern("dd.MM.yyyy")
+                        .format(
+                                (order.invoiceIssuedAt() == null
+                                                ? order.createdAt()
+                                                : order.invoiceIssuedAt())
+                                        .atZone(TIME_ZONE));
+        formBox(page, boxX, page.y - 22, 84, 17, order.displayCode(), fonts, 8, true);
+        formBox(page, boxX + 84, page.y - 22, 94, 17, date, fonts, 8, true);
+        page.y -= 59;
+        String title = "НАКЛАДНАЯ НА ОТПУСК ЗАПАСОВ НА СТОРОНУ";
+        text(
+                page,
+                title,
+                FORM_MARGIN + (FORM_WIDTH - width(fonts.bold(), title, 10)) / 2,
+                page.y,
+                fonts,
+                10,
+                true);
+        page.y -= 20;
+        String[] labels = {
+            "Организация (индивидуальный предприниматель) - отправитель",
+            "Организация (индивидуальный предприниматель) - получатель",
+            "Ответственный за поставку (Ф.И.О.)",
+            "Транспортная организация",
+            "Товарно-транспортная накладная (номер, дата)"
+        };
+        String[] values = {
+            "ИП \"GASTROFLOW\"",
+            order.regularBuyerName() == null ? "" : order.regularBuyerName(),
+            "",
+            "",
+            ""
+        };
+        float[] widths = {119, 119, 103, 92, FORM_WIDTH - 433};
+        float x = FORM_MARGIN;
+        float valueHeight = 27;
+        for (int i = 0; i < values.length; i++) {
+            valueHeight =
+                    Math.max(
+                            valueHeight,
+                            wrap(values[i], fonts.regular(), 8, widths[i] - 6).size() * 10 + 8);
+        }
+        for (int i = 0; i < labels.length; i++) {
+            formBox(page, x, page.y, widths[i], 39, labels[i], fonts, 7, false);
+            formBox(page, x, page.y - 39, widths[i], valueHeight, values[i], fonts, 8, false);
+            x += widths[i];
+        }
+        page.y -= 39 + valueHeight + 10;
+    }
+
+    private void drawReleaseTableHeader(PageState page, InvoiceFonts fonts) throws IOException {
+        String[] labels = {
+            "№ п/п",
+            "Наименование, характеристика",
+            "Номенкла-\nтурный номер",
+            "Ед.\nизм.",
+            "подлежит\nотпуску",
+            "отпущено",
+            "Цена за единицу, в KZT",
+            "Сумма с НДС, в KZT",
+            "Сумма НДС, в KZT"
+        };
+        float x = FORM_MARGIN;
+        for (int i = 0; i < labels.length; i++) {
+            if (i == 4)
+                formBox(
+                        page,
+                        x,
+                        page.y,
+                        FORM_COLUMNS[4] + FORM_COLUMNS[5],
+                        15,
+                        "Количество",
+                        fonts,
+                        7,
+                        false);
+            formBox(
+                    page,
+                    x,
+                    page.y - (i == 4 || i == 5 ? 15 : 0),
+                    FORM_COLUMNS[i],
+                    i == 4 || i == 5 ? 31 : 46,
+                    labels[i],
+                    fonts,
+                    7,
+                    false);
+            x += FORM_COLUMNS[i];
+        }
+        page.y -= 46;
+        drawReleaseRow(
+                page,
+                simpleCells(new String[] {"1", "2", "3", "4", "5", "6", "7", "8", "9"}),
+                13,
+                fonts,
+                false);
+    }
+
+    private List<List<InvoiceCellLine>> releaseCells(
+            int index, InvoiceItem item, InvoiceFonts fonts) throws IOException {
+        List<List<InvoiceCellLine>> cells = new ArrayList<>();
+        String[] values = {
+            String.valueOf(index),
+            item.nameRu(),
+            hasPrintableSku(item) ? item.sku() : "",
+            item.kilograms() ? "кг" : "шт.",
+            quantity(item.quantity()),
+            quantity(item.quantity()),
+            money(item.unitPrice()),
+            money(item.lineTotal()),
+            "0,00"
+        };
+        for (int column = 0; column < values.length; column++) {
+            List<InvoiceCellLine> lines = new ArrayList<>();
+            if (!values[column].isEmpty()) {
+                for (String line :
+                        wrap(
+                                values[column],
+                                fonts.regular(),
+                                FORM_FONT,
+                                FORM_COLUMNS[column] - 6)) {
+                    lines.add(
+                            new InvoiceCellLine(
+                                    line,
+                                    item.hasReturn()
+                                            && (column == 4
+                                                    || column == 5
+                                                    || column == 7
+                                                    || column == 1 && item.isFullyReturned())));
+                }
+            }
+            if (item.hasReturn()) {
+                String extra =
+                        switch (column) {
+                            case 1 ->
+                                    item.isFullyReturned()
+                                            ? "Возвращено полностью"
+                                            : "Возвращена часть товара";
+                            case 4, 5 -> quantity(item.remainingQuantity());
+                            case 7 -> money(item.remainingLineTotal());
+                            default -> null;
+                        };
+                if (extra != null)
+                    for (String line :
+                            wrap(extra, fonts.regular(), FORM_FONT, FORM_COLUMNS[column] - 6))
+                        lines.add(new InvoiceCellLine(line, false));
+            }
+            cells.add(lines);
+        }
+        return cells;
+    }
+
+    private List<List<InvoiceCellLine>> simpleCells(String[] values) {
+        return java.util.Arrays.stream(values)
+                .map(value -> List.of(new InvoiceCellLine(value, false)))
+                .toList();
+    }
+
+    private void drawReleaseRow(
+            PageState page,
+            List<List<InvoiceCellLine>> cells,
+            float height,
+            InvoiceFonts fonts,
+            boolean bold)
+            throws IOException {
+        float x = FORM_MARGIN;
+        for (int column = 0; column < cells.size(); column++) {
+            page.content.setLineWidth(0.5f);
+            page.content.addRect(x, page.y - height, FORM_COLUMNS[column], height);
+            page.content.stroke();
+            List<InvoiceCellLine> lines = cells.get(column);
+            float baseline = page.y - (height - lines.size() * 10) / 2 - 8;
+            for (InvoiceCellLine line : lines) {
+                PDFont font = bold ? fonts.bold() : fonts.regular();
+                float size =
+                        Math.min(
+                                FORM_FONT,
+                                (FORM_COLUMNS[column] - 6)
+                                        / Math.max(1, width(font, line.value(), 1)));
+                float measured = width(font, line.value(), size);
+                float textX =
+                        column == 1
+                                ? x + 3
+                                : column >= 4
+                                        ? x + FORM_COLUMNS[column] - measured - 3
+                                        : x + (FORM_COLUMNS[column] - measured) / 2;
+                text(page, line.value(), textX, baseline, fonts, size, bold);
+                if (line.strikethrough()) strike(page, textX, baseline, measured, size);
+                baseline -= 10;
+            }
+            x += FORM_COLUMNS[column];
+        }
+        page.y -= height;
+    }
+
+    private void formBox(
+            PageState page,
+            float x,
+            float top,
+            float w,
+            float h,
+            String value,
+            InvoiceFonts fonts,
+            float size,
+            boolean bold)
+            throws IOException {
+        page.content.setLineWidth(0.5f);
+        page.content.addRect(x, top - h, w, h);
+        page.content.stroke();
+        if (value == null || value.isBlank()) return;
+        List<String> lines = new ArrayList<>();
+        while (true) {
+            lines.clear();
+            for (String part : value.split("\\n"))
+                lines.addAll(wrap(part, bold ? fonts.bold() : fonts.regular(), size, w - 6));
+            if (lines.size() * (size + 2) <= h - 4 || size <= 4.5f) break;
+            size -= 0.25f;
+        }
+        float lineHeight = size + 2;
+        float y = top - (h - lines.size() * lineHeight) / 2 - size;
+        for (String line : lines) {
+            text(
+                    page,
+                    line,
+                    x + (w - width(bold ? fonts.bold() : fonts.regular(), line, size)) / 2,
+                    y,
+                    fonts,
+                    size,
+                    bold);
+            y -= lineHeight;
+        }
+    }
+
+    private String releaseQuantityWords(List<InvoiceItem> items) {
+        Map<Boolean, BigDecimal> quantities = new java.util.LinkedHashMap<>();
+        for (InvoiceItem item : items)
+            quantities.merge(item.kilograms(), item.remainingQuantity(), BigDecimal::add);
+        if (quantities.isEmpty()) return "Ноль";
+        return RussianInvoiceWords.capitalize(
+                quantities.entrySet().stream()
+                        .map(
+                                entry ->
+                                        RussianInvoiceWords.quantity(
+                                                entry.getValue(), entry.getKey()))
+                        .collect(java.util.stream.Collectors.joining("; ")));
+    }
+
+    private void drawReleaseParagraph(
+            PageState page, String value, InvoiceFonts fonts, boolean bold) throws IOException {
+        for (String line : wrap(value, bold ? fonts.bold() : fonts.regular(), 8, FORM_WIDTH)) {
+            text(page, line, FORM_MARGIN, page.y, fonts, 8, bold);
+            page.y -= 11;
+        }
+    }
+
+    private void drawReleaseSignatures(PageState page, InvoiceFonts fonts) throws IOException {
+        float x = FORM_MARGIN;
+        float right = FORM_MARGIN + FORM_WIDTH * .55f;
+        text(page, "Отпуск разрешил", x, page.y, fonts, 7.5f, false);
+        text(page, "директор", x + 77, page.y, fonts, 7.5f, false);
+        text(page, "________ / Гайсумов Р.М.", x + 130, page.y, fonts, 7.5f, false);
+        text(page, "По доверенности __________________________", right, page.y, fonts, 7.5f, false);
+        page.y -= 11;
+        text(
+                page,
+                "должность       подпись       расшифровка подписи",
+                x + 76,
+                page.y,
+                fonts,
+                6,
+                false);
+        text(
+                page,
+                "выданной __________________________________",
+                right,
+                page.y,
+                fonts,
+                7.5f,
+                false);
+        page.y -= 22;
+        text(
+                page,
+                "Главный бухгалтер __________ / __________________",
+                x,
+                page.y,
+                fonts,
+                7.5f,
+                false);
+        text(
+                page,
+                "___________________________________________",
+                right,
+                page.y,
+                fonts,
+                7.5f,
+                false);
+        page.y -= 11;
+        text(page, "подпись           расшифровка подписи", x + 92, page.y, fonts, 6, false);
+        page.y -= 12;
+        text(page, "М.П.", x, page.y, fonts, 8, true);
+        page.y -= 19;
+        text(page, "Отпустил __________ / Гайсумов Р.М.", x, page.y, fonts, 7.5f, false);
+        text(
+                page,
+                "Запасы получил __________ / _________________",
+                right,
+                page.y,
+                fonts,
+                7.5f,
+                false);
+        page.y -= 11;
+        text(page, "подпись       расшифровка подписи", x + 45, page.y, fonts, 6, false);
+        text(page, "подпись       расшифровка подписи", right + 83, page.y, fonts, 6, false);
+        page.y -= 12;
     }
 
     public byte[] generateTemporary(TemporaryInvoiceDto invoice) {
@@ -142,6 +636,7 @@ public class OrderInvoicePdfService {
         return new InvoiceItem(
                 item.sku(),
                 item.nameRu(),
+                item.measurementUnit() != null && item.measurementUnit().name().equals("KG"),
                 item.quantity(),
                 item.unitPrice(),
                 returnItem == null ? item.lineTotal() : returnItem.originalAmount(),
@@ -155,6 +650,7 @@ public class OrderInvoicePdfService {
         return new InvoiceItem(
                 item.sku(),
                 item.nameRu(),
+                false,
                 item.quantity(),
                 item.unitPrice(),
                 item.lineTotal(),
@@ -178,7 +674,7 @@ public class OrderInvoicePdfService {
         page.content.stroke();
         page.y -= 32;
         text(page, "Поставщик:", MARGIN, page.y, fonts, 10, false);
-        text(page, "Фирма «Актив»", MARGIN + 62, page.y, fonts, 10, true);
+        text(page, "GastroFlow", MARGIN + 62, page.y, fonts, 10, true);
         return page.y - 22;
     }
 
@@ -266,15 +762,7 @@ public class OrderInvoicePdfService {
                 fonts,
                 layout,
                 CellAlignment.CENTER);
-        drawCellLines(
-                page,
-                bottom,
-                height,
-                1,
-                productLines,
-                fonts,
-                layout,
-                CellAlignment.LEFT);
+        drawCellLines(page, bottom, height, 1, productLines, fonts, layout, CellAlignment.LEFT);
         drawCellLines(
                 page,
                 bottom,
@@ -433,7 +921,12 @@ public class OrderInvoicePdfService {
     }
 
     private void drawSummaryLine(
-            PageState page, String label, BigDecimal amount, InvoiceFonts fonts, float size, boolean bold)
+            PageState page,
+            String label,
+            BigDecimal amount,
+            InvoiceFonts fonts,
+            float size,
+            boolean bold)
             throws IOException {
         String value = label + ": " + money(amount) + " " + TENGE_SYMBOL;
         text(
@@ -581,7 +1074,10 @@ public class OrderInvoicePdfService {
     }
 
     private String quantity(BigDecimal value) {
-        return (value == null ? BigDecimal.ZERO : value).stripTrailingZeros().toPlainString();
+        return (value == null ? BigDecimal.ZERO : value)
+                .stripTrailingZeros()
+                .toPlainString()
+                .replace('.', ',');
     }
 
     private static final class PageState {
@@ -605,6 +1101,7 @@ public class OrderInvoicePdfService {
     private record InvoiceItem(
             String sku,
             String nameRu,
+            boolean kilograms,
             BigDecimal quantity,
             BigDecimal unitPrice,
             BigDecimal lineTotal,

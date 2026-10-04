@@ -58,6 +58,54 @@ class BarcodeOrderControllerTest {
     }
 
     @Test
+    void releasePassesSelectedItemUnitsToService() throws Exception {
+        UUID id = UUID.randomUUID();
+        mvc.perform(
+                        post("/api/admin/orders/" + id + "/complete-payment")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"paymentMethod\":\"CASH\",\"itemUnits\":[{\"orderItemId\":101,\"measurementUnit\":\"KG\"}]}"))
+                .andExpect(status().isOk());
+        verify(orders)
+                .completePayment(
+                        id,
+                        7L,
+                        PaymentMethod.CASH,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        false,
+                        null,
+                        List.of(
+                                new kz.company.shop.orders.dto.OrderItemUnitRequest(
+                                        101L, kz.company.shop.products.entity.MeasurementUnit.KG)));
+    }
+
+    @Test
+    void releaseRejectsMissingOrUnsupportedMeasurementUnits() throws Exception {
+        for (String item :
+                List.of(
+                        "{\"orderItemId\":101}",
+                        "{\"orderItemId\":101,\"measurementUnit\":\"LITER\"}",
+                        "null")) {
+            mvc.perform(
+                            post("/api/admin/orders/" + UUID.randomUUID() + "/complete-payment")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(
+                                            "{\"paymentMethod\":\"CASH\",\"itemUnits\":["
+                                                    + item
+                                                    + "]}"))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(orders);
+    }
+
+    @Test
     void lookupChecksPermissionAndReturnsProduct() throws Exception {
         when(barcodeOrders.findProduct(any(), any(), any()))
                 .thenReturn(
@@ -100,6 +148,41 @@ class BarcodeOrderControllerTest {
 
         verify(auth).require("orders.update");
         verify(barcodeOrders).customers();
+    }
+
+    @Test
+    void createPassesExplicitMeasurementUnit() throws Exception {
+        when(barcodeOrders.create(any(), eq(7L))).thenReturn(mock(OrderDto.class));
+        mvc.perform(
+                        post("/api/admin/barcode-orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                {"priceTier":"RETAIL","orderDate":"2026-09-01",
+                                 "items":[{"productId":11,"quantity":0.1,"unitPrice":200,"measurementUnit":"KG"}]}
+                                """))
+                .andExpect(status().isOk());
+        var captured =
+                org.mockito.ArgumentCaptor.forClass(
+                        kz.company.shop.orders.dto.BarcodeOrderCreateRequest.class);
+        verify(barcodeOrders).create(captured.capture(), eq(7L));
+        org.assertj.core.api.Assertions.assertThat(
+                        captured.getValue().items().getFirst().measurementUnit())
+                .isEqualTo(kz.company.shop.products.entity.MeasurementUnit.KG);
+    }
+
+    @Test
+    void createRejectsUnsupportedMeasurementUnit() throws Exception {
+        mvc.perform(
+                        post("/api/admin/barcode-orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                {"priceTier":"RETAIL","orderDate":"2026-09-01",
+                                 "items":[{"productId":11,"quantity":0.1,"unitPrice":200,"measurementUnit":"LITER"}]}
+                                """))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(barcodeOrders, orders);
     }
 
     @Test
@@ -193,6 +276,7 @@ class BarcodeOrderControllerTest {
                         null,
                         null,
                         false,
+                        null,
                         null))
                 .thenReturn(mock(OrderDto.class));
 
@@ -217,6 +301,7 @@ class BarcodeOrderControllerTest {
                         null,
                         null,
                         false,
+                        null,
                         null);
     }
 
@@ -272,7 +357,8 @@ class BarcodeOrderControllerTest {
                         null,
                         null,
                         true,
-                        "Отпущено по согласованию"))
+                        "Отпущено по согласованию",
+                        null))
                 .thenReturn(mock(OrderDto.class));
 
         mvc.perform(
@@ -304,6 +390,7 @@ class BarcodeOrderControllerTest {
                         null,
                         null,
                         true,
-                        "Отпущено по согласованию");
+                        "Отпущено по согласованию",
+                        null);
     }
 }

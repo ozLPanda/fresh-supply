@@ -19,9 +19,11 @@ import kz.company.shop.pricing.service.PricingService;
 import kz.company.shop.productImages.entity.ProductImage;
 import kz.company.shop.productImages.repository.ProductImageRepository;
 import kz.company.shop.products.dto.ProductAvailabilityStatusRequest.Status;
+import kz.company.shop.products.dto.ProductDto;
 import kz.company.shop.products.dto.ProductListParams;
 import kz.company.shop.products.dto.ProductPriceAnalyticsDto.PriceType;
 import kz.company.shop.products.dto.ProductPriceAnalyticsFilter;
+import kz.company.shop.products.entity.MeasurementUnit;
 import kz.company.shop.products.entity.Product;
 import kz.company.shop.products.repository.ProductRepository;
 import kz.company.shop.search.EmbeddingClient;
@@ -62,6 +64,56 @@ class ProductServiceTest {
                     settings,
                     heatingSearchRanker,
                     pricing);
+
+    @Test
+    void productCreationDefaultsToKilogramsAndAllowsPieceOverride() {
+        when(products.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        assertThat(service.create(productInput(null)).measurementUnit())
+                .isEqualTo(MeasurementUnit.KG);
+        assertThat(service.create(productInput(MeasurementUnit.PIECE)).measurementUnit())
+                .isEqualTo(MeasurementUnit.PIECE);
+    }
+
+    @Test
+    void productUpdatePreservesOmittedUnitAndAppliesExplicitUnit() {
+        Product product = new Product();
+        product.id = 17L;
+        product.measurementUnit = MeasurementUnit.PIECE;
+        when(products.findByIdAndDeletedAtIsNull(17L)).thenReturn(Optional.of(product));
+        when(products.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        assertThat(service.update(17L, productInput(null)).measurementUnit())
+                .isEqualTo(MeasurementUnit.PIECE);
+        assertThat(service.update(17L, productInput(MeasurementUnit.KG)).measurementUnit())
+                .isEqualTo(MeasurementUnit.KG);
+    }
+
+    private static ProductDto productInput(MeasurementUnit unit) {
+        return new ProductDto(
+                null,
+                "VEG-1",
+                "Картофель",
+                "Картоп",
+                null,
+                null,
+                null,
+                null,
+                new BigDecimal("200"),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                true,
+                false,
+                null,
+                null,
+                List.of(),
+                null,
+                null,
+                null,
+                unit);
+    }
 
     @Test
     void lexicalOnlySearchBypassesSemanticSearch() {

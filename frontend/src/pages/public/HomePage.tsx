@@ -41,23 +41,23 @@ const FEATURED_PRODUCTS_LIMIT = 6;
 const benefits = [
   {
     icon: Truck,
-    title: "Доставка по Казахстану",
-    text: "Быстро передаём оборудование в отгрузку и помогаем с логистикой.",
+    title: "Условия доставки",
+    text: "Уточните доступные способы получения заказа перед оформлением.",
   },
   {
     icon: Headphones,
-    title: "Помощь специалистов",
-    text: "Проверим мощность, совместимость и состав комплектации до заказа.",
+    title: "Вопросы по заказу",
+    text: "Свяжитесь с нами, чтобы уточнить ассортимент и состав заказа.",
   },
   {
     icon: WalletCards,
     title: "Оптовые условия",
-    text: "Предлагаем понятную коммерческую цену для частных и B2B-заказов.",
+    text: "Уточните оптовые цены для нужного объёма закупки.",
   },
   {
     icon: PackageCheck,
     title: "Актуальное наличие",
-    text: "Покажем статус товара и предложим подходящую замену при необходимости.",
+    text: "Проверяйте статус выбранных продуктов в каталоге.",
   },
 ];
 
@@ -104,17 +104,16 @@ export function HomePage({ heroVariant = "default" }: { heroVariant?: "default" 
   return (
     <StoreLayout categories={categories}>
       <SeoMeta
-        title="Фирма «Актив» — отопление, водоснабжение и сантехника"
-        description="Каталог товаров для отопления, водоснабжения и сантехники: котлы, насосы, радиаторы и комплектующие. Цены и заказ онлайн."
+        title="GastroFlow — паназиатские продукты"
+        description="Овощи, фрукты, бакалея и паназиатские продукты. Каталог, цены и заказ онлайн."
         canonicalPath="/"
         structuredData={{
           "@context": "https://schema.org",
           "@type": ["OnlineStore", "LocalBusiness"],
-          name: "Фирма «Актив»",
+          name: "GastroFlow",
           url: window.location.origin,
-          logo: `${window.location.origin}/pwa-512x512.png`,
+          logo: `${window.location.origin}/brand/gastroflow-logo.png`,
           telephone: "+7 777 459 32 33",
-          email: "toofirmaaktiv@mail.ru",
           address: {
             "@type": "PostalAddress",
             streetAddress: "Генерала Дюсенова, 154",
@@ -131,13 +130,13 @@ export function HomePage({ heroVariant = "default" }: { heroVariant?: "default" 
           <div className="home-hero__background" aria-hidden="true" />
           <div className="home-hero__inner">
             <div className="home-hero__copy">
-              <AppBadge tone="orange">Отопление • Сантехника</AppBadge>
+              <AppBadge tone="orange">Овощи • Фрукты • Бакалея</AppBadge>
               <h1>
-                Инженерные решения <span>для вашего объекта</span>
+                Свежие продукты <span>для вашей кухни</span>
               </h1>
               <p>
-                Котлы, насосы, радиаторы и комплектующие с профессиональным подбором. Помогаем
-                быстро собрать совместимую систему для дома, бизнеса или промышленного объекта.
+                Овощи, фрукты, бакалея и ингредиенты для паназиатской кухни. Соберите всё
+                необходимое для вашего меню в одном заказе.
               </p>
               <div className="home-hero__search">
                 <StoreSearch
@@ -148,7 +147,7 @@ export function HomePage({ heroVariant = "default" }: { heroVariant?: "default" 
                   searchSource="HOME"
                   onSearchCommitted={(query) => void recordSearchQuery({ query, source: "HOME" })}
                 />
-                <span>Подберём товар даже при опечатке — на русском или казахском.</span>
+                <span>Ищите продукты по названию или артикулу.</span>
               </div>
               <div className="home-hero__actions">
                 <AppButton asChild>
@@ -166,46 +165,46 @@ export function HomePage({ heroVariant = "default" }: { heroVariant?: "default" 
               </div>
               <div className="home-hero__trust" aria-label="Преимущества магазина">
                 <span>
-                  <BadgeCheck size={18} /> Проверенные решения
+                  <BadgeCheck size={18} /> Каталог продуктов
                 </span>
                 <span>
-                  <Building2 size={18} /> Для дома и бизнеса
+                  <Building2 size={18} /> Для дома и кухни
                 </span>
               </div>
             </div>
 
-            <aside className="home-hero__panel" aria-label="Этапы комплектации объекта">
+            <aside className="home-hero__panel" aria-label="Как собрать заказ продуктов">
               <div className="home-hero__panel-heading">
-                <span>Комплектация под задачу</span>
+                <span>Продукты для вашего меню</span>
                 <Boxes size={26} />
               </div>
-              <h2>От спецификации до готовой поставки</h2>
+              <h2>От выбора продуктов до заказа</h2>
               <ol className="home-hero__steps">
                 <li>
                   <b>01</b>
                   <span>
-                    <strong>Подбор оборудования</strong>
-                    По параметрам объекта и бюджету
+                    <strong>Выбор продуктов</strong>
+                    По вашему меню и списку закупок
                   </span>
                 </li>
                 <li>
                   <b>02</b>
                   <span>
-                    <strong>Проверка совместимости</strong>
-                    Чтобы все элементы работали вместе
+                    <strong>Состав заказа</strong>
+                    Проверьте позиции и нужное количество
                   </span>
                 </li>
                 <li>
                   <b>03</b>
                   <span>
-                    <strong>Комплектация и отгрузка</strong>
-                    Один заказ вместо десятка поставщиков
+                    <strong>Оформление заказа</strong>
+                    Укажите контакты и способ получения
                   </span>
                 </li>
               </ol>
               <div className="home-hero__panel-note">
                 <ShieldCheck size={20} />
-                <span>Поддержка специалиста на каждом этапе</span>
+                <span>Вопросы по заказу можно уточнить по телефону</span>
               </div>
             </aside>
           </div>
@@ -217,7 +216,7 @@ export function HomePage({ heroVariant = "default" }: { heroVariant?: "default" 
           <div className="home-section__heading-copy">
             <p>Категории</p>
             <h2>Основные направления</h2>
-            <span>Быстрый переход к оборудованию для ключевых инженерных систем.</span>
+            <span>Овощи, фрукты, бакалея и ингредиенты для паназиатской кухни.</span>
           </div>
           <AppButton asChild variant="secondary">
             <Link to="/categories">
@@ -237,7 +236,7 @@ export function HomePage({ heroVariant = "default" }: { heroVariant?: "default" 
         ) : categoriesQuery.isError ? (
           <StoreEmptyState
             title="Не удалось загрузить категории"
-            description="Проверьте соединение с API и повторите загрузку списка категорий."
+            description="Проверьте подключение к интернету и попробуйте ещё раз."
             tone="danger"
             onRetry={() => categoriesQuery.refetch()}
           />
@@ -254,7 +253,7 @@ export function HomePage({ heroVariant = "default" }: { heroVariant?: "default" 
         ) : (
           <StoreEmptyState
             title="Категории пока не загружены"
-            description="Добавьте категории в админке, и они появятся здесь автоматически."
+            description="Список категорий появится после обновления каталога."
           />
         )}
       </section>
@@ -263,8 +262,8 @@ export function HomePage({ heroVariant = "default" }: { heroVariant?: "default" 
         <div className="home-section__heading">
           <div className="home-section__heading-copy">
             <p>Товары</p>
-            <h2>Товары для инженерных задач</h2>
-            <span>Актуальные позиции каталога с ценами, наличием и характеристиками.</span>
+            <h2>Продукты в каталоге</h2>
+            <span>Выбирайте продукты по названию, цене и наличию.</span>
           </div>
           <AppButton asChild variant="secondary" className="home-section__desktop-action">
             <Link to="/catalog">
@@ -284,7 +283,7 @@ export function HomePage({ heroVariant = "default" }: { heroVariant?: "default" 
         ) : productsQuery.isError ? (
           <StoreEmptyState
             title="Не удалось загрузить товары"
-            description="Проверьте соединение с API и повторите загрузку списка товаров."
+            description="Проверьте подключение к интернету и попробуйте ещё раз."
             tone="danger"
             onRetry={() => productsQuery.refetch()}
           />
@@ -301,7 +300,7 @@ export function HomePage({ heroVariant = "default" }: { heroVariant?: "default" 
         ) : (
           <StoreEmptyState
             title="Товары пока не загружены"
-            description="Когда товары появятся в API, витрина автоматически покажет их в этой секции."
+            description="Продукты появятся здесь после обновления каталога."
           />
         )}
       </section>
@@ -312,34 +311,33 @@ export function HomePage({ heroVariant = "default" }: { heroVariant?: "default" 
           aria-labelledby="home-directions-title"
         >
           <div className="home-section__heading-copy">
-            <p>Отопление и сантехника в Павлодаре</p>
-            <h2 id="home-directions-title">Оборудование для дома, бизнеса и монтажа</h2>
+            <p>Паназиатские продукты GastroFlow</p>
+            <h2 id="home-directions-title">Продукты для вашего меню</h2>
             <span>
-              В каталоге Фирмы «Актив» можно подобрать оборудование для отопления, водоснабжения и
-              инженерных систем. Уточняем совместимость, комплектацию и актуальные условия поставки
-              перед заказом.
+              В каталоге GastroFlow можно подобрать овощи, фрукты, бакалею и ингредиенты для
+              паназиатских блюд. Уточняйте наличие и актуальные условия поставки перед заказом.
             </span>
           </div>
           <div className="home-seo-directions__grid">
             <article>
-              <h3>Отопительное оборудование</h3>
+              <h3>Овощи и зелень</h3>
               <p>
-                Котлы длительного горения, радиаторы биметаллические и алюминиевые, автоматика для
-                котлов, вентиляторы, ИБП и бесперебойники для стабильной работы системы.
+                Овощи и зелень для салатов, гарниров и горячих блюд. Выбирайте позиции в каталоге и
+                указывайте нужное количество.
               </p>
             </article>
             <article>
-              <h3>Дымоходы и вентиляция</h3>
+              <h3>Фрукты</h3>
               <p>
-                Дымоходы, сэндвич-дымоходы и сэндвич-трубы для безопасного отвода продуктов сгорания
-                и монтажа отопительного оборудования.
+                Фрукты для десертов, напитков и свежей подачи. Актуальный ассортимент и цены
+                доступны в каталоге.
               </p>
             </article>
             <article>
-              <h3>Трубы, краны и комплектующие</h3>
+              <h3>Бакалея и паназиатские продукты</h3>
               <p>
-                Полипропиленовые трубы, трубы, краны, сгоны и другие фитинги для систем отопления и
-                водоснабжения. Ищите нужную позицию по названию или артикулу.
+                Ингредиенты для паназиатской кухни и повседневного меню. Ищите нужную позицию по
+                названию или артикулу.
               </p>
             </article>
           </div>
@@ -351,9 +349,9 @@ export function HomePage({ heroVariant = "default" }: { heroVariant?: "default" 
         aria-labelledby="home-benefits-title"
       >
         <div className="home-benefits__heading">
-          <p>Почему мы</p>
-          <h2 id="home-benefits-title">Поставка, на которую можно опереться</h2>
-          <span>Берём на себя детали, чтобы вы сосредоточились на своём объекте.</span>
+          <p>Покупки в GastroFlow</p>
+          <h2 id="home-benefits-title">Перед оформлением заказа</h2>
+          <span>Проверьте наличие, цены и условия получения продуктов.</span>
         </div>
         <div className="home-benefits__grid">
           {benefits.map(({ icon: Icon, title, text }, index) => (
@@ -378,9 +376,9 @@ export function HomePage({ heroVariant = "default" }: { heroVariant?: "default" 
           <Headphones size={28} />
         </div>
         <div className="home-cta__copy">
-          <p>Нужна помощь с комплектацией?</p>
-          <h2>Обсудите задачу со специалистом</h2>
-          <span>Подскажем по мощности, совместимости и составу заказа.</span>
+          <p>Есть вопросы по продуктам?</p>
+          <h2>Свяжитесь с GastroFlow</h2>
+          <span>Уточните ассортимент, наличие и условия заказа.</span>
         </div>
         <div className="home-cta__actions">
           <AppButton asChild>
@@ -397,7 +395,7 @@ export function HomePage({ heroVariant = "default" }: { heroVariant?: "default" 
           <div className="home-section__heading-copy">
             <p>Отзывы</p>
             <h2>Что говорят клиенты</h2>
-            <span>Опыт покупателей, которые уже выбрали оборудование для своих объектов.</span>
+            <span>Отзывы покупателей о товарах и заказах.</span>
           </div>
           {reviewSummary && reviewSummary.totalReviews > 0 && (
             <div className="home-reviews__summary" aria-label="Средняя оценка магазина">
@@ -419,7 +417,7 @@ export function HomePage({ heroVariant = "default" }: { heroVariant?: "default" 
           ) : reviewsQuery.isError ? (
             <StoreEmptyState
               title="Не удалось загрузить отзывы"
-              description="Повторите попытку — возможно, соединение с API временно недоступно."
+              description="Не удалось получить отзывы. Попробуйте ещё раз позже."
               tone="danger"
               onRetry={() => reviewsQuery.refetch()}
             />
@@ -455,7 +453,7 @@ export function HomePage({ heroVariant = "default" }: { heroVariant?: "default" 
           ) : (
             <StoreEmptyState
               title="Отзывы скоро появятся"
-              description="Когда клиенты оставят отзывы и администратор их подтвердит, они появятся здесь."
+              description="Здесь появятся отзывы покупателей о товарах и заказах."
             />
           )}
         </div>

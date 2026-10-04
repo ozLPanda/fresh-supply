@@ -6,6 +6,7 @@ import { AppButton } from "@/shared/ui/AppButton";
 import { AppCard } from "@/shared/ui/AppCard";
 import { AppInput, AppPhoneInput } from "@/shared/ui/AppField";
 import { AppAlert } from "@/shared/ui/AppFeedback";
+import { StoreLogo } from "@/shared/components/brand/StoreLogo";
 import "./AdminLoginPage.css";
 
 export function LoginPage() {
@@ -30,8 +31,7 @@ export function LoginPage() {
   return (
     <div className="login-page admin-login-page">
       <AppCard className="login-card admin-login-card">
-        <div className="login-mark">ФА</div>
-        <p className="login-kicker">Фирма Актив</p>
+        <StoreLogo />
         <h1>Вход в управление</h1>
         <p>Каталог, заказы, склад и команда вашего магазина.</p>
         <form onSubmit={submit}>

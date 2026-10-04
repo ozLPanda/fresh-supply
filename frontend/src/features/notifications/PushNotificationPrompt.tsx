@@ -7,7 +7,7 @@ import { pushPromptSession } from "./pushPromptSession";
 import { useAdminPush } from "./useAdminPush";
 import "./PushNotificationPrompt.css";
 
-export function PushNotificationPrompt() {
+export function PushNotificationPrompt({ showPrompt = true }: { showPrompt?: boolean }) {
   const { user, authLoading } = useCommerce();
   const { pathname } = useLocation();
   const authPage = ["/login", "/register", "/admin/login"].includes(pathname);
@@ -28,11 +28,11 @@ export function PushNotificationPrompt() {
   }, [status]);
 
   useEffect(() => {
-    if (authLoading || !enabled || !user) return;
+    if (!showPrompt || authLoading || !enabled || !user) return;
     if (["available", "blocked", "error"].includes(status) && pushPromptSession.claim(user.id)) {
       setPromptUserId(user.id);
     }
-  }, [authLoading, enabled, user?.id, status, pathname]);
+  }, [showPrompt, authLoading, enabled, user?.id, status, pathname]);
 
   useEffect(() => {
     if (
@@ -65,7 +65,9 @@ export function PushNotificationPrompt() {
 
   const loading = status === "checking" || status === "connecting";
   const blocked = status === "blocked";
-  const open = Boolean(enabled && user && promptUserId === user.id && status !== "connected");
+  const open = Boolean(
+    showPrompt && enabled && user && promptUserId === user.id && status !== "connected",
+  );
 
   return (
     <AppModal

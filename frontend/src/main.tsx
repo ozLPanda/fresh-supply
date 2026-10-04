@@ -34,6 +34,7 @@ import { ProductAvailabilityAnalysisPage } from "@/pages/admin/ProductAvailabili
 import { UsersPage } from "@/pages/admin/UsersPage";
 import { UserDetailPage } from "@/pages/admin/UserDetailPage";
 import { AdminOrdersPage } from "@/pages/admin/OrdersPage";
+import { RegularBuyersPage } from "@/pages/admin/RegularBuyersPage";
 import { AdminOrderDetailPage } from "@/pages/admin/OrderDetailPage";
 import { AuditLogPage } from "@/pages/admin/AuditLogPage";
 import { WhatsAppInboxPage } from "@/pages/admin/WhatsAppInboxPage";
@@ -89,8 +90,8 @@ function PrivateRouteSeo() {
   if (!privateRoute) return null;
   return (
     <SeoMeta
-      title="Фирма «Актив»"
-      description="Интернет-магазин товаров для отопления, водоснабжения и сантехники."
+      title="GastroFlow"
+      description="Паназиатские продукты, овощи, фрукты и бакалея. Каталог и заказ онлайн."
       canonicalPath={pathname}
       robots="noindex,nofollow"
     />
@@ -300,6 +301,16 @@ function App() {
               element={
                 <AdminLayout>
                   <UserDetailPage />
+                </AdminLayout>
+              }
+            />
+            <Route
+              path="/admin/regular-buyers"
+              element={
+                <AdminLayout>
+                  <AdminPermissionGate permission="pages.regular-buyers.view">
+                    <RegularBuyersPage />
+                  </AdminPermissionGate>
                 </AdminLayout>
               }
             />
@@ -680,7 +691,7 @@ function App() {
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
           <PwaExperience />
-          <PushNotificationPrompt />
+          <PushNotificationPrompt showPrompt={false} />
           <AppToaster />
         </BrowserRouter>
       </CommerceProvider>

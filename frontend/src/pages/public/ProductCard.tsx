@@ -55,9 +55,7 @@ function ProductBody({ product }: { product: Product }) {
         {product.nameRu}
       </Link>
       <p>
-        {product.shortDescriptionRu ??
-          product.descriptionRu ??
-          "Профессиональный товар для инженерных систем."}
+        {product.shortDescriptionRu ?? product.descriptionRu ?? "Продукт из каталога GastroFlow."}
       </p>
       <div className="product-card__pricing">
         <div className="product-card__price">

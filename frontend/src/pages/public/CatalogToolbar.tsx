@@ -32,7 +32,7 @@ export function CatalogToolbar({
         <div>
           <p>Каталог</p>
           <h1 title={query || undefined}>
-            {query ? `Результаты по запросу «${compactQuery}»` : "Каталог оборудования"}
+            {query ? `Результаты по запросу «${compactQuery}»` : "Каталог продуктов"}
           </h1>
         </div>
         <AppBadge tone="slate">

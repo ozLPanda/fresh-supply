@@ -131,7 +131,7 @@
   gap: 10px;
 }
 
-.order-payment-confirmation__actions .app-button {
+.order-payment-confirmation__actions > .app-button {
   flex: 0 0 auto;
   white-space: nowrap;
 }
@@ -355,6 +355,24 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
+}
+
+.order-item-quantity-and-unit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.order-item-measurement-unit {
+  width: 68px;
+}
+
+.order-item-measurement-unit .app-input {
+  height: 32px;
+  min-height: 32px;
+  padding: 3px 6px;
+  font-size: 13px;
 }
 .order-item-return-summary {
   display: grid;
@@ -863,6 +881,7 @@ div.admin-price-modal .admin-price-review-form__action-buttons .app-button {
   }
 
   .order-payment-confirmation__actions > .app-button,
+  .order-payment-confirmation__actions > .app-split-button,
   .order-payment-confirmation__completion-actions .app-button {
     width: 100%;
   }
@@ -1048,6 +1067,12 @@ div.admin-price-modal .admin-price-review-form__action-buttons .app-button {
 }
 
 @media (max-width: 720px) {
+  .order-item-measurement-unit .app-input {
+    height: 46px;
+    min-height: 46px;
+    font-size: 16px;
+  }
+
   .order-item-quantity__button.app-button {
     width: 44px;
     min-width: 44px;
@@ -1324,4 +1349,10 @@ div.admin-price-modal .admin-price-review-form__action-buttons .app-button {
 
 .admin-price-review-form__conflict .app-button__state {
   white-space: normal;
+}
+
+.order-regular-buyer-snapshot {
+  margin: 14px 0 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
 }

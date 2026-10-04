@@ -25,9 +25,12 @@ export type ProductImage = {
   contentHash?: string | null;
 };
 
+export type MeasurementUnit = "KG" | "PIECE";
+
 export type Product = {
   id?: number;
   sku: string;
+  measurementUnit?: MeasurementUnit;
   nameRu: string;
   nameKk: string;
   price: number | null;
@@ -207,6 +210,7 @@ export type Wallet = {
 
 export type OrderItem = {
   id: number;
+  measurementUnit?: MeasurementUnit;
   productId?: number;
   /** Товар был доступен только под заказ на момент оформления. */
   madeToOrder: boolean;
@@ -274,6 +278,8 @@ export type Order = {
   userId?: number | null;
   customerName?: string | null;
   customerEmail?: string | null;
+  regularBuyerId?: string | null;
+  regularBuyerName?: string | null;
   status: "NEW" | "PRICE_REVIEW" | "PROCESSING" | "READY_FOR_PICKUP" | "COMPLETED" | "CANCELLED";
   paymentStatus: "PENDING" | "PAID" | "REFUNDED";
   paymentMethod: "BALANCE" | "ON_RECEIPT" | "CASH" | "CASHLESS" | "KASPI_STORE" | "MIXED";
@@ -304,6 +310,7 @@ export type Order = {
   total: number;
   paidTotal: number;
   createdAt: string;
+  invoiceIssuedAt?: string | null;
   /** Until this moment the currently available stock is held for the order. */
   reservationExpiresAt?: string | null;
   items: OrderItem[];

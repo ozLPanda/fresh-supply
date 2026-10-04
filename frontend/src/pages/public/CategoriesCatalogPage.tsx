@@ -62,8 +62,8 @@ export function CategoriesCatalogPage() {
   return (
     <StoreLayout categories={layoutCategories}>
       <SeoMeta
-        title="Категории товаров | Фирма «Актив»"
-        description="Разделы каталога товаров для отопления, водоснабжения и сантехники."
+        title="Категории продуктов | GastroFlow"
+        description="Категории овощей, фруктов, бакалеи и паназиатских продуктов GastroFlow."
         canonicalPath="/categories"
       />
       <section className="categories-page">

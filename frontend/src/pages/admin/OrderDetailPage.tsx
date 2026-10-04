@@ -34,6 +34,15 @@ import {
   Trash2,
 } from "lucide-react";
 import { useCommerce } from "@/features/commerce/CommerceProvider";
+import { RegularBuyerSelect } from "@/features/orders/RegularBuyerSelect";
+import { OrderCompletionFlow } from "@/features/orders/OrderCompletionFlow";
+import { openPaymentInvoicePdf } from "@/features/orders/openPaymentInvoicePdf";
+import {
+  OrderItemUnitFields,
+  orderItemUnitsPayload,
+  type OrderItemUnits,
+} from "@/features/orders/OrderItemUnitFields";
+import { measurementUnitLabel, measurementUnitOptions } from "@/shared/lib/measurementUnit";
 import { OrderProductPickerModal } from "@/features/orders/OrderProductPickerModal";
 import {
   clearOrderPriceReviewDraft,
@@ -60,7 +69,7 @@ import {
 } from "@/shared/api/warehouse";
 import { formatDateTime } from "@/shared/lib/dateTime";
 import { productMatchesSearch } from "@/shared/lib/productSearch";
-import { Order, OrderReturnSummary, Product, User } from "@/shared/types/models";
+import { MeasurementUnit, Order, OrderReturnSummary, Product } from "@/shared/types/models";
 import { formatMoney } from "@/pages/public/store-utils";
 import {
   orderStatusLabel,
@@ -70,7 +79,7 @@ import {
   paymentStatusLabel,
 } from "@/pages/customer/OrdersPage";
 import { AppBadge } from "@/shared/ui/AppBadge";
-import { AppActionMenu, AppButton } from "@/shared/ui/AppButton";
+import { AppActionMenu, AppButton, AppSplitButton } from "@/shared/ui/AppButton";
 import { AppDateTimePicker } from "@/shared/ui/AppDatePicker";
 import { AppCard } from "@/shared/ui/AppCard";
 import {
@@ -503,6 +512,8 @@ export function AdminOrderDetailPage() {
   const [priceReviewControlsHeight, setPriceReviewControlsHeight] = useState(0);
   const priceReviewControlsRef = useRef<HTMLDivElement>(null);
   const [completionConfirmationOpen, setCompletionConfirmationOpen] = useState(false);
+  const [paidReleaseOpen, setPaidReleaseOpen] = useState(false);
+  const [itemUnits, setItemUnits] = useState<OrderItemUnits>({});
   const [paymentConfirmationOpen, setPaymentConfirmationOpen] = useState(false);
   const [completionPrintPromptOpen, setCompletionPrintPromptOpen] = useState(false);
   const [paymentEditOpen, setPaymentEditOpen] = useState(false);
@@ -514,6 +525,7 @@ export function AdminOrderDetailPage() {
   const [reservationExpiresAt, setReservationExpiresAt] = useState<Date | undefined>();
   const [orderComment, setOrderComment] = useState("");
   const [printComment, setPrintComment] = useState("");
+  const [regularBuyerId, setRegularBuyerId] = useState<string | null>(null);
   const [completedPaymentMethod, setCompletedPaymentMethod] = useState<AdminPaymentMethod>("CASH");
   const [cashPaymentAmount, setCashPaymentAmount] = useState<number | null>(null);
   const [transferPaymentAmount, setTransferPaymentAmount] = useState<number | null>(null);
@@ -523,6 +535,7 @@ export function AdminOrderDetailPage() {
     "TRANSFER",
   );
   const [invoiceOpening, setInvoiceOpening] = useState(false);
+  const [paymentInvoiceOpening, setPaymentInvoiceOpening] = useState(false);
   const [comparisonPdfOpening, setComparisonPdfOpening] = useState(false);
   const [invoicePrintOptionsOpen, setInvoicePrintOptionsOpen] = useState(false);
   const [manualItemOpen, setManualItemOpen] = useState(false);
@@ -555,10 +568,6 @@ export function AdminOrderDetailPage() {
     queryKey: ["my-order-settings"],
     queryFn: () => api<{ invoiceTemplate: string }>("/api/auth/order-settings"),
     enabled: paymentConfirmationOpen,
-  });
-  const usersQuery = useQuery({
-    queryKey: ["users", "order-assignees", "orders.update"],
-    queryFn: () => api<User[]>("/api/users?permission=orders.update"),
   });
   const priceSettingDocumentsQuery = useQuery({
     queryKey: ["orders", "admin", id, "price-setting-documents"],
@@ -664,6 +673,7 @@ export function AdminOrderDetailPage() {
           qrAmount,
           comment: comment.trim() || null,
           printComment: printComment.trim() || null,
+          itemUnits: orderItemUnitsPayload(query.data?.items ?? [], itemUnits),
           releaseWithStockShortage: Boolean(releaseWithStockShortage),
           stockShortageComment: stockShortageComment?.trim() || null,
         }),
@@ -765,6 +775,27 @@ export function AdminOrderDetailPage() {
   useEffect(() => {
     setPrintComment(order?.printComment ?? "");
   }, [order?.id, order?.printComment]);
+  useEffect(() => {
+    setRegularBuyerId(order?.regularBuyerId ?? null);
+  }, [order?.id, order?.regularBuyerId]);
+  const canUpdateRegularBuyer = user?.permissions.includes("orders.update") ?? false;
+  const updateRegularBuyer = useMutation({
+    mutationFn: (buyerId: string | null) =>
+      api<Order>(`/api/admin/orders/${id}/regular-buyer`, {
+        method: "PUT",
+        body: JSON.stringify({ regularBuyerId: buyerId }),
+      }),
+    onSuccess: (updatedOrder) => {
+      queryClient.setQueryData(["orders", "admin", id], updatedOrder);
+      queryClient.invalidateQueries({ queryKey: ["orders", "admin"] });
+      queryClient.invalidateQueries({ queryKey: ["order-activity", id] });
+      appToast.success("Получатель накладной сохранён");
+    },
+    onError: (exception) =>
+      appToast.error(
+        exception instanceof Error ? exception.message : "Не удалось сохранить получателя",
+      ),
+  });
   const updateComment = useMutation({
     mutationFn: (comment: string) =>
       api<Order>(`/api/admin/orders/${id}/comment`, {
@@ -861,6 +892,27 @@ export function AdminOrderDetailPage() {
         exception instanceof Error ? exception.message : "Не удалось изменить количество",
       ),
   });
+  const updateItemMeasurementUnit = useMutation({
+    mutationFn: ({
+      itemId,
+      measurementUnit,
+    }: {
+      itemId: number;
+      measurementUnit: MeasurementUnit;
+    }) =>
+      api<Order>(`/api/admin/orders/${id}/items/${itemId}/measurement-unit`, {
+        method: "PATCH",
+        body: JSON.stringify({ measurementUnit }),
+      }),
+    onSuccess: (updatedOrder) => {
+      queryClient.setQueryData(["orders", "admin", id], updatedOrder);
+      queryClient.invalidateQueries({ queryKey: ["orders", "admin"] });
+    },
+    onError: (exception) =>
+      appToast.error(
+        exception instanceof Error ? exception.message : "Не удалось изменить единицу измерения",
+      ),
+  });
   const deleteItem = useMutation({
     mutationFn: (itemId: number) =>
       api<Order>(`/api/admin/orders/${id}/items/${itemId}`, { method: "DELETE" }),
@@ -927,17 +979,13 @@ export function AdminOrderDetailPage() {
   const reservationIsActive = Boolean(
     order?.reservationExpiresAt && new Date(order.reservationExpiresAt).getTime() > Date.now(),
   );
-  const canEditFulfillment = order?.status === "PROCESSING" || order?.status === "READY_FOR_PICKUP";
   const canEditItems = Boolean(
     order &&
     order.status !== "READY_FOR_PICKUP" &&
     order.status !== "COMPLETED" &&
     order.status !== "CANCELLED",
   );
-  const canAssemble = canEditFulfillment && order?.assemblyAssigneeId === user?.id;
-  const canCheck = canEditFulfillment && order?.checkingAssigneeId === user?.id;
   const totalItems = order?.items.length ?? 0;
-  const assembledItems = order?.assembledItems ?? 0;
   const checkedItems = order?.checkedItems ?? 0;
   const editOrderProduct = (productId: number | undefined) => {
     if (!order || !productId) return;
@@ -964,10 +1012,6 @@ export function AdminOrderDetailPage() {
     itemIds.splice(targetIndex, 0, itemId);
     updateItemOrder.mutate(itemIds);
   };
-  const assigneeOptions = useMemo(
-    () => (usersQuery.data ?? []).map((user) => ({ value: String(user.id), label: user.name })),
-    [usersQuery.data],
-  );
   const priceReviewTotal = order
     ? order.items.reduce((sum, item) => {
         const unitPrice = priceValues[item.id] ?? item.unitPrice;
@@ -1226,45 +1270,6 @@ export function AdminOrderDetailPage() {
       );
     },
   });
-  const assigneeUpdate = useMutation({
-    mutationFn: (payload: { assemblyAssigneeId?: number; checkingAssigneeId?: number }) =>
-      api<Order>(`/api/admin/orders/${id}/fulfillment/assignees`, {
-        method: "PATCH",
-        body: JSON.stringify(payload),
-      }),
-    onSuccess: (updatedOrder) => {
-      queryClient.setQueryData(["orders", "admin", id], updatedOrder);
-      queryClient.invalidateQueries({ queryKey: ["orders", "admin"] });
-      appToast.success("Ответственные обновлены");
-    },
-    onError: (exception) =>
-      appToast.error(
-        exception instanceof Error ? exception.message : "Не удалось обновить ответственных",
-      ),
-  });
-  const fulfillmentUpdate = useMutation({
-    mutationFn: ({
-      itemId,
-      assembled,
-      checked,
-    }: {
-      itemId: number;
-      assembled: boolean;
-      checked: boolean;
-    }) =>
-      api<Order>(`/api/admin/orders/${id}/fulfillment/items/${itemId}`, {
-        method: "PATCH",
-        body: JSON.stringify({ assembled, checked }),
-      }),
-    onSuccess: (updatedOrder) => {
-      queryClient.setQueryData(["orders", "admin", id], updatedOrder);
-      queryClient.invalidateQueries({ queryKey: ["orders", "admin"] });
-      queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
-    },
-    onError: (exception) =>
-      appToast.error(exception instanceof Error ? exception.message : "Не удалось обновить сборку"),
-  });
-
   useEffect(() => {
     if (!order || priceModalOpen) return;
     setPriceValues(getOrderPriceValues(order));
@@ -1588,31 +1593,6 @@ export function AdminOrderDetailPage() {
     });
   }
 
-  function updateAssignee(
-    field: "assemblyAssigneeId" | "checkingAssigneeId",
-    value: string | string[],
-  ) {
-    if (!order || Array.isArray(value)) return;
-    assigneeUpdate.mutate({
-      assemblyAssigneeId: order.assemblyAssigneeId,
-      checkingAssigneeId: order.checkingAssigneeId,
-      [field]: value ? Number(value) : undefined,
-    });
-  }
-
-  function updateItemProgress(
-    item: Order["items"][number],
-    next: Partial<Pick<Order["items"][number], "assembled" | "checked">>,
-  ) {
-    const assembled = next.assembled ?? item.assembled;
-    const checked = next.checked ?? item.checked;
-    fulfillmentUpdate.mutate({
-      itemId: item.id,
-      assembled,
-      checked: checked && assembled,
-    });
-  }
-
   function openInvoice(includePrintComment: boolean) {
     if (!order) return;
     setInvoiceOpening(true);
@@ -1631,6 +1611,12 @@ export function AdminOrderDetailPage() {
     if (!order) return;
     setComparisonPdfOpening(true);
     void openComparisonPdf(order.id).finally(() => setComparisonPdfOpening(false));
+  }
+
+  function handlePaymentInvoiceClick() {
+    if (!order) return;
+    setPaymentInvoiceOpening(true);
+    void openPaymentInvoicePdf(order.id).finally(() => setPaymentInvoiceOpening(false));
   }
 
   function openReservationModal() {
@@ -1670,16 +1656,23 @@ export function AdminOrderDetailPage() {
       actions={
         order && (
           <>
-            <AppButton
-              type="button"
+            <AppSplitButton
               variant="secondary"
-              loading={invoiceOpening}
+              loading={invoiceOpening || paymentInvoiceOpening}
               loadingText="Открываем PDF..."
               onClick={handleInvoiceClick}
+              menuLabel="Другие документы для печати"
+              actions={[
+                {
+                  label: "Счёт на оплату PDF",
+                  icon: <Printer size={18} />,
+                  onSelect: handlePaymentInvoiceClick,
+                },
+              ]}
             >
               <Printer size={18} />
               Накладная PDF
-            </AppButton>
+            </AppSplitButton>
             <AppButton
               type="button"
               variant="secondary"
@@ -1730,6 +1723,7 @@ export function AdminOrderDetailPage() {
                 <AppButton
                   type="button"
                   onClick={() => {
+                    setItemUnits({});
                     setPaymentComment(order.comment ?? "");
                     setCompletionConfirmationOpen(true);
                   }}
@@ -1742,7 +1736,13 @@ export function AdminOrderDetailPage() {
             <AppSelect
               options={statusOptions}
               value={order.status}
-              onValueChange={(value) => void update.mutate(value as Order["status"])}
+              onValueChange={(value) => {
+                if (value === "COMPLETED" && order.paymentStatus === "PAID") {
+                  setPaidReleaseOpen(true);
+                  return;
+                }
+                update.mutate(value as Order["status"]);
+              }}
               disabled={update.isPending || order.status === "CANCELLED"}
             />
           </>
@@ -1952,6 +1952,60 @@ export function AdminOrderDetailPage() {
                         </DataPanel>
                       </div>
                       <DataPanel
+                        title="Получатель накладной"
+                        size="compact"
+                        className="order-comment-panel"
+                        actions={
+                          canUpdateRegularBuyer ? (
+                            <AppButton
+                              type="submit"
+                              form="order-regular-buyer-form"
+                              loading={updateRegularBuyer.isPending}
+                              disabled={
+                                updateRegularBuyer.isPending ||
+                                regularBuyerId === (order.regularBuyerId ?? null)
+                              }
+                            >
+                              Сохранить
+                            </AppButton>
+                          ) : undefined
+                        }
+                      >
+                        {canUpdateRegularBuyer ? (
+                          <form
+                            id="order-regular-buyer-form"
+                            className="order-comment-form"
+                            onSubmit={(event) => {
+                              event.preventDefault();
+                              updateRegularBuyer.mutate(regularBuyerId);
+                            }}
+                          >
+                            <RegularBuyerSelect
+                              value={regularBuyerId}
+                              currentName={
+                                regularBuyerId === order.regularBuyerId
+                                  ? order.regularBuyerName
+                                  : null
+                              }
+                              onChange={setRegularBuyerId}
+                              disabled={updateRegularBuyer.isPending}
+                            />
+                          </form>
+                        ) : (
+                          <div className="admin-detail-list">
+                            <div>
+                              <span>Постоянный покупатель</span>
+                              <strong>{order.regularBuyerName || "Не выбран"}</strong>
+                            </div>
+                          </div>
+                        )}
+                        {order.regularBuyerName && (
+                          <p className="order-regular-buyer-snapshot">
+                            В накладной: <strong>{order.regularBuyerName}</strong>
+                          </p>
+                        )}
+                      </DataPanel>
+                      <DataPanel
                         title="Комментарий к заказу"
                         size="compact"
                         className="order-comment-panel"
@@ -2024,170 +2078,6 @@ export function AdminOrderDetailPage() {
                             onChange={(event) => setPrintComment(event.target.value)}
                           />
                         </form>
-                      </DataPanel>
-                    </>
-                  ),
-                },
-                {
-                  value: "fulfillment",
-                  label: "Сборка",
-                  count: checkedItems,
-                  content: (
-                    <>
-                      <DataPanel
-                        title="Сборка и проверка"
-                        actions={
-                          <AppBadge
-                            tone={
-                              order.status === "READY_FOR_PICKUP" || order.status === "COMPLETED"
-                                ? "green"
-                                : "blue"
-                            }
-                          >
-                            {checkedItems}/{totalItems} проверено
-                          </AppBadge>
-                        }
-                      >
-                        <div className="order-fulfillment">
-                          <div className="order-fulfillment__summary">
-                            <div className="order-fulfillment__step is-active">
-                              <span>
-                                <PackageCheck size={18} />
-                              </span>
-                              <div>
-                                <b>Сборка</b>
-                                <strong>
-                                  {assembledItems}/{totalItems}
-                                </strong>
-                                <small>
-                                  {order.assemblyAssigneeName ?? "Ответственный не назначен"}
-                                </small>
-                              </div>
-                            </div>
-                            <div
-                              className={`order-fulfillment__step ${checkedItems > 0 ? "is-active" : ""}`}
-                            >
-                              <span>
-                                <ClipboardCheck size={18} />
-                              </span>
-                              <div>
-                                <b>Проверка</b>
-                                <strong>
-                                  {checkedItems}/{totalItems}
-                                </strong>
-                                <small>
-                                  {order.checkingAssigneeName ?? "Проверяющий не назначен"}
-                                </small>
-                              </div>
-                            </div>
-                            <div
-                              className={`order-fulfillment__step ${
-                                order.status === "READY_FOR_PICKUP" || order.status === "COMPLETED"
-                                  ? "is-complete"
-                                  : ""
-                              }`}
-                            >
-                              <span>
-                                <CheckCircle2 size={18} />
-                              </span>
-                              <div>
-                                <b>Выдача</b>
-                                <strong>
-                                  {order.status === "COMPLETED"
-                                    ? "Вручён"
-                                    : order.status === "READY_FOR_PICKUP"
-                                      ? "Готов"
-                                      : "Ожидает"}
-                                </strong>
-                                <small>
-                                  {order.status === "COMPLETED"
-                                    ? "Заказ вручён и закрыт"
-                                    : "Статус обновится после полной проверки"}
-                                </small>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="order-fulfillment__assignees">
-                            <AppSelect
-                              label="Собирает"
-                              options={assigneeOptions}
-                              value={
-                                order.assemblyAssigneeId
-                                  ? String(order.assemblyAssigneeId)
-                                  : undefined
-                              }
-                              onValueChange={(value) => updateAssignee("assemblyAssigneeId", value)}
-                              placeholder="Назначить сборщика"
-                              searchable
-                              disabled={!canEditFulfillment || assigneeUpdate.isPending}
-                            />
-                            <AppSelect
-                              label="Проверяет"
-                              options={assigneeOptions}
-                              value={
-                                order.checkingAssigneeId
-                                  ? String(order.checkingAssigneeId)
-                                  : undefined
-                              }
-                              onValueChange={(value) => updateAssignee("checkingAssigneeId", value)}
-                              placeholder="Назначить проверяющего"
-                              searchable
-                              disabled={!canEditFulfillment || assigneeUpdate.isPending}
-                            />
-                          </div>
-
-                          {!canEditFulfillment && (
-                            <p className="admin-panel-text muted order-fulfillment__hint">
-                              Сборка и проверка доступны после перевода заказа в работу.
-                            </p>
-                          )}
-
-                          <AppTable
-                            size="compact"
-                            className="order-fulfillment-table"
-                            headers={["Товар", "Кол-во", "Собрано", "Проверено"]}
-                            rowKey={(_, index) => order.items[index].id}
-                            rows={order.items.map((item) => [
-                              <div className="admin-price-review-form__product">
-                                <strong>{item.nameRu}</strong>
-                                {item.madeToOrder && (
-                                  <AppBadge className="order-item-made-to-order" tone="orange">
-                                    Под заказ
-                                  </AppBadge>
-                                )}
-                                <span>Артикул: {item.sku}</span>
-                              </div>,
-                              item.quantity,
-                              <AppCheckbox
-                                label="Собрано"
-                                checked={item.assembled}
-                                onCheckedChange={(assembled) =>
-                                  updateItemProgress(item, {
-                                    assembled,
-                                    checked: assembled ? item.checked : false,
-                                  })
-                                }
-                                disabled={
-                                  !canAssemble || item.checked || fulfillmentUpdate.isPending
-                                }
-                              />,
-                              <AppCheckbox
-                                label="Проверено"
-                                checked={item.checked}
-                                onCheckedChange={(checked) =>
-                                  updateItemProgress(item, {
-                                    checked,
-                                    assembled: checked ? true : item.assembled,
-                                  })
-                                }
-                                disabled={
-                                  !canCheck || !item.assembled || fulfillmentUpdate.isPending
-                                }
-                              />,
-                            ])}
-                          />
-                        </div>
                       </DataPanel>
                     </>
                   ),
@@ -2380,38 +2270,6 @@ export function AdminOrderDetailPage() {
                                         <p>{incomingPriceTooltip}</p>
                                       </details>
                                     )}
-                                    <div className="order-item-progress-mobile">
-                                      <AppCheckbox
-                                        label="Собрано"
-                                        checked={item.assembled}
-                                        disabled={
-                                          !canAssemble ||
-                                          item.checked ||
-                                          fulfillmentUpdate.isPending
-                                        }
-                                        onCheckedChange={(assembled) =>
-                                          updateItemProgress(item, {
-                                            assembled,
-                                            checked: assembled ? item.checked : false,
-                                          })
-                                        }
-                                      />
-                                      <AppCheckbox
-                                        label="Проверено"
-                                        checked={item.checked}
-                                        disabled={
-                                          !canCheck ||
-                                          !item.assembled ||
-                                          fulfillmentUpdate.isPending
-                                        }
-                                        onCheckedChange={(checked) =>
-                                          updateItemProgress(item, {
-                                            checked,
-                                            assembled: checked ? true : item.assembled,
-                                          })
-                                        }
-                                      />
-                                    </div>
                                     {item.productId && (canUpdateProducts || canReadWarehouse) && (
                                       <div className="order-item-explicit-actions">
                                         <AppActionMenu
@@ -2478,16 +2336,43 @@ export function AdminOrderDetailPage() {
                                     unitPrice
                                   ),
                                   canEditItems ? (
-                                    <OrderItemQuantityControl
-                                      itemId={item.id}
-                                      quantity={item.quantity}
-                                      disabled={
-                                        updateItemQuantity.isPending || deleteItem.isPending
-                                      }
-                                      onQuantityChange={(itemId, quantity) =>
-                                        updateItemQuantity.mutate({ itemId, quantity })
-                                      }
-                                    />
+                                    <div className="order-item-quantity-and-unit">
+                                      <OrderItemQuantityControl
+                                        itemId={item.id}
+                                        quantity={item.quantity}
+                                        disabled={
+                                          updateItemQuantity.isPending ||
+                                          deleteItem.isPending ||
+                                          updateItemMeasurementUnit.isPending
+                                        }
+                                        onQuantityChange={(itemId, quantity) =>
+                                          updateItemQuantity.mutate({ itemId, quantity })
+                                        }
+                                      />
+                                      <AppSelect
+                                        fieldClassName="order-item-measurement-unit"
+                                        aria-label={`Единица измерения товара ${item.nameRu}`}
+                                        value={item.measurementUnit ?? "PIECE"}
+                                        disabled={
+                                          !user?.permissions.includes("orders.update") ||
+                                          updateItemMeasurementUnit.isPending ||
+                                          updateItemQuantity.isPending ||
+                                          deleteItem.isPending
+                                        }
+                                        onChange={(event) =>
+                                          updateItemMeasurementUnit.mutate({
+                                            itemId: item.id,
+                                            measurementUnit: event.target.value as MeasurementUnit,
+                                          })
+                                        }
+                                      >
+                                        {measurementUnitOptions.map((option) => (
+                                          <option key={option.value} value={option.value}>
+                                            {option.label}
+                                          </option>
+                                        ))}
+                                      </AppSelect>
+                                    </div>
                                   ) : returnItem && returnItem.returnedQuantity > 0 ? (
                                     <div className="order-item-return-summary">
                                       <strong>
@@ -2499,7 +2384,7 @@ export function AdminOrderDetailPage() {
                                       </small>
                                     </div>
                                   ) : (
-                                    formatQuantity(item.quantity)
+                                    `${formatQuantity(item.quantity)} ${measurementUnitLabel(item.measurementUnit)}`
                                   ),
                                   returnItem && returnItem.returnedQuantity > 0 ? (
                                     <div className="order-item-return-summary">
@@ -2777,8 +2662,8 @@ export function AdminOrderDetailPage() {
           </AppModal>
 
           <AppModal
-            title="Печатать накладную?"
-            description="Заказ успешно завершён. При необходимости можно сразу открыть накладную для печати."
+            title="Распечатать документы?"
+            description="Заказ успешно завершён. Можно открыть накладную или счёт на оплату для печати."
             open={completionPrintPromptOpen}
             onOpenChange={setCompletionPrintPromptOpen}
           >
@@ -2790,16 +2675,25 @@ export function AdminOrderDetailPage() {
               >
                 Не сейчас
               </AppButton>
-              <AppButton
-                type="button"
+              <AppSplitButton
+                loading={invoiceOpening || paymentInvoiceOpening}
+                loadingText="Открываем PDF..."
+                menuLabel="Другие документы для печати"
+                actions={[
+                  {
+                    label: "Счёт на оплату PDF",
+                    icon: <Printer size={18} />,
+                    onSelect: handlePaymentInvoiceClick,
+                  },
+                ]}
                 onClick={() => {
                   setCompletionPrintPromptOpen(false);
                   setInvoicePrintOptionsOpen(true);
                 }}
               >
                 <Printer size={18} />
-                Выбрать вариант печати
-              </AppButton>
+                Накладная PDF
+              </AppSplitButton>
             </div>
           </AppModal>
 
@@ -3139,7 +3033,7 @@ export function AdminOrderDetailPage() {
                     "",
                     "Товар",
                     "Текущая цена",
-                    "Цена за шт.",
+                    "Цена за единицу",
                     "Изменение",
                     "Кол-во",
                     "Новая сумма",
@@ -3300,6 +3194,18 @@ export function AdminOrderDetailPage() {
             </div>
           </AppModal>
 
+          <OrderCompletionFlow
+            order={order}
+            open={paidReleaseOpen}
+            onOpenChange={setPaidReleaseOpen}
+            onCompleted={(updatedOrder) => {
+              queryClient.setQueryData(["orders", "admin", id], updatedOrder);
+              queryClient.invalidateQueries({ queryKey: ["orders", "admin"] });
+              invalidateIncomingPriceCheck();
+              queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
+            }}
+          />
+
           <AppModal
             title="Принять оплату и закрыть заказ"
             description={
@@ -3311,6 +3217,12 @@ export function AdminOrderDetailPage() {
             onOpenChange={setPaymentConfirmationOpen}
             contentClassName="order-payment-confirmation-modal"
           >
+            <OrderItemUnitFields
+              items={order.items}
+              values={itemUnits}
+              onChange={setItemUnits}
+              disabled={completePayment.isPending}
+            />
             <AppRadioGroup
               label="Способ оплаты"
               value={completedPaymentMethod}

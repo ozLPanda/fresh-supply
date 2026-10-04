@@ -1,5 +1,8 @@
 package kz.company.shop.orders.service;
 
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -28,24 +31,24 @@ import kz.company.shop.orders.dto.*;
 import kz.company.shop.orders.entity.*;
 import kz.company.shop.orders.repository.OrderRepository;
 import kz.company.shop.pricing.service.PricingService;
+import kz.company.shop.products.entity.MeasurementUnit;
 import kz.company.shop.products.entity.Product;
-import kz.company.shop.products.service.ProductService;
 import kz.company.shop.products.service.ProductSearchTextNormalizer;
+import kz.company.shop.products.service.ProductService;
 import kz.company.shop.users.entity.User;
 import kz.company.shop.users.service.UserService;
 import kz.company.shop.wallets.service.WalletService;
-import kz.company.shop.warehouse.service.WarehouseService;
 import kz.company.shop.warehouse.dto.WarehouseDto;
 import kz.company.shop.warehouse.entity.StockDocumentPriceType;
-import org.springframework.stereotype.Service;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.transaction.annotation.Transactional;
+import kz.company.shop.warehouse.service.WarehouseService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-import jakarta.persistence.criteria.Subquery;
+import org.springframework.scheduling.annotation.Scheduled;
+import kz.company.shop.regularbuyers.service.RegularBuyerService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class OrderService {
@@ -65,6 +68,34 @@ public class OrderService {
     private final PricingService pricingService;
     private final WarehouseService warehouseService;
 
+    private final RegularBuyerService regularBuyerService;
+
+    @Autowired
+    public OrderService(
+            OrderRepository repository,
+            UuidV7Generator uuidV7Generator,
+            CartService cartService,
+            ProductService productService,
+            WalletService walletService,
+            UserService userService,
+            AuditService auditService,
+            NotificationService notificationService,
+            PricingService pricingService,
+            WarehouseService warehouseService,
+            RegularBuyerService regularBuyerService) {
+        this.repository = repository;
+        this.uuidV7Generator = uuidV7Generator;
+        this.cartService = cartService;
+        this.productService = productService;
+        this.walletService = walletService;
+        this.userService = userService;
+        this.auditService = auditService;
+        this.notificationService = notificationService;
+        this.pricingService = pricingService;
+        this.warehouseService = warehouseService;
+        this.regularBuyerService = regularBuyerService;
+    }
+
     public OrderService(
             OrderRepository repository,
             UuidV7Generator uuidV7Generator,
@@ -76,16 +107,7 @@ public class OrderService {
             NotificationService notificationService,
             PricingService pricingService,
             WarehouseService warehouseService) {
-        this.repository = repository;
-        this.uuidV7Generator = uuidV7Generator;
-        this.cartService = cartService;
-        this.productService = productService;
-        this.walletService = walletService;
-        this.userService = userService;
-        this.auditService = auditService;
-        this.notificationService = notificationService;
-        this.pricingService = pricingService;
-        this.warehouseService = warehouseService;
+        this(repository, uuidV7Generator, cartService, productService, walletService, userService, auditService, notificationService, pricingService, warehouseService, null);
     }
 
     @Transactional
@@ -137,6 +159,10 @@ public class OrderService {
             OrderItem item = new OrderItem();
             item.order = order;
             item.productId = product.id;
+            item.measurementUnit =
+                    product.measurementUnit != null
+                            ? product.measurementUnit
+                            : MeasurementUnit.PIECE;
             item.madeToOrder = product.madeToOrder;
             item.sku = product.sku;
             item.nameRu = product.nameRu;
@@ -221,9 +247,18 @@ public class OrderService {
             int size) {
         int safePage = Math.max(page, 1);
         int safeSize = Math.clamp(size, 1, 100);
-        Page<Order> result = repository.findAll(
-                adminOrdersFilter(search, createdFrom, createdTo, statuses, priceTiers, stockShortage, sort, descending),
-                PageRequest.of(safePage - 1, safeSize));
+        Page<Order> result =
+                repository.findAll(
+                        adminOrdersFilter(
+                                search,
+                                createdFrom,
+                                createdTo,
+                                statuses,
+                                priceTiers,
+                                stockShortage,
+                                sort,
+                                descending),
+                        PageRequest.of(safePage - 1, safeSize));
         return new PageResult<>(
                 result.getContent().stream().map(this::toDto).toList(),
                 safePage,
@@ -234,12 +269,26 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public OrderListSummaryDto adminSummary(LocalDate createdFrom, LocalDate createdTo) {
-        Specification<Order> dateFilter = adminOrdersFilter(
-                null, createdFrom, createdTo, List.of(), List.of(), null, null, true);
+        Specification<Order> dateFilter =
+                adminOrdersFilter(
+                        null, createdFrom, createdTo, List.of(), List.of(), null, null, true);
         long total = repository.count(dateFilter);
-        long newOrders = repository.count(dateFilter.and((root, query, cb) -> cb.equal(root.get("status"), OrderStatus.NEW)));
-        long processing = repository.count(dateFilter.and((root, query, cb) -> cb.equal(root.get("status"), OrderStatus.PROCESSING)));
-        long ready = repository.count(dateFilter.and((root, query, cb) -> cb.equal(root.get("status"), OrderStatus.READY_FOR_PICKUP)));
+        long newOrders =
+                repository.count(
+                        dateFilter.and(
+                                (root, query, cb) ->
+                                        cb.equal(root.get("status"), OrderStatus.NEW)));
+        long processing =
+                repository.count(
+                        dateFilter.and(
+                                (root, query, cb) ->
+                                        cb.equal(root.get("status"), OrderStatus.PROCESSING)));
+        long ready =
+                repository.count(
+                        dateFilter.and(
+                                (root, query, cb) ->
+                                        cb.equal(
+                                                root.get("status"), OrderStatus.READY_FOR_PICKUP)));
         return new OrderListSummaryDto(total, newOrders, processing, ready);
     }
 
@@ -255,48 +304,88 @@ public class OrderService {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             List<Predicate> numberSuffixMatches = new ArrayList<>();
-            var displayCode = cb.concat(
-                    cb.function("to_char", String.class, root.get("orderNumberDate"), cb.literal("YYYYMMDD")),
-                    root.get("dailyNumber").as(String.class));
+            var displayCode =
+                    cb.concat(
+                            cb.function(
+                                    "to_char",
+                                    String.class,
+                                    root.get("orderNumberDate"),
+                                    cb.literal("YYYYMMDD")),
+                            root.get("dailyNumber").as(String.class));
             predicates.add(cb.isNull(root.get("deletedAt")));
             if (createdFrom != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), createdFrom.atStartOfDay(ORDER_TIME_ZONE).toInstant()));
+                predicates.add(
+                        cb.greaterThanOrEqualTo(
+                                root.get("createdAt"),
+                                createdFrom.atStartOfDay(ORDER_TIME_ZONE).toInstant()));
             }
             if (createdTo != null) {
-                predicates.add(cb.lessThan(root.get("createdAt"), createdTo.plusDays(1).atStartOfDay(ORDER_TIME_ZONE).toInstant()));
+                predicates.add(
+                        cb.lessThan(
+                                root.get("createdAt"),
+                                createdTo.plusDays(1).atStartOfDay(ORDER_TIME_ZONE).toInstant()));
             }
-            if (statuses != null && !statuses.isEmpty()) predicates.add(root.get("status").in(statuses));
-            if (priceTiers != null && !priceTiers.isEmpty()) predicates.add(root.get("priceTier").in(priceTiers));
+            if (statuses != null && !statuses.isEmpty())
+                predicates.add(root.get("status").in(statuses));
+            if (priceTiers != null && !priceTiers.isEmpty())
+                predicates.add(root.get("priceTier").in(priceTiers));
             if (stockShortage != null) {
                 Subquery<Long> shortage = query.subquery(Long.class);
                 Root<OrderItem> item = shortage.from(OrderItem.class);
-                shortage.select(item.get("id")).where(
-                        cb.equal(item.get("order"), root),
-                        cb.greaterThan(item.get("stockShortageQuantity"), BigDecimal.ZERO));
+                shortage.select(item.get("id"))
+                        .where(
+                                cb.equal(item.get("order"), root),
+                                cb.greaterThan(item.get("stockShortageQuantity"), BigDecimal.ZERO));
                 predicates.add(stockShortage ? cb.exists(shortage) : cb.not(cb.exists(shortage)));
             }
             if (search != null && !search.isBlank()) {
-                for (String token : search.trim().toLowerCase(java.util.Locale.ROOT).split("\\s+")) {
+                for (String token :
+                        search.trim().toLowerCase(java.util.Locale.ROOT).split("\\s+")) {
                     List<Predicate> alternatives = new ArrayList<>();
                     for (String variant : ProductSearchTextNormalizer.rawSearchVariants(token)) {
-                        String pattern = "%" + variant.replace('ё', 'е').replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-                        alternatives.add(cb.like(normalizedOrderSearchField(cb, root.get("comment")), pattern, '\\'));
-                        alternatives.add(cb.like(normalizedOrderSearchField(cb, root.get("printComment")), pattern, '\\'));
+                        String pattern =
+                                "%"
+                                        + variant.replace('ё', 'е')
+                                                .replace("\\", "\\\\")
+                                                .replace("%", "\\%")
+                                                .replace("_", "\\_")
+                                        + "%";
+                        alternatives.add(
+                                cb.like(
+                                        normalizedOrderSearchField(cb, root.get("comment")),
+                                        pattern,
+                                        '\\'));
+                        alternatives.add(
+                                cb.like(
+                                        normalizedOrderSearchField(cb, root.get("printComment")),
+                                        pattern,
+                                        '\\'));
                         Subquery<Long> customer = query.subquery(Long.class);
                         Root<User> user = customer.from(User.class);
-                        customer.select(user.get("id")).where(
-                                cb.equal(user.get("id"), root.get("userId")),
-                                cb.or(
-                                        cb.like(normalizedOrderSearchField(cb, user.get("name")), pattern, '\\'),
-                                        cb.like(normalizedOrderSearchField(cb, user.get("email")), pattern, '\\')));
+                        customer.select(user.get("id"))
+                                .where(
+                                        cb.equal(user.get("id"), root.get("userId")),
+                                        cb.or(
+                                                cb.like(
+                                                        normalizedOrderSearchField(
+                                                                cb, user.get("name")),
+                                                        pattern,
+                                                        '\\'),
+                                                cb.like(
+                                                        normalizedOrderSearchField(
+                                                                cb, user.get("email")),
+                                                        pattern,
+                                                        '\\')));
                         alternatives.add(cb.exists(customer));
                     }
                     if (token.matches("\\d+")) {
-                        // Match the same concatenated number shown in the UI, including its date/number boundary.
+                        // Match the same concatenated number shown in the UI, including its
+                        // date/number boundary.
                         alternatives.add(cb.like(displayCode, "%" + token + "%"));
                         numberSuffixMatches.add(cb.like(displayCode, "%" + token));
                         if (token.length() <= 8) {
-                            alternatives.add(cb.equal(root.get("dailyNumber"), Long.parseLong(token)));
+                            alternatives.add(
+                                    cb.equal(root.get("dailyNumber"), Long.parseLong(token)));
                         }
                     }
                     predicates.add(cb.or(alternatives.toArray(Predicate[]::new)));
@@ -307,12 +396,18 @@ public class OrderService {
                 if ("customer".equals(sort)) {
                     Subquery<String> customerName = query.subquery(String.class);
                     Root<User> user = customerName.from(User.class);
-                    customerName.select(user.get("name")).where(cb.equal(user.get("id"), root.get("userId")));
+                    customerName
+                            .select(user.get("name"))
+                            .where(cb.equal(user.get("id"), root.get("userId")));
                     sortValue = customerName;
                 } else if ("fulfillment".equals(sort)) {
                     Subquery<Long> assembledCount = query.subquery(Long.class);
                     Root<OrderItem> item = assembledCount.from(OrderItem.class);
-                    assembledCount.select(cb.count(item)).where(cb.equal(item.get("order"), root), cb.isTrue(item.get("assembled")));
+                    assembledCount
+                            .select(cb.count(item))
+                            .where(
+                                    cb.equal(item.get("order"), root),
+                                    cb.isTrue(item.get("assembled")));
                     sortValue = assembledCount;
                 } else {
                     sortValue = root.get(orderSortField(sort));
@@ -320,13 +415,22 @@ public class OrderService {
                 var direction = descending ? cb.desc(sortValue) : cb.asc(sortValue);
                 List<jakarta.persistence.criteria.Order> ordering = new ArrayList<>();
                 if (!numberSuffixMatches.isEmpty()) {
-                    ordering.add(cb.asc(cb.<Integer>selectCase()
-                            .when(cb.or(numberSuffixMatches.toArray(Predicate[]::new)), 0)
-                            .otherwise(1)));
+                    ordering.add(
+                            cb.asc(
+                                    cb.<Integer>selectCase()
+                                            .when(
+                                                    cb.or(
+                                                            numberSuffixMatches.toArray(
+                                                                    Predicate[]::new)),
+                                                    0)
+                                            .otherwise(1)));
                 }
                 ordering.add(direction);
                 if ("id".equals(sort)) {
-                    ordering.add(descending ? cb.desc(root.get("dailyNumber")) : cb.asc(root.get("dailyNumber")));
+                    ordering.add(
+                            descending
+                                    ? cb.desc(root.get("dailyNumber"))
+                                    : cb.asc(root.get("dailyNumber")));
                 }
                 ordering.add(cb.desc(root.get("id")));
                 query.orderBy(ordering);
@@ -338,7 +442,12 @@ public class OrderService {
     private jakarta.persistence.criteria.Expression<String> normalizedOrderSearchField(
             jakarta.persistence.criteria.CriteriaBuilder cb,
             jakarta.persistence.criteria.Expression<String> field) {
-        return cb.function("replace", String.class, cb.lower(cb.coalesce(field, "")), cb.literal("ё"), cb.literal("е"));
+        return cb.function(
+                "replace",
+                String.class,
+                cb.lower(cb.coalesce(field, "")),
+                cb.literal("ё"),
+                cb.literal("е"));
     }
 
     private String orderSortField(String sort) {
@@ -369,7 +478,18 @@ public class OrderService {
 
     @Transactional
     public OrderDto updateStatus(UUID id, OrderStatus status, Long actorUserId) {
-        Order order = get(id);
+        return updateStatus(id, status, actorUserId, null);
+    }
+
+    @Transactional
+    public OrderDto updateStatus(
+            UUID id, OrderStatus status, Long actorUserId, List<OrderItemUnitRequest> itemUnits) {
+        Order order = lockedGet(id);
+        if (status != OrderStatus.COMPLETED && itemUnits != null && !itemUnits.isEmpty()) {
+            throw new AppExceptions.BadRequest(
+                    "Единицы измерения можно изменить только при отпуске заказа");
+        }
+        validateItemUnits(order, itemUnits);
         OrderStatus previousStatus = order.status;
         boolean reopeningCompletedOrder =
                 previousStatus == OrderStatus.COMPLETED && status != OrderStatus.COMPLETED;
@@ -416,6 +536,9 @@ public class OrderService {
         }
         order.status = status;
         synchronizeWarehouseStatus(order, previousStatus, status, actorUserId);
+        if (status == OrderStatus.COMPLETED && previousStatus != OrderStatus.COMPLETED) {
+            applyItemUnits(order, itemUnits);
+        }
         Order saved = repository.save(order);
         if (previousStatus != status) {
             auditService.record(
@@ -428,15 +551,17 @@ public class OrderService {
                             + previousStatus
                             + " → "
                             + status,
-                    List.of(new OrderActivityChangeDto("Статус", previousStatus.name(), status.name())));
+                    List.of(
+                            new OrderActivityChangeDto(
+                                    "Статус", previousStatus.name(), status.name())));
             notificationService.notifyCustomerAboutStatus(saved);
         }
         return toDto(saved);
     }
 
     /**
-     * Holds the currently available warehouse stock without changing the order's status.
-     * Repeating the action replaces the active hold and updates its expiry.
+     * Holds the currently available warehouse stock without changing the order's status. Repeating
+     * the action replaces the active hold and updates its expiry.
      */
     @Transactional
     public OrderDto reserve(UUID id, Instant requestedExpiresAt, Long actorUserId) {
@@ -493,9 +618,9 @@ public class OrderService {
     }
 
     /**
-     * A completed order moved back into the workflow is no longer a recorded sale. Its old
-     * payment allocation cannot be reused: the composition or total may change before it is
-     * completed again. Keep the order pending until the employee accepts a new payment.
+     * A completed order moved back into the workflow is no longer a recorded sale. Its old payment
+     * allocation cannot be reused: the composition or total may change before it is completed
+     * again. Keep the order pending until the employee accepts a new payment.
      */
     private void resetPaymentAfterCompletionRollback(Order order) {
         order.paymentStatus = PaymentStatus.PENDING;
@@ -547,7 +672,9 @@ public class OrderService {
         if (previousTotal.compareTo(total) != 0) {
             changes.add(
                     new OrderActivityChangeDto(
-                            "Итого заказа", formatActivityMoney(previousTotal), formatActivityMoney(total)));
+                            "Итого заказа",
+                            formatActivityMoney(previousTotal),
+                            formatActivityMoney(total)));
         }
         order.priceSourceDocumentId = null;
         if (request.priceTier() != null) {
@@ -586,7 +713,8 @@ public class OrderService {
 
     /** Applies frozen prices from one active price-setting document to the entire order. */
     @Transactional
-    public OrderDto updatePricesFromPriceSettingDocument(UUID id, UUID documentId, Long actorUserId) {
+    public OrderDto updatePricesFromPriceSettingDocument(
+            UUID id, UUID documentId, Long actorUserId) {
         Order order = get(id);
         ensurePricesEditable(order);
         BigDecimal previousTotal = order.total;
@@ -599,13 +727,15 @@ public class OrderService {
             throw new AppExceptions.BadRequest(
                     "Документом установки цен можно актуализировать только каталоговые позиции");
         }
-        Map<Long, BigDecimal> prices = warehouseService.pricesFromPriceSettingDocument(documentId, productIds);
+        Map<Long, BigDecimal> prices =
+                warehouseService.pricesFromPriceSettingDocument(documentId, productIds);
         WarehouseDto.PriceSettingDocumentReference source =
                 warehouseService.priceSettingDocumentReference(documentId);
         if (source == null || source.deletedAt() != null) {
             throw new AppExceptions.BadRequest("Документ установки цен удалён");
         }
-        List<OrderActivityChangeDto> changes = changedPrices(order, item -> prices.get(item.productId));
+        List<OrderActivityChangeDto> changes =
+                changedPrices(order, item -> prices.get(item.productId));
 
         BigDecimal total = BigDecimal.ZERO;
         for (OrderItem item : order.items) {
@@ -618,7 +748,9 @@ public class OrderService {
         if (previousTotal.compareTo(total) != 0) {
             changes.add(
                     new OrderActivityChangeDto(
-                            "Итого заказа", formatActivityMoney(previousTotal), formatActivityMoney(total)));
+                            "Итого заказа",
+                            formatActivityMoney(previousTotal),
+                            formatActivityMoney(total)));
         }
         order.priceSourceDocumentId = source.id();
         PriceTier sourceTier = orderPriceTier(source.priceType());
@@ -840,18 +972,72 @@ public class OrderService {
             String comment,
             boolean releaseWithStockShortage,
             String stockShortageComment) {
-        return completePayment(id, actorUserId, paymentMethod, cashAmount, cashlessAmount,
-                cashlessPaymentType, transferAmount, cardAmount, qrAmount, comment, null,
-                releaseWithStockShortage, stockShortageComment);
+        return completePayment(
+                id,
+                actorUserId,
+                paymentMethod,
+                cashAmount,
+                cashlessAmount,
+                cashlessPaymentType,
+                transferAmount,
+                cardAmount,
+                qrAmount,
+                comment,
+                null,
+                releaseWithStockShortage,
+                stockShortageComment);
     }
 
     @Transactional
     public OrderDto completePayment(
-            UUID id, Long actorUserId, PaymentMethod paymentMethod, BigDecimal cashAmount,
-            BigDecimal cashlessAmount, CashlessPaymentType cashlessPaymentType,
-            BigDecimal transferAmount, BigDecimal cardAmount, BigDecimal qrAmount, String comment,
-            String printComment, boolean releaseWithStockShortage, String stockShortageComment) {
+            UUID id,
+            Long actorUserId,
+            PaymentMethod paymentMethod,
+            BigDecimal cashAmount,
+            BigDecimal cashlessAmount,
+            CashlessPaymentType cashlessPaymentType,
+            BigDecimal transferAmount,
+            BigDecimal cardAmount,
+            BigDecimal qrAmount,
+            String comment,
+            String printComment,
+            boolean releaseWithStockShortage,
+            String stockShortageComment) {
+        return completePayment(
+                id,
+                actorUserId,
+                paymentMethod,
+                cashAmount,
+                cashlessAmount,
+                cashlessPaymentType,
+                transferAmount,
+                cardAmount,
+                qrAmount,
+                comment,
+                printComment,
+                releaseWithStockShortage,
+                stockShortageComment,
+                null);
+    }
+
+    @Transactional
+    public OrderDto completePayment(
+            UUID id,
+            Long actorUserId,
+            PaymentMethod paymentMethod,
+            BigDecimal cashAmount,
+            BigDecimal cashlessAmount,
+            CashlessPaymentType cashlessPaymentType,
+            BigDecimal transferAmount,
+            BigDecimal cardAmount,
+            BigDecimal qrAmount,
+            String comment,
+            String printComment,
+            boolean releaseWithStockShortage,
+            String stockShortageComment,
+            List<OrderItemUnitRequest> itemUnits) {
         Order order = lockedGet(id);
+        validateItemUnits(order, itemUnits);
         if (order.status == OrderStatus.CANCELLED) {
             throw new AppExceptions.BadRequest("Нельзя подтвердить оплату отменённого заказа");
         }
@@ -903,7 +1089,8 @@ public class OrderService {
                     warehouseService.postOrderSaleWithShortage(
                             order, actorUserId, stockShortageComment, true);
                 } else {
-                    warehouseService.postOrderSaleWithShortage(order, actorUserId, stockShortageComment);
+                    warehouseService.postOrderSaleWithShortage(
+                            order, actorUserId, stockShortageComment);
                 }
             } else {
                 if (warehouseService.hasRecordedOrderSale(order)) {
@@ -912,6 +1099,10 @@ public class OrderService {
                     warehouseService.postOrderSale(order, actorUserId);
                 }
             }
+        }
+        applyItemUnits(order, itemUnits);
+        if (order.invoiceIssuedAt == null) {
+            order.invoiceIssuedAt = Instant.now();
         }
         order.reservationExpiresAt = null;
         Order saved = repository.save(order);
@@ -932,6 +1123,20 @@ public class OrderService {
         if (saved.userId != null && previousStatus != OrderStatus.COMPLETED) {
             notificationService.notifyCustomerAboutStatus(saved);
         }
+        return toDto(saved);
+    }
+
+    @Transactional
+    public OrderDto updateRegularBuyer(UUID id, UUID regularBuyerId, Long actorUserId) {
+        Order order = lockedGet(id);
+        if (order.deletedAt != null) throw new AppExceptions.NotFound("Заказ не найден");
+        if (Objects.equals(order.regularBuyerId, regularBuyerId)) return toDto(order);
+        String previousName = order.regularBuyerName;
+        regularBuyerService.assign(order, regularBuyerId);
+        Order saved = repository.save(order);
+        auditService.record("REGULAR_BUYER_UPDATE", "ORDER", saved.id,
+                "Изменил постоянного покупателя заказа #" + displayCode(saved),
+                List.of(new OrderActivityChangeDto("Постоянный покупатель", previousName, saved.regularBuyerName)));
         return toDto(saved);
     }
 
@@ -1131,7 +1336,37 @@ public class OrderService {
         return description.toString();
     }
 
-    private String invoicePrintComment(Long actorUserId, String paymentDescription, String extraComment) {
+    private void applyItemUnits(Order order, List<OrderItemUnitRequest> itemUnits) {
+        if (itemUnits == null || itemUnits.isEmpty()) return;
+        Map<Long, OrderItem> itemsById =
+                order.items.stream().collect(Collectors.toMap(item -> item.id, item -> item));
+        itemUnits.forEach(
+                unit -> itemsById.get(unit.orderItemId()).measurementUnit = unit.measurementUnit());
+    }
+
+    private void validateItemUnits(Order order, List<OrderItemUnitRequest> itemUnits) {
+        if (itemUnits == null) return;
+        Set<Long> seen = new HashSet<>();
+        Set<Long> itemIds =
+                order.items.stream()
+                        .map(item -> item.id)
+                        .collect(java.util.stream.Collectors.toSet());
+        for (OrderItemUnitRequest unit : itemUnits) {
+            if (unit == null || unit.orderItemId() == null || unit.measurementUnit() == null) {
+                throw new AppExceptions.BadRequest("Укажите позицию заказа и единицу измерения");
+            }
+            if (!seen.add(unit.orderItemId())) {
+                throw new AppExceptions.BadRequest(
+                        "Единица измерения позиции указана несколько раз");
+            }
+            if (!itemIds.contains(unit.orderItemId())) {
+                throw new AppExceptions.BadRequest("Позиция не принадлежит заказу");
+            }
+        }
+    }
+
+    private String invoicePrintComment(
+            Long actorUserId, String paymentDescription, String extraComment) {
         List<String> parts = new java.util.ArrayList<>();
         String template = normalized(userService.byId(actorUserId).orderInvoiceTemplate);
         if (template != null) parts.add(template);
@@ -1254,6 +1489,10 @@ public class OrderService {
             OrderItem item = new OrderItem();
             item.order = order;
             item.productId = product.id;
+            item.measurementUnit =
+                    product.measurementUnit != null
+                            ? product.measurementUnit
+                            : MeasurementUnit.PIECE;
             item.madeToOrder = product.madeToOrder;
             item.sku = product.sku;
             item.nameRu = product.nameRu;
@@ -1279,6 +1518,38 @@ public class OrderService {
                 "ORDER",
                 saved.id,
                 "Добавил товар «" + product.nameRu + "» в заказ #" + displayCode(saved));
+        return toDto(saved);
+    }
+
+    @Transactional
+    public OrderDto updateItemMeasurementUnit(
+            UUID id, Long itemId, OrderItemMeasurementUnitUpdateRequest request, Long actorUserId) {
+        Order order = lockedGet(id);
+        ensureItemsEditable(order);
+        if (request == null || request.measurementUnit() == null) {
+            throw new AppExceptions.BadRequest("Укажите единицу измерения");
+        }
+        OrderItem item = getOrderItem(order, itemId);
+        MeasurementUnit previous =
+                item.measurementUnit != null ? item.measurementUnit : MeasurementUnit.PIECE;
+        if (previous == request.measurementUnit()) {
+            return toDto(order);
+        }
+        item.measurementUnit = request.measurementUnit();
+        Order saved = repository.save(order);
+        auditService.record(
+                "ORDER_ITEM_MEASUREMENT_UNIT_UPDATE",
+                "ORDER",
+                saved.id,
+                "Изменил единицу измерения позиции «"
+                        + item.nameRu
+                        + "» в заказе #"
+                        + displayCode(saved),
+                List.of(
+                        new OrderActivityChangeDto(
+                                "Единица измерения: " + item.nameRu,
+                                previous == MeasurementUnit.KG ? "кг" : "шт",
+                                item.measurementUnit == MeasurementUnit.KG ? "кг" : "шт")));
         return toDto(saved);
     }
 
@@ -1379,6 +1650,8 @@ public class OrderService {
         Order copy = new Order();
         initializeIdentity(copy);
         copy.userId = source.userId;
+        copy.regularBuyerId = source.regularBuyerId;
+        copy.regularBuyerName = source.regularBuyerName;
         copy.createdByUserId = actorUserId;
         copy.status = OrderStatus.PROCESSING;
         copy.paymentStatus = PaymentStatus.PENDING;
@@ -1399,6 +1672,10 @@ public class OrderService {
             OrderItem item = new OrderItem();
             item.order = copy;
             item.productId = sourceItem.productId;
+            item.measurementUnit =
+                    sourceItem.measurementUnit != null
+                            ? sourceItem.measurementUnit
+                            : MeasurementUnit.PIECE;
             item.madeToOrder = sourceItem.madeToOrder;
             item.sku = sourceItem.sku;
             item.nameRu = sourceItem.nameRu;
@@ -1436,7 +1713,7 @@ public class OrderService {
                 order.items.stream()
                         .filter(candidate -> candidate.id.equals(itemId))
                         .findFirst()
-                .orElseThrow(() -> new AppExceptions.NotFound("Позиция заказа не найдена"));
+                        .orElseThrow(() -> new AppExceptions.NotFound("Позиция заказа не найдена"));
         OrderStatus previousStatus = order.status;
         boolean previousAssembled = item.assembled;
         boolean previousChecked = item.checked;
@@ -1534,6 +1811,9 @@ public class OrderService {
                 warehouseService.postOrderSale(order, actorUserId, true);
             } else {
                 warehouseService.postOrderSale(order, actorUserId);
+            }
+            if (order.invoiceIssuedAt == null) {
+                order.invoiceIssuedAt = Instant.now();
             }
             order.reservationExpiresAt = null;
             return;
@@ -1824,11 +2104,17 @@ public class OrderService {
                                                 item.stockShortageReleasedByUserId,
                                                 item.stockShortageReleasedByUserId == null
                                                         ? null
-                                                        : userService
-                                                                .byId(item.stockShortageReleasedByUserId)
+                                                        : userService.byId(
+                                                                        item.stockShortageReleasedByUserId)
                                                                 .name,
                                                 item.stockShortageReleasedAt,
-                                                item.stockShortageComment))
-                        .toList());
+                                                item.stockShortageComment,
+                                                item.measurementUnit != null
+                                                        ? item.measurementUnit
+                                                        : MeasurementUnit.PIECE))
+                        .toList(),
+                order.invoiceIssuedAt,
+                order.regularBuyerId,
+                order.regularBuyerName);
     }
 }

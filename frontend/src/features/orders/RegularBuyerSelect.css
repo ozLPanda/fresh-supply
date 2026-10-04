@@ -1,0 +1,5 @@
+.regular-buyer-select {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}

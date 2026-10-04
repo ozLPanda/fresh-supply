@@ -16,7 +16,8 @@ export function PromoCategoryCard({
   const imageSrc = categoryImageUrl(category);
   const title =
     category.nameRu?.trim() || category.nameKk?.trim() || category.slug?.trim() || "Категория";
-  const description = category.descriptionRu?.trim() || "Подборка инженерных решений по категории.";
+  const description =
+    category.descriptionRu?.trim() || "Продукты этой категории в каталоге GastroFlow.";
   const href = category.slug ? `/catalog/${category.slug}` : "/catalog";
 
   return (

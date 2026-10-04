@@ -155,6 +155,7 @@ public class OrderActivityService {
             case "PRICE_CONFIRM" -> "Подтверждение цен";
             case "PAYMENT_COMPLETE" -> "Подтверждение оплаты";
             case "PAYMENT_METHOD_UPDATE" -> "Изменение способа оплаты";
+            case "REGULAR_BUYER_UPDATE" -> "Изменение постоянного покупателя";
             case "COMMENT_UPDATE" -> "Изменение комментария";
             case "PRINT_COMMENT_UPDATE" -> "Изменение комментария для накладной";
             case "FULFILLMENT_ASSIGNEES" -> "Назначение ответственных";
@@ -162,6 +163,7 @@ public class OrderActivityService {
             case "MANUAL_ITEM_ADD" -> "Добавление ручной позиции";
             case "CATALOG_ITEM_ADD" -> "Добавление товара";
             case "ORDER_ITEM_QUANTITY_UPDATE" -> "Изменение количества";
+            case "ORDER_ITEM_MEASUREMENT_UNIT_UPDATE" -> "Изменение единицы измерения";
             case "ORDER_ITEM_ORDER_UPDATE" -> "Изменение порядка позиций";
             case "ORDER_ITEM_DELETE" -> "Удаление позиции";
             case "ORDER_COPY" -> "Создание копии заказа";

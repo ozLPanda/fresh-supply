@@ -23,6 +23,21 @@ import org.junit.jupiter.api.Test;
 
 class OrderInvoicePdfServiceTest {
     @Test
+    void recipientComesOnlyFromRegularBuyerSnapshot() throws Exception {
+        OrderDto order = recordWith(orderWithPrintComment(null, List.of(invoiceItem())),
+                "customerName", "Клиент аккаунта");
+        try (PDDocument document = Loader.loadPDF(new OrderInvoicePdfService().generate(order))) {
+            assertThat(new PDFTextStripper().getText(document)).doesNotContain("Клиент аккаунта");
+        }
+        order = recordWith(order, "regularBuyerName", "ИП Получатель");
+        try (PDDocument document = Loader.loadPDF(new OrderInvoicePdfService().generate(order))) {
+            assertThat(new PDFTextStripper().getText(document)).contains("ИП Получатель")
+                    .doesNotContain("Клиент аккаунта");
+        }
+    }
+
+
+    @Test
     void usesCurrentDiscountedLineTotalsWhenReturnSummaryContainsOldConfirmedPrices()
             throws Exception {
         List<OrderItemDto> items = new java.util.ArrayList<>();
@@ -40,20 +55,44 @@ class OrderInvoicePdfServiceTest {
             BigDecimal currentPrice = new BigDecimal(row[2]);
             BigDecimal confirmedPrice = new BigDecimal(row[3]);
             BigDecimal confirmedTotal = confirmedPrice.multiply(quantity);
-            items.add(new OrderItemDto(
-                    id, id, false, row[0], "Товар " + id, currentPrice, confirmedPrice,
-                    false, PriceTier.RETAIL, quantity, false, false,
-                    currentPrice.multiply(quantity), confirmedTotal, null, null, null, null, null));
-            returnItems.add(new OrderReturnSummaryDto.Item(
-                    id, quantity, BigDecimal.ZERO, quantity, confirmedTotal,
-                    BigDecimal.ZERO, confirmedTotal));
+            items.add(
+                    new OrderItemDto(
+                            id,
+                            id,
+                            false,
+                            row[0],
+                            "Товар " + id,
+                            currentPrice,
+                            confirmedPrice,
+                            false,
+                            PriceTier.RETAIL,
+                            quantity,
+                            false,
+                            false,
+                            currentPrice.multiply(quantity),
+                            confirmedTotal,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null));
+            returnItems.add(
+                    new OrderReturnSummaryDto.Item(
+                            id,
+                            quantity,
+                            BigDecimal.ZERO,
+                            quantity,
+                            confirmedTotal,
+                            BigDecimal.ZERO,
+                            confirmedTotal));
         }
         OrderDto order = orderWithPrintComment(null, items);
-        OrderReturnSummaryDto summary = new OrderReturnSummaryDto(
-                order.total(), BigDecimal.ZERO, order.total(), returnItems, List.of());
+        OrderReturnSummaryDto summary =
+                new OrderReturnSummaryDto(
+                        order.total(), BigDecimal.ZERO, order.total(), returnItems, List.of());
 
-        try (PDDocument document = Loader.loadPDF(
-                new OrderInvoicePdfService().generate(order, summary, true))) {
+        try (PDDocument document =
+                Loader.loadPDF(new OrderInvoicePdfService().generate(order, summary, true))) {
             String text = new PDFTextStripper().getText(document).replace('\u00a0', ' ');
 
             assertThat(text).contains("44 676,00", "1 900,00", "1 853,00", "344,00", "48 773,00");
@@ -108,19 +147,21 @@ class OrderInvoicePdfServiceTest {
     void canGenerateOrderInvoiceWithoutPrintComment() throws Exception {
         OrderInvoicePdfService service = new OrderInvoicePdfService();
         String printComment = "Оплатить после доставки\nПозвонить получателю за час";
-        byte[] pdf = service.generate(orderWithPrintComment(printComment, List.of(invoiceItem())), false);
+        byte[] pdf =
+                service.generate(
+                        orderWithPrintComment(printComment, List.of(invoiceItem())), false);
 
         try (PDDocument document = Loader.loadPDF(pdf)) {
             String text = new PDFTextStripper().getText(document).replace('\u00a0', ' ');
 
             assertThat(text).contains("Насос циркуляционный");
-            assertThat(text).doesNotContain("Оплатить после доставки", "Позвонить получателю за час");
+            assertThat(text)
+                    .doesNotContain("Оплатить после доставки", "Позвонить получателю за час");
         }
     }
 
     @Test
-    void movesAWholePrintCommentToTheNextPageWhenItDoesNotFitBelowTheInvoice()
-            throws Exception {
+    void movesAWholePrintCommentToTheNextPageWhenItDoesNotFitBelowTheInvoice() throws Exception {
         OrderInvoicePdfService service = new OrderInvoicePdfService();
         String printComment =
                 java.util.stream.IntStream.rangeClosed(1, 42)
@@ -189,7 +230,9 @@ class OrderInvoicePdfServiceTest {
                                         new BigDecimal("200.00"))),
                         List.of());
 
-        try (PDDocument document = Loader.loadPDF(service.generate(order, summary, true))) {
+        byte[] returnedPdf = service.generate(order, summary, true);
+        savePreview("invoice-returns-preview.pdf", returnedPdf);
+        try (PDDocument document = Loader.loadPDF(returnedPdf)) {
             String text = new PDFTextStripper().getText(document).replace('\u00a0', ' ');
 
             assertThat(text)
@@ -203,6 +246,191 @@ class OrderInvoicePdfServiceTest {
                             "12 450,00",
                             "200,00");
         }
+    }
+
+    @Test
+    void printsZ2SupplierRecipientReleaseDateUnitsAndZeroVat() throws Exception {
+        OrderItemDto kg =
+                recordWith(
+                        invoiceItem(),
+                        "measurementUnit",
+                        kz.company.shop.products.entity.MeasurementUnit.KG);
+        kg = recordWith(kg, "quantity", new BigDecimal("49.160"));
+        OrderDto order =
+                recordWith(
+                        orderWithPrintComment(null, List.of(kg, invoiceItem())),
+                        "regularBuyerName",
+                        "ИП Тестовый получатель");
+        order = recordWith(order, "invoiceIssuedAt", Instant.parse("2026-10-03T23:10:00Z"));
+        byte[] pdf = new OrderInvoicePdfService().generate(order);
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            String text = new PDFTextStripper().getText(document).replace('\u00a0', ' ');
+            assertThat(text)
+                    .contains(
+                            "Форма З-2",
+                            "Приложение 26",
+                            "Индивидуальный предприниматель \"GASTROFLOW\"",
+                            "910818451048",
+                            "ИП Тестовый получатель",
+                            "04.10.2026",
+                            "20260904001",
+                            "Гайсумов Р.М.",
+                            "директор",
+                            "Главный бухгалтер",
+                            "По доверенности",
+                            "0,00",
+                            "49,16",
+                            "50,16",
+                            "килограмма; одна штука",
+                            "кг",
+                            "шт.");
+            assertThat(text)
+                    .doesNotContain(
+                            "04.09.2026",
+                            "Findhow",
+                            "пятьдесят целых шестнадцать сотых килограмма");
+            assertThat(document.getPage(0).getMediaBox().getWidth())
+                    .isLessThan(document.getPage(0).getMediaBox().getHeight());
+        }
+    }
+
+    @Test
+    void usesCreationDateForLegacyOrdersAndKeepsSixteenRowsOnOnePage() throws Exception {
+        String[] names = {
+            "Помидор Теплица",
+            "Грибы",
+            "Перец Болгарский",
+            "Баклажан ЮГ",
+            "Черри Красный",
+            "Пекинская капуста",
+            "Салат Листовой",
+            "Укроп свежий",
+            "Петрушка свежая",
+            "Лук зелёный",
+            "Цукини ЮГ",
+            "Виноград Бурбон",
+            "Апельсин ЕГИПЕТ",
+            "Груша Фуше",
+            "Яблоки красные",
+            "Лимон Китай"
+        };
+        String[] quantities = {
+            "7.8", "5.585", "5.365", "5.13", "2.165", "3.09", "2.2", "2.2", "2.065", "1.08",
+            "1.995", "1.595", "0.515", "0.795", "0.415", "7.165"
+        };
+        String[] prices = {
+            "815", "2200", "1350", "450", "1400", "580", "1000", "1300", "2050", "1510", "450",
+            "2860", "1050", "750", "750", "1000"
+        };
+        List<OrderItemDto> items = new java.util.ArrayList<>();
+        for (int i = 0; i < names.length; i++) {
+            OrderItemDto item = recordWith(invoiceItem(), "nameRu", names[i]);
+            item = recordWith(item, "sku", String.valueOf(i + 1));
+            item = recordWith(item, "quantity", new BigDecimal(quantities[i]));
+            item = recordWith(item, "unitPrice", new BigDecimal(prices[i]));
+            item =
+                    recordWith(
+                            item,
+                            "lineTotal",
+                            new BigDecimal(quantities[i])
+                                    .multiply(new BigDecimal(prices[i]))
+                                    .setScale(2, java.math.RoundingMode.HALF_UP));
+            items.add(
+                    recordWith(
+                            item,
+                            "measurementUnit",
+                            kz.company.shop.products.entity.MeasurementUnit.KG));
+        }
+        OrderDto order =
+                recordWith(
+                        orderWithPrintComment(null, items),
+                        "regularBuyerName",
+                        "ИП Тестовый получатель");
+        byte[] pdf = new OrderInvoicePdfService().generate(order);
+        savePreview("invoice-preview.pdf", pdf);
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            String text = new PDFTextStripper().getText(document).replace('\u00a0', ' ');
+            assertThat(document.getNumberOfPages()).isEqualTo(1);
+            assertThat(text)
+                    .contains(
+                            "04.09.2026",
+                            "49,16",
+                            "58 015,20",
+                            "Сорок девять целых шестнадцать сотых килограмма",
+                            "Пятьдесят восемь тысяч пятнадцать тенге 20 тиын");
+        }
+    }
+
+    @Test
+    void paginatesLongNamesAndRepeatsHeadersWithoutDroppingRows() throws Exception {
+        List<OrderItemDto> items = new java.util.ArrayList<>();
+        for (int i = 1; i <= 65; i++) {
+            OrderItemDto item =
+                    recordWith(
+                            invoiceItem(),
+                            "nameRu",
+                            "Позиция "
+                                    + i
+                                    + " длинное наименование свежего продукта с характеристиками упаковки и сорта");
+            item = recordWith(item, "sku", "SKU-" + i);
+            item =
+                    recordWith(
+                            item,
+                            "measurementUnit",
+                            i % 2 == 0
+                                    ? kz.company.shop.products.entity.MeasurementUnit.KG
+                                    : kz.company.shop.products.entity.MeasurementUnit.PIECE);
+            items.add(item);
+        }
+        byte[] pdf =
+                new OrderInvoicePdfService()
+                        .generate(
+                                orderWithPrintComment(
+                                        "Контрольный комментарий на последней странице", items));
+        savePreview("invoice-multipage-preview.pdf", pdf);
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            String text = new PDFTextStripper().getText(document);
+            assertThat(document.getNumberOfPages()).isGreaterThan(2);
+            assertThat(text)
+                    .contains(
+                            "SKU-1",
+                            "SKU-65",
+                            "Контрольный комментарий на последней странице",
+                            "продолжение",
+                            "Тридцать три штуки; тридцать два килограмма");
+            for (int i = 1; i <= document.getNumberOfPages(); i++) {
+                PDFTextStripper page = new PDFTextStripper();
+                page.setStartPage(i);
+                page.setEndPage(i);
+                assertThat(page.getText(document))
+                        .contains("Страница " + i + " из " + document.getNumberOfPages());
+            }
+        }
+    }
+
+    private static void savePreview(String name, byte[] pdf) throws Exception {
+        String directory = System.getProperty("invoice.preview.dir");
+        if (directory != null) {
+            java.nio.file.Path path = java.nio.file.Path.of(directory);
+            java.nio.file.Files.createDirectories(path);
+            java.nio.file.Files.write(path.resolve(name), pdf);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Record> T recordWith(T record, String name, Object value)
+            throws Exception {
+        java.lang.reflect.RecordComponent[] components = record.getClass().getRecordComponents();
+        Class<?>[] types = new Class<?>[components.length];
+        Object[] values = new Object[components.length];
+        for (int i = 0; i < components.length; i++) {
+            types[i] = components[i].getType();
+            values[i] =
+                    components[i].getName().equals(name)
+                            ? value
+                            : components[i].getAccessor().invoke(record);
+        }
+        return (T) record.getClass().getDeclaredConstructor(types).newInstance(values);
     }
 
     private OrderDto orderWithPrintComment(String printComment, List<OrderItemDto> items) {

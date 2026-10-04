@@ -27,9 +27,9 @@ export default defineConfig(({ command, mode }) => {
         },
         manifest: {
           id: "/",
-          name: "Фирма Актив",
-          short_name: "Актив",
-          description: "Оборудование для отопления и инженерных систем",
+          name: "GastroFlow",
+          short_name: "GastroFlow",
+          description: "Паназиатские продукты, овощи, фрукты и бакалея",
           lang: "ru",
           start_url: "/",
           scope: "/",
@@ -39,10 +39,20 @@ export default defineConfig(({ command, mode }) => {
           background_color: "#f7f6f4",
           categories: ["business", "shopping"],
           icons: [
-            { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-            { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png", purpose: "any" },
             {
-              src: "/pwa-maskable-512x512.png",
+              src: "/pwa-192x192.png?v=gastroflow-1",
+              sizes: "192x192",
+              type: "image/png",
+              purpose: "any",
+            },
+            {
+              src: "/pwa-512x512.png?v=gastroflow-1",
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "any",
+            },
+            {
+              src: "/pwa-maskable-512x512.png?v=gastroflow-1",
               sizes: "512x512",
               type: "image/png",
               purpose: "maskable",

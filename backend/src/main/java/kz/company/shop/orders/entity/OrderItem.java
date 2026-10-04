@@ -3,6 +3,7 @@ package kz.company.shop.orders.entity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.Instant;
+import kz.company.shop.products.entity.MeasurementUnit;
 
 @Entity
 @org.hibernate.annotations.DynamicUpdate
@@ -18,6 +19,11 @@ public class OrderItem {
 
     @Column(name = "product_id")
     public Long productId;
+
+    /** Snapshot from the product, overridable when the order is released. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "measurement_unit", nullable = false)
+    public MeasurementUnit measurementUnit = MeasurementUnit.PIECE;
 
     /** Snapshot of the catalogue availability condition at the time of ordering. */
     @Column(name = "made_to_order", nullable = false)
@@ -69,7 +75,9 @@ public class OrderItem {
     @Column(name = "confirmed_line_total", nullable = false, precision = 14, scale = 2)
     public BigDecimal confirmedLineTotal;
 
-    /** Quantity released despite a verified warehouse shortage. Kept per line for the audit trail. */
+    /**
+     * Quantity released despite a verified warehouse shortage. Kept per line for the audit trail.
+     */
     @Column(name = "stock_shortage_quantity", nullable = false, precision = 14, scale = 3)
     public BigDecimal stockShortageQuantity = BigDecimal.ZERO;
 

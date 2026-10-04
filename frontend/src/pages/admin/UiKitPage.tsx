@@ -693,6 +693,7 @@ export function UiKitPage() {
   const [loadingIcon, setLoadingIcon] = useState(false);
   const [loadingText, setLoadingText] = useState(false);
   const [loadingOnly, setLoadingOnly] = useState(false);
+  const [loadingSplit, setLoadingSplit] = useState(false);
   const [checked, setChecked] = useState(true);
   const [enabled, setEnabled] = useState(true);
   const [radio, setRadio] = useState("retail");
@@ -731,7 +732,7 @@ export function UiKitPage() {
   const imageDemoItems: AppImageUploadItem[] = [
     {
       id: "existing-demo",
-      src: "/favicon.svg",
+      src: "/favicon.svg?v=gastroflow-1",
       name: "Демонстрационное изображение",
       main: imageDemoFiles.length === 0,
     },
@@ -975,7 +976,9 @@ export function UiKitPage() {
             ПКМ: вложенное меню
           </AppButton>
           <AppSplitButton
-            onClick={() => appToast.success("Документ сохранен")}
+            loading={loadingSplit}
+            loadingText="Сохраняем…"
+            onClick={() => simulate(setLoadingSplit, "Документ сохранен")}
             actions={[
               {
                 label: "Сохранить копию",
@@ -1267,7 +1270,7 @@ export function UiKitPage() {
           <AppInput
             label="Название компании"
             required
-            placeholder="ТОО Фирма Актив"
+            placeholder="ТОО GastroFlow"
             error={errors.name?.message}
             {...register("name")}
           />
@@ -1275,7 +1278,7 @@ export function UiKitPage() {
             label="Email"
             type="email"
             required
-            placeholder="manager@active.kz"
+            placeholder="manager@example.com"
             error={errors.email?.message}
             {...register("email")}
           />

@@ -112,15 +112,29 @@ export function AppSplitButton({
   actions,
   onClick,
   variant = "primary",
+  loading,
+  loadingText,
+  disabled = false,
+  menuLabel = "Другие действия",
 }: {
   children: ReactNode;
   actions: AppSplitButtonAction[];
   onClick: () => void;
   variant?: AppButtonVariant;
+  loading?: boolean;
+  loadingText?: string;
+  disabled?: boolean;
+  menuLabel?: string;
 }) {
   return (
     <div className={`app-split-button ${variant}`}>
-      <AppButton type="button" variant={variant} onClick={onClick}>
+      <AppButton
+        type="button"
+        variant={variant}
+        onClick={onClick}
+        {...(loading === undefined && loadingText === undefined ? {} : { loading, loadingText })}
+        disabled={disabled}
+      >
         {children}
       </AppButton>
       <DropdownMenu>
@@ -129,7 +143,8 @@ export function AppSplitButton({
             type="button"
             variant={variant}
             className="app-split-button__trigger"
-            aria-label="Другие действия"
+            aria-label={menuLabel}
+            disabled={disabled || loading}
           >
             <ChevronDown size={18} />
           </AppButton>

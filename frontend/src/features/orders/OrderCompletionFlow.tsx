@@ -3,13 +3,19 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Calculator, CheckCircle2, Printer } from "lucide-react";
 import { API_URL, api } from "@/shared/api/http";
 import { Order } from "@/shared/types/models";
-import { AppButton } from "@/shared/ui/AppButton";
+import { AppButton, AppSplitButton } from "@/shared/ui/AppButton";
 import { AppMoneyInput, AppTextarea } from "@/shared/ui/AppField";
 import { AppRadioGroup } from "@/shared/ui/AppControls";
 import { AppAlert, AppModal, AppTooltip } from "@/shared/ui/AppFeedback";
 import { appToast } from "@/shared/ui/AppToast";
 import { formatMoney } from "@/pages/public/store-utils";
+import {
+  OrderItemUnitFields,
+  orderItemUnitsPayload,
+  type OrderItemUnits,
+} from "./OrderItemUnitFields";
 import "./OrderCompletionFlow.css";
+import { openPaymentInvoicePdf } from "./openPaymentInvoicePdf";
 
 type PaymentMethod = "CASH" | "CASHLESS" | "KASPI_STORE" | "MIXED";
 type CashlessPaymentType = "TRANSFER" | "CARD" | "QR";
@@ -128,12 +134,14 @@ export function OrderCompletionFlow({
   canReleaseWithStockShortage?: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>(null);
+  const [paymentInvoiceOpening, setPaymentInvoiceOpening] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [cashlessPaymentType, setCashlessPaymentType] = useState<CashlessPaymentType>("TRANSFER");
   const [cashAmount, setCashAmount] = useState<number | null>(null);
   const [transferAmount, setTransferAmount] = useState<number | null>(null);
   const [cardAmount, setCardAmount] = useState<number | null>(null);
   const [qrAmount, setQrAmount] = useState<number | null>(null);
+  const [itemUnits, setItemUnits] = useState<OrderItemUnits>({});
   const [comment, setComment] = useState("");
   const [invoiceComment, setInvoiceComment] = useState("");
   const [stockShortageReleaseOpen, setStockShortageReleaseOpen] = useState(false);
@@ -150,6 +158,7 @@ export function OrderCompletionFlow({
       setStockShortageReleaseOpen(false);
       return;
     }
+    setItemUnits({});
     setPhase("CONFIRM");
     setPaymentMethod("CASH");
     setCashlessPaymentType("TRANSFER");
@@ -199,10 +208,20 @@ export function OrderCompletionFlow({
   const completePayment = useMutation({
     mutationFn: (releaseWithStockShortage: boolean) => {
       if (!order) throw new Error("Заказ не найден");
+      if (order.paymentStatus === "PAID") {
+        return api<Order>(`/api/admin/orders/${order.id}/status`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            status: "COMPLETED",
+            itemUnits: orderItemUnitsPayload(order.items, itemUnits),
+          }),
+        });
+      }
       return api<Order>(`/api/admin/orders/${order.id}/complete-payment`, {
         method: "POST",
         body: JSON.stringify({
           paymentMethod,
+          itemUnits: orderItemUnitsPayload(order.items, itemUnits),
           cashAmount: paymentMethod === "MIXED" ? cashAmount : null,
           cashlessAmount: null,
           cashlessPaymentType: paymentMethod === "CASHLESS" ? cashlessPaymentType : null,
@@ -222,7 +241,7 @@ export function OrderCompletionFlow({
       onCompleted(completedOrder);
       setStockShortageReleaseOpen(false);
       setPhase("PRINT_DECISION");
-      appToast.success("Оплата принята, заказ завершён");
+      appToast.success("Заказ завершён");
     },
     onError: (error) =>
       appToast.error(error instanceof Error ? error.message : "Не удалось завершить оплату заказа"),
@@ -249,28 +268,51 @@ export function OrderCompletionFlow({
   const completionDescription = useMemo(
     () =>
       order
-        ? `Заказ № ${order.displayCode} на сумму ${formatMoney(order.total)} будет оплачен и завершён.`
+        ? `Заказ № ${order.displayCode} на сумму ${formatMoney(order.total)} будет ${order.paymentStatus === "PAID" ? "завершён. Оплата уже принята" : "оплачен и завершён"}.`
         : undefined,
     [order],
   );
   const close = () => onOpenChange(false);
+
+  function handlePaymentInvoiceClick() {
+    if (!order) return;
+    setPaymentInvoiceOpening(true);
+    void openPaymentInvoicePdf(order.id).finally(() => setPaymentInvoiceOpening(false));
+  }
 
   if (!order) return null;
 
   return (
     <>
       <AppModal
-        title="Принять оплату и завершить заказ?"
+        title={
+          order.paymentStatus === "PAID"
+            ? "Отпустить и завершить заказ?"
+            : "Принять оплату и завершить заказ?"
+        }
         description={completionDescription}
+        contentClassName="order-completion-flow"
         open={phase === "CONFIRM"}
         onOpenChange={(nextOpen) => !nextOpen && close()}
       >
+        <OrderItemUnitFields
+          items={order.items}
+          values={itemUnits}
+          onChange={setItemUnits}
+          disabled={completePayment.isPending}
+        />
         <div className="order-completion-flow__actions">
           <AppButton type="button" variant="secondary" onClick={close}>
             Отмена
           </AppButton>
-          <AppButton type="button" onClick={() => setPhase("PAYMENT")}>
-            Продолжить
+          <AppButton
+            type="button"
+            loading={completePayment.isPending}
+            onClick={() =>
+              order.paymentStatus === "PAID" ? completePayment.mutate(false) : setPhase("PAYMENT")
+            }
+          >
+            {order.paymentStatus === "PAID" ? "Отпустить и завершить" : "Продолжить"}
           </AppButton>
         </div>
       </AppModal>
@@ -282,6 +324,12 @@ export function OrderCompletionFlow({
         onOpenChange={(nextOpen) => !nextOpen && close()}
         contentClassName="order-completion-flow"
       >
+        <OrderItemUnitFields
+          items={order.items}
+          values={itemUnits}
+          onChange={setItemUnits}
+          disabled={completePayment.isPending}
+        />
         <AppRadioGroup
           label="Способ оплаты"
           value={paymentMethod}
@@ -433,8 +481,8 @@ export function OrderCompletionFlow({
       </AppModal>
 
       <AppModal
-        title="Печатать накладную?"
-        description="Заказ успешно завершён. При необходимости можно сразу открыть накладную для печати."
+        title="Распечатать документы?"
+        description="Заказ успешно завершён. Можно открыть накладную или счёт на оплату для печати."
         open={phase === "PRINT_DECISION"}
         onOpenChange={(nextOpen) => !nextOpen && close()}
       >
@@ -442,16 +490,28 @@ export function OrderCompletionFlow({
           <AppButton type="button" variant="secondary" onClick={close}>
             Не сейчас
           </AppButton>
-          <AppButton type="button" onClick={() => setPhase("PRINT_OPTIONS")}>
+          <AppSplitButton
+            loading={paymentInvoiceOpening}
+            loadingText="Открываем PDF..."
+            onClick={() => setPhase("PRINT_OPTIONS")}
+            menuLabel="Другие документы для печати"
+            actions={[
+              {
+                label: "Счёт на оплату PDF",
+                icon: <Printer size={18} />,
+                onSelect: handlePaymentInvoiceClick,
+              },
+            ]}
+          >
             <Printer size={18} />
-            Выбрать вариант печати
-          </AppButton>
+            Накладная PDF
+          </AppSplitButton>
         </div>
       </AppModal>
 
       <AppModal
-        title="Вариант накладной"
-        description="Можно открыть оба варианта. Это окно останется открытым после выбора."
+        title="Документы для печати"
+        description="Выберите вариант накладной или счёт на оплату. Это окно останется открытым после выбора."
         open={phase === "PRINT_OPTIONS"}
         onOpenChange={(nextOpen) => !nextOpen && close()}
         contentClassName="order-completion-flow order-completion-flow--print-options"
@@ -466,6 +526,16 @@ export function OrderCompletionFlow({
           </AppButton>
           <AppButton type="button" onClick={() => void openInvoice(order, true)}>
             С комментарием
+          </AppButton>
+          <AppButton
+            type="button"
+            variant="secondary"
+            loading={paymentInvoiceOpening}
+            loadingText="Открываем PDF..."
+            onClick={handlePaymentInvoiceClick}
+          >
+            <Printer size={18} />
+            Счёт на оплату PDF
           </AppButton>
           <AppButton type="button" variant="ghost" onClick={close}>
             Закрыть

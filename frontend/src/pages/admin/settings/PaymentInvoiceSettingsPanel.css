@@ -1,0 +1,50 @@
+.payment-invoice-settings__body {
+  display: grid;
+  gap: var(--sp-4, 16px);
+  max-width: 1040px;
+  padding: var(--sp-6, 24px);
+}
+
+.payment-invoice-settings__hint {
+  margin: 0;
+  color: var(--muted, #64748b);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.payment-invoice-settings__form,
+.payment-invoice-settings__fields {
+  display: grid;
+  min-width: 0;
+  gap: var(--sp-4, 16px);
+}
+
+.payment-invoice-settings__fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.payment-invoice-settings__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-3, 12px);
+}
+
+.payment-invoice-settings__actions > span {
+  color: var(--muted, #64748b);
+  font-size: 13px;
+}
+
+@media (max-width: 767px) {
+  .payment-invoice-settings__body {
+    padding: var(--sp-4, 16px);
+  }
+
+  .payment-invoice-settings__fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .payment-invoice-settings__actions > .app-button {
+    width: 100%;
+  }
+}

@@ -1,4 +1,4 @@
-# Ovoshi Help — магазин «Фирма Актив» в дизайне HackAlem
+# Ovoshi Help — магазин «GastroFlow» в дизайне HackAlem
 
 Отдельный проект на основе текущей рабочей копии `firm-active-company-shop`.
 Из `hackalem-ai-base` перенесён визуальный язык интерфейса. Направление магазина,

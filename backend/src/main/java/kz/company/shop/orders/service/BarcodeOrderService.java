@@ -24,10 +24,13 @@ import kz.company.shop.orders.repository.OrderRepository;
 import kz.company.shop.priceStatistics.entity.PriceType;
 import kz.company.shop.priceStatistics.repository.PriceChangeSnapshotRepository;
 import kz.company.shop.productImages.repository.ProductImageRepository;
+import kz.company.shop.products.entity.MeasurementUnit;
 import kz.company.shop.products.entity.Product;
 import kz.company.shop.products.repository.ProductRepository;
 import kz.company.shop.users.entity.User;
 import kz.company.shop.users.service.UserService;
+import kz.company.shop.regularbuyers.service.RegularBuyerService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +46,26 @@ public class BarcodeOrderService {
     private final OrderService orderService;
     private final PriceChangeSnapshotRepository priceSnapshots;
 
+    private final RegularBuyerService regularBuyerService;
+
+    @Autowired
+    public BarcodeOrderService(
+            OrderRepository orderRepository,
+            ProductRepository productRepository,
+            ProductImageRepository imageRepository,
+            UserService userService,
+            OrderService orderService,
+            PriceChangeSnapshotRepository priceSnapshots,
+            RegularBuyerService regularBuyerService) {
+        this.orderRepository = orderRepository;
+        this.productRepository = productRepository;
+        this.imageRepository = imageRepository;
+        this.userService = userService;
+        this.orderService = orderService;
+        this.priceSnapshots = priceSnapshots;
+        this.regularBuyerService = regularBuyerService;
+    }
+
     public BarcodeOrderService(
             OrderRepository orderRepository,
             ProductRepository productRepository,
@@ -50,12 +73,7 @@ public class BarcodeOrderService {
             UserService userService,
             OrderService orderService,
             PriceChangeSnapshotRepository priceSnapshots) {
-        this.orderRepository = orderRepository;
-        this.productRepository = productRepository;
-        this.imageRepository = imageRepository;
-        this.userService = userService;
-        this.orderService = orderService;
-        this.priceSnapshots = priceSnapshots;
+        this(orderRepository, productRepository, imageRepository, userService, orderService, priceSnapshots, null);
     }
 
     @Transactional(readOnly = true)
@@ -83,7 +101,8 @@ public class BarcodeOrderService {
                 tier == PriceTier.RETAIL ? historicPrice : product.price,
                 tier == PriceTier.WHOLESALE ? historicPrice : product.wholesalePrice,
                 tier == PriceTier.BULK_WHOLESALE ? historicPrice : product.bulkWholesalePrice,
-                tier == PriceTier.SKO ? historicPrice : product.skoPrice);
+                tier == PriceTier.SKO ? historicPrice : product.skoPrice,
+                product.measurementUnit != null ? product.measurementUnit : MeasurementUnit.PIECE);
     }
 
     @Transactional(readOnly = true)
@@ -119,6 +138,7 @@ public class BarcodeOrderService {
         }
 
         Order order = new Order();
+        if (request.regularBuyerId() != null) regularBuyerService.assign(order, request.regularBuyerId());
         orderService.initializeIdentity(order, request.orderDate());
         // The selected date controls numbering and historical prices; the creation timestamp
         // must still reflect the actual moment the employee saved the order.
@@ -163,6 +183,12 @@ public class BarcodeOrderService {
             OrderItem item = new OrderItem();
             item.order = order;
             item.productId = product.id;
+            item.measurementUnit =
+                    requestedItem.measurementUnit() != null
+                            ? requestedItem.measurementUnit()
+                            : product.measurementUnit != null
+                                    ? product.measurementUnit
+                                    : MeasurementUnit.PIECE;
             item.madeToOrder = product.madeToOrder;
             item.sku = product.sku;
             item.nameRu = product.nameRu;

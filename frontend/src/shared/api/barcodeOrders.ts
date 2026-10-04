@@ -1,5 +1,5 @@
 import { api } from "@/shared/api/http";
-import type { Order } from "@/shared/types/models";
+import type { MeasurementUnit, Order } from "@/shared/types/models";
 
 export type BarcodeOrderPriceTier = "RETAIL" | "WHOLESALE" | "BULK_WHOLESALE" | "SKO";
 
@@ -9,6 +9,7 @@ export type BarcodeOrderProduct = {
   name: string;
   mainImageUrl: string | null;
   madeToOrder: boolean;
+  measurementUnit?: MeasurementUnit;
   retailPrice: number;
   wholesalePrice: number | null;
   bulkWholesalePrice: number | null;
@@ -24,11 +25,17 @@ export type BarcodeOrderCustomer = {
 
 export type CreateBarcodeOrderRequest = {
   customerId: number | null;
+  regularBuyerId?: string | null;
   pendingCustomerEmail: string | null;
   pendingCustomerPhone: string | null;
   priceTier: BarcodeOrderPriceTier;
   orderDate: string;
-  items: Array<{ productId: number; quantity: number; unitPrice: number }>;
+  items: Array<{
+    productId: number;
+    quantity: number;
+    unitPrice: number;
+    measurementUnit?: MeasurementUnit;
+  }>;
   comment: string | null;
   allowStockShortage?: boolean;
 };

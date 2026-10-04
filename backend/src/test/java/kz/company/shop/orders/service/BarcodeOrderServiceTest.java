@@ -24,6 +24,7 @@ import kz.company.shop.priceStatistics.entity.PriceType;
 import kz.company.shop.priceStatistics.repository.PriceChangeSnapshotRepository;
 import kz.company.shop.productImages.entity.ProductImage;
 import kz.company.shop.productImages.repository.ProductImageRepository;
+import kz.company.shop.products.entity.MeasurementUnit;
 import kz.company.shop.products.entity.Product;
 import kz.company.shop.products.repository.ProductRepository;
 import kz.company.shop.users.service.UserService;
@@ -62,9 +63,62 @@ class BarcodeOrderServiceTest {
         assertThat(result.name()).isEqualTo(product.nameRu);
         assertThat(result.mainImageUrl()).isEqualTo("/uploads/products/main.webp");
         assertThat(result.madeToOrder()).isTrue();
+        assertThat(result.measurementUnit()).isEqualTo(MeasurementUnit.KG);
         assertThat(result.retailPrice()).isEqualByComparingTo("250.00");
         assertThat(result.wholesalePrice()).isEqualByComparingTo("200.00");
         assertThat(result.bulkWholesalePrice()).isEqualByComparingTo("180.00");
+    }
+
+    @Test
+    void lookupUsesPieceFallbackWhenLegacyProductHasNoUnit() {
+        Product product = product(11L, "ABC-001", "250.00", null, null);
+        product.measurementUnit = null;
+        when(products.findBySkuAndDeletedAtIsNull("ABC-001")).thenReturn(Optional.of(product));
+        assertThat(
+                        service.findProduct("ABC-001", PriceTier.RETAIL, LocalDate.now())
+                                .measurementUnit())
+                .isEqualTo(MeasurementUnit.PIECE);
+    }
+
+    @Test
+    void createKeepsExplicitUnitOverridesAndDefaultsOmittedUnits() {
+        Product kilograms = product(11L, "KG-1", "250.00", null, null);
+        Product pieces = product(22L, "PC-1", "350.00", null, null);
+        pieces.measurementUnit = MeasurementUnit.PIECE;
+        Product fallback = product(33L, "OLD-1", "100.00", null, null);
+        fallback.measurementUnit = null;
+        when(products.findByIdAndDeletedAtIsNull(11L)).thenReturn(Optional.of(kilograms));
+        when(products.findByIdAndDeletedAtIsNull(22L)).thenReturn(Optional.of(pieces));
+        when(products.findByIdAndDeletedAtIsNull(33L)).thenReturn(Optional.of(fallback));
+
+        service.create(
+                new BarcodeOrderCreateRequest(
+                        null,
+                        null,
+                        null,
+                        PriceTier.RETAIL,
+                        LocalDate.now(),
+                        List.of(
+                                new BarcodeOrderItemRequest(
+                                        11L,
+                                        BigDecimal.ONE,
+                                        new BigDecimal("250"),
+                                        MeasurementUnit.PIECE),
+                                new BarcodeOrderItemRequest(
+                                        22L, BigDecimal.ONE, new BigDecimal("350")),
+                                new BarcodeOrderItemRequest(
+                                        33L, BigDecimal.ONE, new BigDecimal("100"))),
+                        null,
+                        false),
+                7L);
+
+        var captured = org.mockito.ArgumentCaptor.forClass(Order.class);
+        org.mockito.Mockito.verify(orders).save(captured.capture());
+        assertThat(captured.getValue().items)
+                .extracting(item -> item.measurementUnit)
+                .containsExactly(
+                        MeasurementUnit.PIECE, MeasurementUnit.PIECE, MeasurementUnit.PIECE);
+        assertThat(kilograms.measurementUnit).isEqualTo(MeasurementUnit.KG);
     }
 
     @Test
@@ -108,7 +162,9 @@ class BarcodeOrderServiceTest {
         Order saved = captor.getValue();
         assertThat(saved.userId).isNull();
         assertThat(saved.createdByUserId).isEqualTo(7L);
-        assertThat(saved.createdAt).isAfterOrEqualTo(creationStartedAt).isBeforeOrEqualTo(Instant.now());
+        assertThat(saved.createdAt)
+                .isAfterOrEqualTo(creationStartedAt)
+                .isBeforeOrEqualTo(Instant.now());
         assertThat(saved.status).isEqualTo(OrderStatus.PROCESSING);
         assertThat(saved.paymentStatus).isEqualTo(PaymentStatus.PENDING);
         assertThat(saved.priceTier).isEqualTo(PriceTier.BULK_WHOLESALE);
@@ -121,6 +177,11 @@ class BarcodeOrderServiceTest {
         assertThat(saved.items.getFirst().quantity).isEqualByComparingTo("0.1");
         assertThat(saved.items.getFirst().priceTier).isEqualTo(PriceTier.BULK_WHOLESALE);
         assertThat(saved.items.getFirst().madeToOrder).isTrue();
+        assertThat(saved.items.getFirst().measurementUnit)
+                .isEqualTo(kz.company.shop.products.entity.MeasurementUnit.KG);
+        product.measurementUnit = kz.company.shop.products.entity.MeasurementUnit.PIECE;
+        assertThat(saved.items.getFirst().measurementUnit)
+                .isEqualTo(kz.company.shop.products.entity.MeasurementUnit.KG);
         org.mockito.Mockito.verify(orderService)
                 .initializeIdentity(saved, LocalDate.of(2026, 8, 20));
         org.mockito.Mockito.verify(orderService).ensureDefaultReservation(saved, false);
@@ -148,7 +209,8 @@ class BarcodeOrderServiceTest {
                 7L);
 
         org.mockito.Mockito.verify(orders).save(any(Order.class));
-        org.mockito.Mockito.verify(orderService).initializeIdentity(any(Order.class), any(LocalDate.class));
+        org.mockito.Mockito.verify(orderService)
+                .initializeIdentity(any(Order.class), any(LocalDate.class));
         org.mockito.Mockito.verify(orderService)
                 .ensureDefaultReservation(any(Order.class), org.mockito.ArgumentMatchers.eq(true));
         org.mockito.Mockito.verify(orderService).toDto(any(Order.class));

@@ -187,6 +187,8 @@ body .admin-shell {
 }
 
 .admin-shell .admin-topbar {
+  width: 100%;
+  max-width: var(--content-max);
   height: 64px;
   padding: var(--sp-3) var(--sp-6);
   border: 0;
@@ -211,6 +213,7 @@ body .admin-shell {
 }
 
 .admin-shell .admin-topbar__brand {
+  --brand-logo-width: 130px;
   color: var(--ink);
   font-size: var(--fs-body);
   font-weight: 600;
@@ -293,7 +296,7 @@ body .admin-shell {
     display: flex;
     height: auto;
     min-height: 64px;
-    padding: var(--sp-2) var(--sp-4);
+    padding: var(--sp-2) var(--sp-6);
     gap: var(--sp-2);
   }
   .admin-shell .admin-topbar__mobile {
@@ -313,10 +316,13 @@ body .admin-shell {
   }
 }
 
-@media (max-width: 360px) {
+@media (max-width: 640px) {
   .admin-shell .admin-topbar {
-    padding-inline: var(--sp-2);
+    padding-inline: var(--sp-4);
   }
+}
+
+@media (max-width: 360px) {
   .admin-shell .topbar-actions {
     gap: var(--sp-1);
   }

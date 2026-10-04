@@ -17,8 +17,8 @@ import kz.company.shop.orders.service.BarcodeOrderService;
 import kz.company.shop.orders.service.OrderService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -85,7 +85,8 @@ public class BarcodeOrderController {
                         request.comment(),
                         request.printComment(),
                         request.releaseWithStockShortage(),
-                        request.stockShortageComment()));
+                        request.stockShortageComment(),
+                        request.itemUnits()));
     }
 
     @PatchMapping("/orders/{id}/payment")

@@ -1,5 +1,5 @@
 ---
-name: Фирма Актив
+name: GastroFlow
 colors:
   surface: '#f7f9fb'
   surface-dim: '#d8dadc'
@@ -98,12 +98,12 @@ spacing:
 ---
 
 ## Brand & Style
-The brand personality for Фирма Актив is rooted in reliability, precision, and architectural clarity. As a provider of professional services, the UI must evoke a sense of structural integrity and modern efficiency.
+The brand personality for GastroFlow is rooted in reliability, precision, and architectural clarity. As a provider of professional services, the UI must evoke a sense of structural integrity and modern efficiency.
 
 The design style follows a **Modern Corporate** aesthetic with a lean toward **Minimalism**. It prioritizes high-quality typography and intentional whitespace to reduce cognitive load. The visual language is disciplined and systematic, ensuring that information hierarchy is immediately apparent. We avoid decorative flourishes in favor of functional elegance, creating a workspace that feels dependable and high-performing.
 
 ## Colors
-The color palette for Фирма Актив is designed to project stability and professionalism.
+The color palette for GastroFlow is designed to project stability and professionalism.
 
 - **Primary (#0047BB):** A deep, "Active Blue" used for primary actions, branding, and focused states. It represents the "Актив" (Active) spirit of the firm.
 - **Secondary (#64748B):** A muted slate used for supporting information and secondary UI elements.
@@ -113,7 +113,7 @@ The color palette for Фирма Актив is designed to project stability and
 Functional colors (Success, Warning, Error) should follow standard industry conventions but be adjusted to match the saturation levels of the Primary blue.
 
 ## Typography
-The typography system balances the modern, geometric qualities of **Manrope** for headlines with the utilitarian clarity of **Inter** for body text. **JetBrains Mono** is introduced sparingly for labels and data points to emphasize the technical precision of Фирма Актив.
+The typography system balances the modern, geometric qualities of **Manrope** for headlines with the utilitarian clarity of **Inter** for body text. **JetBrains Mono** is introduced sparingly for labels and data points to emphasize the technical precision of GastroFlow.
 
 All headlines use a tighter letter-spacing to appear more cohesive. Body text maintains a generous line height to ensure readability in data-heavy views. For mobile, headline sizes are scaled down to prevent awkward word breaks while maintaining their bold weight.
 
@@ -136,7 +136,7 @@ Elevation is conveyed through **Tonal Layers** and subtle **Ambient Shadows**. W
 This approach creates a "flat-plus" look where depth is suggested rather than forced, keeping the interface light and professional.
 
 ## Shapes
-The shape language of Фирма Актив is **Soft** but disciplined. We use a 0.25rem (4px) base radius for standard elements like buttons and inputs. This provides a modern touch without appearing overly "bubbly" or informal. Larger containers like cards may use the `rounded-lg` (8px) token to soften the overall layout.
+The shape language of GastroFlow is **Soft** but disciplined. We use a 0.25rem (4px) base radius for standard elements like buttons and inputs. This provides a modern touch without appearing overly "bubbly" or informal. Larger containers like cards may use the `rounded-lg` (8px) token to soften the overall layout.
 
 ## Components
 Components within this design system are built for high-density information environments.
@@ -144,5 +144,5 @@ Components within this design system are built for high-density information envi
 - **Buttons:** Primary buttons use a solid Primary Blue fill with white text. Secondary buttons use a ghost style (Primary Blue border and text). Padding is generous horizontally (1.5rem) but compact vertically (0.75rem).
 - **Input Fields:** Use a 1px slate-200 border that thickens to 2px Primary Blue on focus. Labels use the `label-sm` (JetBrains Mono) style for a technical feel.
 - **Cards:** White surfaces with a 1px border. No shadow by default; a subtle shadow appears only on hover to indicate interactivity.
-- **Data Tables:** These are critical for Фирма Актив. Use Inter for cell data and JetBrains Mono for numeric values. Row heights are kept at 48px for density.
+- **Data Tables:** These are critical for GastroFlow. Use Inter for cell data and JetBrains Mono for numeric values. Row heights are kept at 48px for density.
 - **Chips/Badges:** Small, caps-locked labels with a light background tint of the status color (e.g., light blue for "In Progress").

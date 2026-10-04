@@ -33,8 +33,10 @@ import {
   type BarcodeOrderProduct,
 } from "@/shared/api/barcodeOrders";
 import { API_URL } from "@/shared/api/http";
+import { fetchRegularBuyers } from "@/shared/api/regularBuyers";
 import { fetchWarehouseBalances, WarehouseBalance } from "@/shared/api/warehouse";
-import { Product } from "@/shared/types/models";
+import { MeasurementUnit, Product } from "@/shared/types/models";
+import { measurementUnitOptions } from "@/shared/lib/measurementUnit";
 import { AppBadge } from "@/shared/ui/AppBadge";
 import { AppButton } from "@/shared/ui/AppButton";
 import { AppDataTable, type AppDataTableColumn } from "@/shared/ui/AppDataTable";
@@ -48,7 +50,9 @@ import {
 } from "@/shared/ui/AppField";
 import { appToast } from "@/shared/ui/AppToast";
 import { DataPanel } from "@/shared/ui/DataPanel";
+import { SegmentedControl } from "@/shared/ui/SegmentedControl";
 import { OrderProductPickerModal } from "@/features/orders/OrderProductPickerModal";
+import { RegularBuyerSelect } from "@/features/orders/RegularBuyerSelect";
 import { OrderProductAvailability } from "@/features/orders/OrderProductAvailability";
 import {
   MAX_ORDER_QUANTITY,
@@ -164,6 +168,8 @@ function formatQuantity(value: number) {
 
 type OrderSubmission = {
   customerId: number | null;
+  regularBuyerId: string | null;
+  action: "self" | "skip" | "selected";
   pendingBinding?: PendingCustomerBinding | null;
   allowStockShortage?: boolean;
 };
@@ -222,6 +228,7 @@ function productToOrderProduct(product: Product): BarcodeOrderProduct | null {
     name: product.nameRu,
     mainImageUrl: product.images?.find((image) => image.mainImage)?.filePath ?? null,
     madeToOrder: Boolean(product.madeToOrder),
+    measurementUnit: product.measurementUnit ?? "PIECE",
     retailPrice: product.price,
     wholesalePrice: product.wholesalePrice ?? null,
     bulkWholesalePrice: product.bulkWholesalePrice ?? null,
@@ -260,6 +267,7 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
   const [draggedLineId, setDraggedLineId] = useState<number | null>(null);
   const [dragOverLineId, setDragOverLineId] = useState<number | null>(null);
   const [comment, setComment] = useState("");
+  const [regularBuyerId, setRegularBuyerId] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [manualCode, setManualCode] = useState("");
@@ -270,12 +278,12 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
   const [detectedQuantity, setDetectedQuantity] = useState(1);
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
+  const [regularBuyerSearch, setRegularBuyerSearch] = useState("");
+  const [customerBindingMode, setCustomerBindingMode] = useState("regular-buyer");
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [selectedPendingBinding, setSelectedPendingBinding] =
     useState<PendingCustomerBinding | null>(null);
-  const [submittingCustomerId, setSubmittingCustomerId] = useState<number | null | undefined>(
-    undefined,
-  );
+  const [submittingAction, setSubmittingAction] = useState<OrderSubmission["action"] | null>(null);
   const [checkingStock, setCheckingStock] = useState(false);
   const [stockShortageOpen, setStockShortageOpen] = useState(false);
   const [pendingStockShortageSubmission, setPendingStockShortageSubmission] =
@@ -317,6 +325,7 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
     setPriceAdjustmentOriginalPrices(draft?.priceAdjustmentOriginalPrices ?? {});
     setPriceAdjustmentHistoryByLine(draft?.priceAdjustmentHistoryByLine ?? {});
     setComment(draft?.comment ?? "");
+    setRegularBuyerId(draft?.regularBuyerId ?? null);
     setSelectedCustomerId(draft?.selectedCustomerId ?? null);
     setSelectedPendingBinding(draft?.selectedPendingBinding ?? null);
     setRestoredDraftScope(draftScope);
@@ -353,12 +362,14 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
       priceAdjustmentOriginalPrices,
       priceAdjustmentHistoryByLine,
       comment,
+      regularBuyerId,
       selectedCustomerId,
       selectedPendingBinding,
     });
   }, [
     activeUserId,
     comment,
+    regularBuyerId,
     draftScope,
     lines,
     mode,
@@ -401,13 +412,25 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
   const usersQuery = useQuery({
     queryKey: ["users", "barcode-order-customer"],
     queryFn: getBarcodeOrderCustomers,
-    enabled: customerModalOpen,
+    enabled: customerModalOpen && customerBindingMode === "user",
+  });
+
+  const regularBuyersQuery = useQuery({
+    queryKey: ["regular-buyers", regularBuyerId ? "all" : "active"],
+    queryFn: () => fetchRegularBuyers(Boolean(regularBuyerId)),
+    enabled: customerModalOpen && customerBindingMode === "regular-buyer",
   });
 
   const createOrder = useMutation({
-    mutationFn: ({ customerId, pendingBinding, allowStockShortage = false }: OrderSubmission) =>
+    mutationFn: ({
+      customerId,
+      regularBuyerId,
+      pendingBinding,
+      allowStockShortage = false,
+    }: OrderSubmission) =>
       createBarcodeOrder({
         customerId,
+        regularBuyerId,
         pendingCustomerEmail: pendingBinding?.email ?? null,
         pendingCustomerPhone: pendingBinding?.phone ?? null,
         priceTier,
@@ -416,6 +439,7 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
           productId: line.id,
           quantity: line.quantity,
           unitPrice: line.unitPrice ?? 0,
+          measurementUnit: line.measurementUnit ?? "PIECE",
         })),
         comment: comment.trim() || null,
         allowStockShortage,
@@ -438,7 +462,7 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
       }
       appToast.error(getErrorMessage(error));
     },
-    onSettled: () => setSubmittingCustomerId(undefined),
+    onSettled: () => setSubmittingAction(null),
   });
 
   function startLookup(rawCode: string) {
@@ -526,6 +550,12 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
     const normalized = normalizedQuantity(quantity);
     setLines((current) =>
       current.map((line) => (line.id === productId ? { ...line, quantity: normalized } : line)),
+    );
+  }
+
+  function updateMeasurementUnit(productId: number, measurementUnit: MeasurementUnit) {
+    setLines((current) =>
+      current.map((line) => (line.id === productId ? { ...line, measurementUnit } : line)),
     );
   }
 
@@ -751,6 +781,7 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
     setPriceAdjustmentOriginalPrices({});
     setPriceAdjustmentHistoryByLine({});
     setComment("");
+    setRegularBuyerId(null);
     setSelectedCustomerId(null);
     setSelectedPendingBinding(null);
     setRestoredDraftInfo(null);
@@ -958,11 +989,11 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
       },
       {
         id: "quantity",
-        header: "Количество",
+        header: "Количество / ед.",
         value: (line) => line.quantity,
         searchable: false,
         align: "center",
-        width: 190,
+        width: 260,
         cell: (line) => (
           <div className="barcode-order-quantity">
             <AppButton
@@ -990,6 +1021,20 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
             >
               <Plus size={16} />
             </AppButton>
+            <AppSelect
+              fieldClassName="barcode-order-measurement-unit"
+              aria-label={`Единица измерения товара ${line.name}`}
+              value={line.measurementUnit ?? "PIECE"}
+              onChange={(event) =>
+                updateMeasurementUnit(line.id, event.target.value as MeasurementUnit)
+              }
+            >
+              {measurementUnitOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </AppSelect>
           </div>
         ),
       },
@@ -1058,15 +1103,42 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
       .some((value) => adminMatchesSearch(value!, customerSearch));
   });
   const selectedCustomer = (usersQuery.data ?? []).find((user) => user.id === selectedCustomerId);
-  const futureBinding = customers.length === 0 ? pendingCustomerBinding(customerSearch) : null;
+  const isRegularBuyerBinding = customerBindingMode === "regular-buyer";
+  const bindingQuery = isRegularBuyerBinding ? regularBuyersQuery : usersQuery;
+  const selectedRegularBuyer = (regularBuyersQuery.data ?? []).find(
+    (buyer) => buyer.id === regularBuyerId && !buyer.archived,
+  );
+  const bindingCandidates = isRegularBuyerBinding
+    ? (regularBuyersQuery.data ?? [])
+        .filter((buyer) => !buyer.archived)
+        .filter((buyer) =>
+          [buyer.name, buyer.contactName, buyer.email, buyer.phone].some(
+            (value) => value && adminMatchesSearch(value, regularBuyerSearch),
+          ),
+        )
+        .map((buyer) => ({
+          id: buyer.id,
+          name: buyer.name,
+          details: [buyer.contactName, buyer.email, buyer.phone].filter(Boolean).join(" · "),
+        }))
+    : customers.map((customer) => ({
+        id: customer.id,
+        name: customer.name,
+        details: [customer.email, customer.phone].filter(Boolean).join(" · "),
+      }));
+  const futureBinding =
+    !isRegularBuyerBinding && customers.length === 0
+      ? pendingCustomerBinding(customerSearch)
+      : null;
 
   async function submitOrder(
     customerId: number | null,
     pendingBinding: PendingCustomerBinding | null = null,
+    action: OrderSubmission["action"] = "selected",
   ) {
     if (!canContinue || createOrder.isPending || checkingStock) return;
-    setSubmittingCustomerId(pendingBinding ? undefined : customerId);
-    const submission = { customerId, pendingBinding };
+    setSubmittingAction(action);
+    const submission = { customerId, pendingBinding, regularBuyerId, action };
 
     if (canReadWarehouse) {
       setCheckingStock(true);
@@ -1075,7 +1147,7 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
       const shortages = calculateStockShortages(lines, refreshed.data);
       if (shortages.length > 0) {
         setPendingStockShortageSubmission(submission);
-        setSubmittingCustomerId(undefined);
+        setSubmittingAction(null);
         setCustomerModalOpen(false);
         setStockShortageOpen(true);
         return;
@@ -1104,7 +1176,7 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
       <AppAlert title={mode === "barcode" ? "Быстрое формирование заказа" : "Заказ через подбор"}>
         {mode === "barcode"
           ? "Сканируйте штрихкод камерой телефона или введите код вручную. Цена и итог заказа рассчитываются для выбранного типа продажи."
-          : "Подберите товары из каталога, укажите количество и тип цены. Заказ будет создан с тем же процессом оплаты и сборки."}
+          : "Подберите товары из каталога, укажите количество, единицу измерения и тип цены. Заказ будет создан с тем же процессом оплаты и сборки."}
       </AppAlert>
 
       {restoredDraftInfo && (
@@ -1342,6 +1414,14 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
           </AppAlert>
         )}
 
+        <div className="barcode-order-buyer">
+          <RegularBuyerSelect
+            value={regularBuyerId}
+            onChange={setRegularBuyerId}
+            disabled={createOrder.isPending || checkingStock}
+          />
+        </div>
+
         <div className="barcode-order-footer">
           <AppTextarea
             label="Комментарий к заказу"
@@ -1366,6 +1446,7 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
               onClick={() => {
                 setSelectedCustomerId(null);
                 setSelectedPendingBinding(null);
+                setCustomerBindingMode("regular-buyer");
                 setCustomerModalOpen(true);
               }}
             >
@@ -1659,11 +1740,7 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
               disabled={!pendingStockShortageSubmission || stockShortages.length === 0}
               onClick={() => {
                 if (!pendingStockShortageSubmission) return;
-                setSubmittingCustomerId(
-                  pendingStockShortageSubmission.pendingBinding
-                    ? undefined
-                    : pendingStockShortageSubmission.customerId,
-                );
+                setSubmittingAction(pendingStockShortageSubmission.action);
                 createOrder.mutate({
                   ...pendingStockShortageSubmission,
                   allowStockShortage: true,
@@ -1678,46 +1755,82 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
 
       <AppModal
         title="Привязать заказ к клиенту"
-        description="Выберите клиента для его личного кабинета. Если покупатель без аккаунта, оформите отпуск в магазине кнопкой «На себя»."
+        description={
+          customerBindingMode === "regular-buyer"
+            ? "Выберите покупателя из справочника. Заказ будет привязан к нему без аккаунта пользователя."
+            : "Выберите пользователя для его личного кабинета или переключитесь на постоянного покупателя."
+        }
         open={customerModalOpen}
-        onOpenChange={setCustomerModalOpen}
+        onOpenChange={(open) => {
+          if (!orderSubmissionPending) setCustomerModalOpen(open);
+        }}
         contentClassName="barcode-order-customer-modal"
       >
-        <AppSearchInput
-          label="Поиск клиента"
-          value={customerSearch}
-          placeholder="Имя, email или телефон"
-          onChange={(event) => setCustomerSearch(event.target.value)}
+        <SegmentedControl
+          ariaLabel="К кому привязать заказ"
+          className="barcode-order-customer-modal__binding-mode"
+          value={customerBindingMode}
+          items={[
+            { value: "user", label: "Пользователь", disabled: orderSubmissionPending },
+            {
+              value: "regular-buyer",
+              label: "Постоянный покупатель",
+              disabled: orderSubmissionPending,
+            },
+          ]}
+          onValueChange={setCustomerBindingMode}
         />
 
-        <div className="barcode-order-customers" aria-busy={usersQuery.isLoading}>
-          {usersQuery.isLoading && <AppSkeleton />}
-          {usersQuery.isError && (
+        <AppSearchInput
+          label={isRegularBuyerBinding ? "Поиск постоянного покупателя" : "Поиск клиента"}
+          value={isRegularBuyerBinding ? regularBuyerSearch : customerSearch}
+          placeholder={
+            isRegularBuyerBinding
+              ? "Наименование, контакт, email или телефон"
+              : "Имя, email или телефон"
+          }
+          disabled={orderSubmissionPending}
+          onChange={(event) => {
+            if (isRegularBuyerBinding) setRegularBuyerSearch(event.target.value);
+            else setCustomerSearch(event.target.value);
+          }}
+        />
+
+        <div className="barcode-order-customers" aria-busy={bindingQuery.isLoading}>
+          {bindingQuery.isLoading && <AppSkeleton />}
+          {bindingQuery.isError && (
             <AppAlert
-              title="Не удалось загрузить клиентов"
+              title={
+                isRegularBuyerBinding
+                  ? "Не удалось загрузить покупателей"
+                  : "Не удалось загрузить клиентов"
+              }
               tone="danger"
-              onRetry={() => void usersQuery.refetch()}
+              onRetry={() => void bindingQuery.refetch()}
             >
-              {getErrorMessage(usersQuery.error)}
+              {getErrorMessage(bindingQuery.error)}
             </AppAlert>
           )}
-          {!usersQuery.isLoading &&
-            !usersQuery.isError &&
-            customers.length === 0 &&
+          {!bindingQuery.isLoading &&
+            !bindingQuery.isError &&
+            bindingCandidates.length === 0 &&
             !futureBinding && (
               <div className="barcode-order-customers__empty">
                 <UserRound size={28} />
-                <strong>Клиенты не найдены</strong>
+                <strong>
+                  {isRegularBuyerBinding
+                    ? "Постоянные покупатели не найдены"
+                    : "Клиенты не найдены"}
+                </strong>
                 <span>Измените поисковый запрос или пропустите этот этап.</span>
               </div>
             )}
           {futureBinding && (
             <button
               type="button"
-              className={`barcode-order-customer barcode-order-customer--pending${
-                selectedPendingBinding ? " is-selected" : ""
-              }`}
+              className={`barcode-order-customer barcode-order-customer--pending${selectedPendingBinding ? " is-selected" : ""}`}
               aria-pressed={Boolean(selectedPendingBinding)}
+              disabled={orderSubmissionPending}
               onClick={() => {
                 setSelectedCustomerId(null);
                 setSelectedPendingBinding(futureBinding);
@@ -1732,25 +1845,30 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
               </span>
             </button>
           )}
-          {customers.map((customer) => {
-            const selected = customer.id === selectedCustomerId;
+          {bindingCandidates.map((candidate) => {
+            const selected =
+              candidate.id === (isRegularBuyerBinding ? regularBuyerId : selectedCustomerId);
             return (
               <button
-                key={customer.id}
+                key={candidate.id}
                 type="button"
                 className={`barcode-order-customer ${selected ? "is-selected" : ""}`}
                 aria-pressed={selected}
+                disabled={orderSubmissionPending}
                 onClick={() => {
-                  setSelectedPendingBinding(null);
-                  setSelectedCustomerId(customer.id);
+                  if (typeof candidate.id === "string") setRegularBuyerId(candidate.id);
+                  else {
+                    setSelectedPendingBinding(null);
+                    setSelectedCustomerId(candidate.id);
+                  }
                 }}
               >
                 <span className="barcode-order-customer__icon">
                   {selected ? <Check size={18} /> : <UserRound size={18} />}
                 </span>
                 <span>
-                  <strong>{customer.name}</strong>
-                  <small>{[customer.email, customer.phone].filter(Boolean).join(" · ")}</small>
+                  <strong>{candidate.name}</strong>
+                  {candidate.details && <small>{candidate.details}</small>}
                 </span>
               </button>
             );
@@ -1758,40 +1876,51 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
         </div>
 
         <div className="barcode-order-modal__actions barcode-order-customer-modal__actions">
-          <AppButton
-            type="button"
-            variant="secondary"
-            disabled={!activeUser || orderSubmissionPending}
-            loading={orderSubmissionPending && submittingCustomerId === activeUser?.id}
-            loadingText={checkingStock ? "Проверяем склад..." : "Оформляем отпуск..."}
-            onClick={() => activeUser && void submitOrder(activeUser.id)}
-          >
-            <UserRound size={17} />
-            На себя
-          </AppButton>
+          {!isRegularBuyerBinding && (
+            <AppButton
+              type="button"
+              variant="secondary"
+              disabled={!activeUser || orderSubmissionPending}
+              loading={orderSubmissionPending && submittingAction === "self"}
+              loadingText={checkingStock ? "Проверяем склад..." : "Оформляем отпуск..."}
+              onClick={() => activeUser && void submitOrder(activeUser.id, null, "self")}
+            >
+              <UserRound size={17} />
+              На себя
+            </AppButton>
+          )}
           <AppButton
             type="button"
             variant="ghost"
             disabled={orderSubmissionPending}
-            loading={orderSubmissionPending && submittingCustomerId === null}
+            loading={orderSubmissionPending && submittingAction === "skip"}
             loadingText={checkingStock ? "Проверяем склад..." : "Создаём заказ..."}
-            onClick={() => void submitOrder(null)}
+            onClick={() => void submitOrder(null, null, "skip")}
           >
             Пропустить
           </AppButton>
           <AppButton
             type="button"
-            disabled={(!selectedCustomerId && !selectedPendingBinding) || orderSubmissionPending}
-            loading={orderSubmissionPending && submittingCustomerId !== null}
+            disabled={
+              (customerBindingMode === "regular-buyer"
+                ? !selectedRegularBuyer
+                : !selectedCustomerId && !selectedPendingBinding) || orderSubmissionPending
+            }
+            loading={orderSubmissionPending && submittingAction === "selected"}
             loadingText={checkingStock ? "Проверяем склад..." : "Создаём заказ..."}
-            onClick={() => void submitOrder(selectedCustomerId, selectedPendingBinding)}
+            onClick={() => {
+              if (customerBindingMode === "regular-buyer") void submitOrder(null);
+              else void submitOrder(selectedCustomerId, selectedPendingBinding);
+            }}
           >
             <Check size={17} />
-            {selectedCustomer
-              ? `Привязать к ${selectedCustomer.name}`
-              : selectedPendingBinding
-                ? "Создать ожидающую привязку"
-                : "Выбрать клиента"}
+            {customerBindingMode === "regular-buyer"
+              ? "Привязать к покупателю"
+              : selectedCustomer
+                ? `Привязать к ${selectedCustomer.name}`
+                : selectedPendingBinding
+                  ? "Создать ожидающую привязку"
+                  : "Выбрать клиента"}
           </AppButton>
         </div>
       </AppModal>

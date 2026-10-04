@@ -230,7 +230,7 @@ class PriceImporterTests(unittest.TestCase):
         workbook = Workbook()
         worksheet = workbook.active
         worksheet.title = "Исходный каталог"
-        worksheet.append([None, "ТОО Фирма Актив"])
+        worksheet.append([None, "ТОО GastroFlow"])
         worksheet.append(
             [
                 "Код",

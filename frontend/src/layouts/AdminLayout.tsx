@@ -3,25 +3,19 @@ import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
   BarChart3,
-  Barcode,
   Boxes,
   CircleDollarSign,
   ClipboardList,
   Clock3,
-  FilePlus2,
   Gauge,
   History,
   KeyRound,
   Layers3,
   LogOut,
   Menu,
-  MessageCircleMore,
-  MessageSquare,
   PanelsTopLeft,
-  Plug,
   ReceiptText,
   RotateCcw,
-  ScanBarcode,
   Settings,
   ShieldCheck,
   Store,
@@ -31,6 +25,7 @@ import {
 import { Link, matchPath, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useCommerce } from "@/features/commerce/CommerceProvider";
 import { NotificationCenter } from "@/features/notifications/NotificationCenter";
+import { StoreLogo } from "@/shared/components/brand/StoreLogo";
 import { NotFoundPage } from "@/pages/public/NotFoundPage";
 import { fetchWarehouseDocument, type WarehouseDocumentType } from "@/shared/api/warehouse";
 import { AppButton } from "@/shared/ui/AppButton";
@@ -57,31 +52,10 @@ const menu: Array<NavigationLink | NavigationSection> = [
   { to: "/admin", label: "Дашборд", permission: "pages.dashboard.view", icon: <Gauge /> },
   { to: "/admin/products", label: "Товары", permission: "pages.products.view", icon: <Boxes /> },
   {
-    to: "/admin/products/suppliers",
-    label: "Товары поставщиков",
-    permission: "pages.supplier-products.view",
-    icon: <Store />,
-    nested: true,
-  },
-  {
-    to: "/admin/products/import-created",
-    label: "Создание товара (импорт)",
-    permission: "pages.products.view",
-    icon: <FilePlus2 />,
-    nested: true,
-  },
-  {
     to: "/admin/products/price-analytics",
     label: "Аналитика цен",
     permission: "pages.products.view",
     icon: <CircleDollarSign />,
-    nested: true,
-  },
-  {
-    to: "/admin/products/barcodes",
-    label: "Генерация штрих-кодов",
-    permission: "pages.products.view",
-    icon: <Barcode />,
     nested: true,
   },
   {
@@ -111,17 +85,10 @@ const menu: Array<NavigationLink | NavigationSection> = [
     nested: true,
   },
   {
-    to: "/admin/orders/barcode",
-    label: "Заказ по штрих-коду",
-    permission: "orders.update",
-    icon: <ScanBarcode />,
-    nested: true,
-  },
-  {
-    to: "/admin/whatsapp",
-    label: "WhatsApp",
-    permission: "pages.whatsapp.view",
-    icon: <MessageCircleMore />,
+    to: "/admin/regular-buyers",
+    label: "Постоянные покупатели",
+    permission: "pages.regular-buyers.view",
+    icon: <Users />,
   },
   {
     to: "/admin/analytics",
@@ -135,20 +102,8 @@ const menu: Array<NavigationLink | NavigationSection> = [
     permission: "pages.audit.view",
     icon: <History />,
   },
-  {
-    to: "/admin/reviews",
-    label: "Отзывы",
-    permission: "pages.reviews.view",
-    icon: <MessageSquare />,
-  },
   { to: "/admin/roles", label: "Роли", permission: "pages.roles.view", icon: <ShieldCheck /> },
   { to: "/admin/permissions", label: "Права", permission: "roles.read", icon: <KeyRound /> },
-  {
-    to: "/admin/external-software",
-    label: "Стороннее ПО",
-    permission: "integrations.1c.credentials.manage",
-    icon: <Plug />,
-  },
   {
     to: "/admin/settings",
     label: "Настройки",
@@ -225,22 +180,7 @@ const menu: Array<NavigationLink | NavigationSection> = [
     icon: <ClipboardList />,
     nested: true,
   },
-  { type: "section", label: "Поставщики", permission: "pages.mks.view" },
-  {
-    to: "/admin/mks-catalog",
-    label: "МКС",
-    permission: "pages.mks.view",
-    icon: <Store />,
-    nested: true,
-  },
-  { type: "section", label: "Инструменты", permission: null },
-  {
-    to: "/admin/procurement",
-    label: "Закупки из Китая",
-    permission: "pages.procurement.view",
-    icon: <ClipboardList />,
-    nested: true,
-  },
+  { type: "section", label: "Инструменты", permission: "pages.uiKit.view" },
   {
     to: "/admin/ui-kit",
     label: "UI-kit",
@@ -351,12 +291,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         onTouchStart={sidebarDrag.handlePanelTouchStart}
       >
         <Link className="brand-block" to="/admin">
-          <span className="admin-brand-mark" aria-hidden="true">
-            <Store size={19} strokeWidth={1.8} />
-          </span>
-          <span className="admin-brand-name">
-            Фирма Актив<span>Управление магазином</span>
-          </span>
+          <StoreLogo />
         </Link>
 
         <AppButton
@@ -413,7 +348,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             </div>
             <div>
               <b>{user?.name ?? "Админ"}</b>
-              <span>Фирма Актив</span>
+              <span>GastroFlow</span>
             </div>
           </div>
         </div>
@@ -442,7 +377,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
               <Menu size={21} />
             </AppButton>
             <Link className="admin-topbar__brand" to="/admin">
-              Фирма Актив
+              <StoreLogo compact />
             </Link>
           </div>
           <div className="topbar-actions">

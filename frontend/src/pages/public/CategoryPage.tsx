@@ -121,8 +121,8 @@ export function CategoryPage() {
         <SeoMeta
           title={
             categoriesQuery.isLoading
-              ? "Загрузка категории | Фирма «Актив»"
-              : "Категория недоступна | Фирма «Актив»"
+              ? "Загрузка категории | GastroFlow"
+              : "Категория недоступна | GastroFlow"
           }
           description="Категория товаров не найдена или временно недоступна."
           canonicalPath={canonicalPath}
@@ -132,10 +132,10 @@ export function CategoryPage() {
       )}
       {category && (
         <SeoMeta
-          title={`${category.nameRu}${requestedPage > 1 ? ` — страница ${requestedPage}` : ""} — купить в Фирме «Актив»`}
+          title={`${category.nameRu}${requestedPage > 1 ? ` — страница ${requestedPage}` : ""} — купить в GastroFlow`}
           description={
             category.descriptionRu?.trim() ||
-            `Каталог товаров категории «${category.nameRu}»: цены, наличие и заказ онлайн.`
+            `Каталог продуктов категории «${category.nameRu}»: цены, наличие и заказ онлайн.`
           }
           canonicalPath={canonicalPath}
           image={category.imageFilePath ?? null}
@@ -150,7 +150,8 @@ export function CategoryPage() {
               "@type": "CollectionPage",
               name: `${category.nameRu} в Павлодаре`,
               description:
-                category.descriptionRu?.trim() || `Каталог товаров категории «${category.nameRu}».`,
+                category.descriptionRu?.trim() ||
+                `Каталог продуктов категории «${category.nameRu}».`,
               url: `${window.location.origin}${canonicalPath}`,
             },
             {
@@ -186,8 +187,7 @@ export function CategoryPage() {
               <p>Категория каталога</p>
               <h1>{category.nameRu}</h1>
               <p>
-                {category.descriptionRu ??
-                  "Подборка товаров и инженерных решений по выбранной категории."}
+                {category.descriptionRu ?? "Продукты выбранной категории в каталоге GastroFlow."}
               </p>
               <div className="category-page__hero-meta">
                 <AppBadge tone="orange">

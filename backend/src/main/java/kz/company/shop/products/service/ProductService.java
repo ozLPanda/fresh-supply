@@ -25,12 +25,12 @@ import kz.company.shop.files.service.FileStorageService;
 import kz.company.shop.pricing.service.PricingService;
 import kz.company.shop.productImages.entity.ProductImage;
 import kz.company.shop.productImages.repository.ProductImageRepository;
+import kz.company.shop.products.dto.ProductActivityChangeDto;
 import kz.company.shop.products.dto.ProductAvailabilityRepairApplyRequest;
 import kz.company.shop.products.dto.ProductAvailabilityRepairPreviewDto;
 import kz.company.shop.products.dto.ProductAvailabilityRepairResultDto;
 import kz.company.shop.products.dto.ProductAvailabilityStatusRequest.Status;
 import kz.company.shop.products.dto.ProductCatalogAnalyticsDto;
-import kz.company.shop.products.dto.ProductActivityChangeDto;
 import kz.company.shop.products.dto.ProductDto;
 import kz.company.shop.products.dto.ProductImageDto;
 import kz.company.shop.products.dto.ProductListParams;
@@ -387,9 +387,7 @@ public class ProductService {
                     "UPDATE",
                     "PRODUCT",
                     product.id,
-                    "Перевёл товар «"
-                            + product.nameRu
-                            + "» в статус «Под заказ»");
+                    "Перевёл товар «" + product.nameRu + "» в статус «Под заказ»");
         }
         return new ProductAvailabilityRepairResultDto(
                 updated.size(), requestedIds.size() - updated.size());
@@ -440,11 +438,21 @@ public class ProductService {
     }
 
     @Transactional
+    public String nextSku() {
+        String sku;
+        do {
+            sku = Long.toString(repository.nextSkuNumber());
+        } while (repository.existsBySku(sku));
+        return sku;
+    }
+
+    @Transactional
     public ProductDto create(ProductDto dto) {
-        if (repository.existsBySku(dto.sku()))
-            throw new AppExceptions.BadRequest("Артикул уже используется");
         Product product = new Product();
         apply(product, dto);
+        if (product.sku == null) product.sku = nextSku();
+        if (repository.existsBySku(product.sku))
+            throw new AppExceptions.BadRequest("Артикул уже используется");
         Product saved = repository.save(product);
         searchEmbeddingIndexer.indexProduct(saved);
         auditService.record("CREATE", "PRODUCT", saved.id, "Создал товар «" + saved.nameRu + "»");
@@ -456,7 +464,7 @@ public class ProductService {
         Product product = getEntity(id);
         ProductAuditState previous = productAuditState(product);
         repository
-                .findBySkuAndDeletedAtIsNull(dto.sku())
+                .findBySkuAndDeletedAtIsNull(normalizeSku(dto.sku()))
                 .filter(existing -> !existing.id.equals(id))
                 .ifPresent(
                         existing -> {
@@ -467,11 +475,7 @@ public class ProductService {
         searchEmbeddingIndexer.indexProduct(saved);
         List<ProductActivityChangeDto> changes = productAuditChanges(previous, saved);
         auditService.record(
-                "UPDATE",
-                "PRODUCT",
-                saved.id,
-                productUpdateDescription(saved, changes),
-                changes);
+                "UPDATE", "PRODUCT", saved.id, productUpdateDescription(saved, changes), changes);
         return toDto(saved, true, BigDecimal.ZERO);
     }
 
@@ -923,7 +927,8 @@ public class ProductService {
                 imageDtos(product),
                 hasPersonalDiscount ? product.price : null,
                 hasPersonalDiscount ? personalDiscountPercent : null,
-                includeInternalPrices ? product.incomingPrice : null);
+                includeInternalPrices ? product.incomingPrice : null,
+                product.measurementUnit);
     }
 
     private ProductPriceAnalyticsDto toPriceAnalyticsDto(Product product) {
@@ -1071,12 +1076,20 @@ public class ProductService {
 
     private record AvailabilityRepairKeyword(String value, Pattern pattern) {}
 
+    private String normalizeSku(String sku) {
+        return sku == null || sku.isBlank() ? null : sku.trim();
+    }
+
     private void apply(Product product, ProductDto dto) {
         if (dto.price().compareTo(BigDecimal.ZERO) <= 0)
             throw new AppExceptions.BadRequest("Основная цена обязательна");
-        product.sku = dto.sku();
+        String sku = normalizeSku(dto.sku());
+        if (sku != null) product.sku = sku;
+        if (dto.measurementUnit() != null) {
+            product.measurementUnit = dto.measurementUnit();
+        }
         product.nameRu = dto.nameRu();
-        product.nameKk = dto.nameKk();
+        product.nameKk = dto.nameKk() == null ? "" : dto.nameKk().trim();
         product.shortDescriptionRu = dto.shortDescriptionRu();
         product.shortDescriptionKk = dto.shortDescriptionKk();
         product.descriptionRu = dto.descriptionRu();
@@ -1133,7 +1146,10 @@ public class ProductService {
                 product.incomingPrice,
                 categoryService.nameRu(product.categoryId),
                 availabilityLabel(product),
-                deliveryLabel(product));
+                deliveryLabel(product),
+                product.measurementUnit == null
+                        ? "шт"
+                        : (product.measurementUnit.name().equals("KG") ? "кг" : "шт"));
     }
 
     private List<ProductActivityChangeDto> productAuditChanges(
@@ -1142,33 +1158,68 @@ public class ProductService {
         appendChange(changes, "Артикул", previous.sku(), current.sku);
         appendChange(changes, "Название RU", previous.nameRu(), current.nameRu);
         appendChange(changes, "Название KZ", previous.nameKk(), current.nameKk);
-        appendChange(changes, "Краткое описание RU", previous.shortDescriptionRu(), current.shortDescriptionRu);
-        appendChange(changes, "Краткое описание KZ", previous.shortDescriptionKk(), current.shortDescriptionKk);
+        appendChange(
+                changes,
+                "Краткое описание RU",
+                previous.shortDescriptionRu(),
+                current.shortDescriptionRu);
+        appendChange(
+                changes,
+                "Краткое описание KZ",
+                previous.shortDescriptionKk(),
+                current.shortDescriptionKk);
         appendChange(changes, "Описание RU", previous.descriptionRu(), current.descriptionRu);
         appendChange(changes, "Описание KZ", previous.descriptionKk(), current.descriptionKk);
         appendChange(changes, "Розничная цена", money(previous.price()), money(current.price));
-        appendChange(changes, "Оптовая цена", money(previous.wholesalePrice()), money(current.wholesalePrice));
-        appendChange(changes, "Крупный опт", money(previous.bulkWholesalePrice()), money(current.bulkWholesalePrice));
+        appendChange(
+                changes,
+                "Оптовая цена",
+                money(previous.wholesalePrice()),
+                money(current.wholesalePrice));
+        appendChange(
+                changes,
+                "Крупный опт",
+                money(previous.bulkWholesalePrice()),
+                money(current.bulkWholesalePrice));
         appendChange(changes, "Цена СКО", money(previous.skoPrice()), money(current.skoPrice));
         appendChange(changes, "Цена ГСКО", money(previous.gskoPrice()), money(current.gskoPrice));
-        appendChange(changes, "Приходная цена", money(previous.incomingPrice()), money(current.incomingPrice));
-        appendChange(changes, "Категория", previous.categoryName(), categoryService.nameRu(current.categoryId));
+        appendChange(
+                changes,
+                "Приходная цена",
+                money(previous.incomingPrice()),
+                money(current.incomingPrice));
+        appendChange(
+                changes,
+                "Категория",
+                previous.categoryName(),
+                categoryService.nameRu(current.categoryId));
         appendChange(changes, "Доступность", previous.availability(), availabilityLabel(current));
         appendChange(changes, "Срок доставки", previous.delivery(), deliveryLabel(current));
+        appendChange(
+                changes,
+                "Единица измерения",
+                previous.measurementUnit(),
+                current.measurementUnit == null
+                        ? "шт"
+                        : (current.measurementUnit.name().equals("KG") ? "кг" : "шт"));
         return changes;
     }
 
-    private String productUpdateDescription(Product current, List<ProductActivityChangeDto> changes) {
-        String description = changes.isEmpty()
-                ? "Обновил товар «" + current.nameRu + "»"
-                : "Изменил товар «" + current.nameRu + "»";
+    private String productUpdateDescription(
+            Product current, List<ProductActivityChangeDto> changes) {
+        String description =
+                changes.isEmpty()
+                        ? "Обновил товар «" + current.nameRu + "»"
+                        : "Изменил товар «" + current.nameRu + "»";
         return description.length() <= 500 ? description : description.substring(0, 497) + "…";
     }
 
     private void appendChange(
             List<ProductActivityChangeDto> changes, String field, String previous, String current) {
         if (!Objects.equals(previous, current)) {
-            changes.add(new ProductActivityChangeDto(field, compactAuditValue(previous), compactAuditValue(current)));
+            changes.add(
+                    new ProductActivityChangeDto(
+                            field, compactAuditValue(previous), compactAuditValue(current)));
         }
     }
 
@@ -1211,5 +1262,6 @@ public class ProductService {
             BigDecimal incomingPrice,
             String categoryName,
             String availability,
-            String delivery) {}
+            String delivery,
+            String measurementUnit) {}
 }

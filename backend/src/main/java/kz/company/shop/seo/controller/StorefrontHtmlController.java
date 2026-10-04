@@ -94,7 +94,7 @@ public class StorefrontHtmlController {
             if (root == null) throw new IllegalStateException("Missing storefront root");
             root.empty();
             Element nav = root.appendElement("nav").attr("aria-label", "Основная навигация");
-            link(nav, "/", "Фирма «Актив»");
+            link(nav, "/", "GastroFlow");
             link(nav, "/catalog", "Каталог товаров");
             link(nav, "/categories", "Категории");
             Element main = root.appendElement("main");
@@ -121,7 +121,7 @@ public class StorefrontHtmlController {
         String description = plain(product.descriptionRu());
         if (description.isBlank()) description = plain(product.shortDescriptionRu());
         if (description.isBlank())
-            description = product.nameRu() + " — цена и заказ в Фирме «Актив», Павлодар.";
+            description = product.nameRu() + " — цена и заказ в GastroFlow, Павлодар.";
         main.appendElement("p").text(description);
         main.appendElement("p").text(product.madeToOrder() ? "Под заказ" : "В наличии");
         if (product.price() != null)
@@ -175,7 +175,7 @@ public class StorefrontHtmlController {
         crumbs.add(crumb(3, product.nameRu(), base + "/product/" + id));
         metadata(
                 doc,
-                product.nameRu() + " — купить в Фирме «Актив»",
+                product.nameRu() + " — купить в GastroFlow",
                 description,
                 base + "/product/" + id,
                 false,
@@ -214,12 +214,12 @@ public class StorefrontHtmlController {
                         : path.equals("/categories")
                                 ? "Категории товаров"
                                 : path.equals("/")
-                                        ? "Фирма «Актив» — отопление и сантехника в Павлодаре"
+                                        ? "GastroFlow — паназиатские продукты"
                                         : "Каталог товаров";
         String description =
                 category != null && category.descriptionRu() != null
                         ? plain(category.descriptionRu())
-                        : "Товары для отопления, водоснабжения и сантехники в Павлодаре. Цены, наличие и заказ онлайн в Фирме «Актив».";
+                        : "Овощи, фрукты, бакалея и паназиатские продукты. Цены, наличие и заказ онлайн в GastroFlow.";
         main.appendElement("h1").text(title);
         main.appendElement("p").text(description);
         Element categoryList = main.appendElement("ul");
@@ -350,7 +350,7 @@ public class StorefrontHtmlController {
                                 "og:type",
                                 canonical.contains("/product/") ? "product" : "website",
                                 "og:site_name",
-                                "Фирма «Актив»",
+                                "GastroFlow",
                                 "og:locale",
                                 "ru_RU")
                         .entrySet())

@@ -6,10 +6,10 @@ import java.util.UUID;
 import kz.company.shop.common.response.ApiResponse;
 import kz.company.shop.common.security.AuthContext;
 import kz.company.shop.orders.dto.*;
+import kz.company.shop.orders.entity.PriceTier;
 import kz.company.shop.orders.service.OrderActivityCategory;
 import kz.company.shop.orders.service.OrderActivityService;
 import kz.company.shop.orders.service.OrderComparisonPdfService;
-import kz.company.shop.orders.entity.PriceTier;
 import kz.company.shop.orders.service.OrderIncomingPriceCheckService;
 import kz.company.shop.orders.service.OrderInvoicePdfService;
 import kz.company.shop.orders.service.OrderReturnSummaryService;
@@ -75,8 +75,14 @@ public class OrderController {
     @PreAuthorize("hasAuthority('orders.read')")
     public ApiResponse<kz.company.shop.common.response.PageResult<OrderDto>> adminPage(
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate createdFrom,
-            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate createdTo,
+            @RequestParam(required = false)
+                    @org.springframework.format.annotation.DateTimeFormat(
+                            iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+                    java.time.LocalDate createdFrom,
+            @RequestParam(required = false)
+                    @org.springframework.format.annotation.DateTimeFormat(
+                            iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+                    java.time.LocalDate createdTo,
             @RequestParam(required = false) List<kz.company.shop.orders.entity.OrderStatus> status,
             @RequestParam(required = false) List<kz.company.shop.orders.entity.PriceTier> priceTier,
             @RequestParam(required = false) Boolean stockShortage,
@@ -85,15 +91,31 @@ public class OrderController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
         auth.require("orders.read");
-        return ApiResponse.ok(service.adminPage(search, createdFrom, createdTo, status, priceTier,
-                stockShortage, sort, "desc".equalsIgnoreCase(direction), page, size));
+        return ApiResponse.ok(
+                service.adminPage(
+                        search,
+                        createdFrom,
+                        createdTo,
+                        status,
+                        priceTier,
+                        stockShortage,
+                        sort,
+                        "desc".equalsIgnoreCase(direction),
+                        page,
+                        size));
     }
 
     @GetMapping("/admin/orders/summary")
     @PreAuthorize("hasAuthority('orders.read')")
     public ApiResponse<OrderListSummaryDto> adminSummary(
-            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate createdFrom,
-            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate createdTo) {
+            @RequestParam(required = false)
+                    @org.springframework.format.annotation.DateTimeFormat(
+                            iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+                    java.time.LocalDate createdFrom,
+            @RequestParam(required = false)
+                    @org.springframework.format.annotation.DateTimeFormat(
+                            iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+                    java.time.LocalDate createdTo) {
         auth.require("orders.read");
         return ApiResponse.ok(service.adminSummary(createdFrom, createdTo));
     }
@@ -117,14 +139,21 @@ public class OrderController {
     public ApiResponse<kz.company.shop.common.response.PageResult<OrderActivityDto>> activity(
             @PathVariable UUID id,
             @RequestParam(required = false) Long actorUserId,
-            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate from,
-            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate to,
+            @RequestParam(required = false)
+                    @org.springframework.format.annotation.DateTimeFormat(
+                            iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+                    java.time.LocalDate from,
+            @RequestParam(required = false)
+                    @org.springframework.format.annotation.DateTimeFormat(
+                            iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+                    java.time.LocalDate to,
             @RequestParam(required = false) java.util.Set<OrderActivityCategory> categories,
             @RequestParam(required = false) java.util.Set<String> actions,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "25") int size) {
         auth.require("orders.read");
-        return ApiResponse.ok(activityService.list(id, actorUserId, from, to, categories, actions, page, size));
+        return ApiResponse.ok(
+                activityService.list(id, actorUserId, from, to, categories, actions, page, size));
     }
 
     @GetMapping("/admin/orders/{id}/activity/filter-options")
@@ -199,17 +228,29 @@ public class OrderController {
     public ApiResponse<OrderDto> updateStatus(
             @PathVariable UUID id, @RequestBody @Valid OrderStatusUpdateRequest request) {
         auth.require("orders.update");
-        return ApiResponse.ok(service.updateStatus(id, request.status(), auth.current().id()));
+        return ApiResponse.ok(
+                service.updateStatus(
+                        id, request.status(), auth.current().id(), request.itemUnits()));
     }
 
     @PutMapping("/admin/orders/{id}/reservation")
     @PreAuthorize("hasAuthority('orders.update') and hasAuthority('warehouse.manage')")
     public ApiResponse<OrderDto> reserve(
-            @PathVariable UUID id, @RequestBody(required = false) OrderReservationUpdateRequest request) {
+            @PathVariable UUID id,
+            @RequestBody(required = false) OrderReservationUpdateRequest request) {
         auth.require("orders.update");
         auth.require("warehouse.manage");
         return ApiResponse.ok(
-                service.reserve(id, request == null ? null : request.expiresAt(), auth.current().id()));
+                service.reserve(
+                        id, request == null ? null : request.expiresAt(), auth.current().id()));
+    }
+
+    @PutMapping("/admin/orders/{id}/regular-buyer")
+    @PreAuthorize("hasAuthority('orders.update')")
+    public ApiResponse<OrderDto> updateRegularBuyer(
+            @PathVariable UUID id, @RequestBody @Valid OrderRegularBuyerUpdateRequest request) {
+        auth.require("orders.update");
+        return ApiResponse.ok(service.updateRegularBuyer(id, request.regularBuyerId(), auth.current().id()));
     }
 
     @PatchMapping("/admin/orders/{id}/comment")
@@ -305,6 +346,17 @@ public class OrderController {
             @RequestBody @Valid OrderItemQuantityUpdateRequest request) {
         auth.require("orders.update");
         return ApiResponse.ok(service.updateItemQuantity(id, itemId, request, auth.current().id()));
+    }
+
+    @PatchMapping("/admin/orders/{id}/items/{itemId}/measurement-unit")
+    @PreAuthorize("hasAuthority('orders.update')")
+    public ApiResponse<OrderDto> updateItemMeasurementUnit(
+            @PathVariable UUID id,
+            @PathVariable Long itemId,
+            @RequestBody @Valid OrderItemMeasurementUnitUpdateRequest request) {
+        auth.require("orders.update");
+        return ApiResponse.ok(
+                service.updateItemMeasurementUnit(id, itemId, request, auth.current().id()));
     }
 
     @PatchMapping("/admin/orders/{id}/items/order")

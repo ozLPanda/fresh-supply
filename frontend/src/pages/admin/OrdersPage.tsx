@@ -12,7 +12,6 @@ import {
   RotateCcw,
   Trash2,
   X,
-  ScanBarcode,
   XCircle,
 } from "lucide-react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -167,7 +166,7 @@ export function AdminOrdersPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useCommerce();
   const queryClient = useQueryClient();
-  const canCreateBarcodeOrder = user?.permissions?.includes("orders.update") ?? false;
+  const canCreateOrder = user?.permissions?.includes("orders.update") ?? false;
   const canUpdateOrders = user?.permissions?.includes("orders.update") ?? false;
   const canDeleteOrders = user?.permissions?.includes("orders.delete") ?? false;
   const canManageWarehouse = user?.permissions?.includes("warehouse.manage") ?? false;
@@ -186,7 +185,6 @@ export function AdminOrdersPage() {
     initialState.columnVisibility,
   );
   const [expandedOrderIds, setExpandedOrderIds] = useState(initialState.expandedOrderIds ?? []);
-  const [createModeOpen, setCreateModeOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Order | null>(null);
   const [orderCompletionTarget, setOrderCompletionTarget] = useState<Order | null>(null);
   const [orderContextMenu, setOrderContextMenu] = useState<{
@@ -420,7 +418,7 @@ export function AdminOrdersPage() {
           (status === "READY_FOR_PICKUP" && order.checkedItems !== order.items.length),
         separatorBefore: index === 0,
         onSelect: () => {
-          if (status === "COMPLETED" && order.paymentStatus === "PENDING") {
+          if (status === "COMPLETED") {
             setOrderCompletionTarget(order);
             return;
           }
@@ -758,17 +756,8 @@ export function AdminOrdersPage() {
       title="Заказы"
       eyebrow="Продажи"
       actions={
-        canCreateBarcodeOrder ? (
+        canCreateOrder ? (
           <>
-            <AppButton
-              type="button"
-              variant="secondary"
-              className="admin-orders-create-desktop"
-              onClick={() => openCreateOrder("/admin/orders/barcode")}
-            >
-              <Plus size={18} />
-              По штрих-коду
-            </AppButton>
             <AppButton
               type="button"
               className="admin-orders-create-desktop"
@@ -780,7 +769,7 @@ export function AdminOrdersPage() {
             <AppButton
               type="button"
               className="admin-orders-create-mobile"
-              onClick={() => setCreateModeOpen(true)}
+              onClick={() => openCreateOrder("/admin/orders/new")}
             >
               <Plus size={18} />
               Создать заказ
@@ -888,26 +877,6 @@ export function AdminOrdersPage() {
           />
         </DataPanel>
       </div>
-      <AppModal
-        title="Создать заказ"
-        description="Выберите способ добавления товаров."
-        open={createModeOpen}
-        onOpenChange={setCreateModeOpen}
-        contentClassName="admin-orders-create-modal"
-      >
-        <div className="admin-orders-create-modes">
-          <AppButton type="button" onClick={() => openCreateOrder("/admin/orders/new")}>
-            <Plus size={18} /> Из каталога
-          </AppButton>
-          <AppButton
-            type="button"
-            variant="secondary"
-            onClick={() => openCreateOrder("/admin/orders/barcode")}
-          >
-            <ScanBarcode size={18} /> По штрих-коду
-          </AppButton>
-        </div>
-      </AppModal>
       <AppContextMenu
         open={Boolean(orderContextMenu)}
         x={orderContextMenu?.x ?? 0}

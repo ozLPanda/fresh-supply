@@ -16,8 +16,10 @@ import kz.company.shop.carts.service.CartService;
 import kz.company.shop.common.exception.AppExceptions;
 import kz.company.shop.notifications.service.NotificationService;
 import kz.company.shop.orders.dto.CheckoutRequest;
+import kz.company.shop.orders.dto.OrderItemMeasurementUnitUpdateRequest;
 import kz.company.shop.orders.dto.OrderItemOrderUpdateRequest;
 import kz.company.shop.orders.dto.OrderItemQuantityUpdateRequest;
+import kz.company.shop.orders.dto.OrderItemUnitRequest;
 import kz.company.shop.orders.dto.OrderPriceUpdateItemRequest;
 import kz.company.shop.orders.dto.OrderPriceUpdateRequest;
 import kz.company.shop.orders.entity.FulfillmentType;
@@ -29,6 +31,7 @@ import kz.company.shop.orders.entity.PaymentStatus;
 import kz.company.shop.orders.entity.PriceTier;
 import kz.company.shop.orders.repository.OrderRepository;
 import kz.company.shop.pricing.service.PricingService;
+import kz.company.shop.products.entity.MeasurementUnit;
 import kz.company.shop.products.entity.Product;
 import kz.company.shop.products.service.ProductService;
 import kz.company.shop.users.entity.User;
@@ -74,6 +77,10 @@ class OrderServiceTest {
         sourceItem.order = source;
         sourceItem.productId = 10L;
         sourceItem.madeToOrder = true;
+        sourceItem.measurementUnit = MeasurementUnit.KG;
+        source.invoiceIssuedAt = Instant.parse("2026-08-17T10:00:00Z");
+        source.regularBuyerId = UUID.randomUUID();
+        source.regularBuyerName = "ИП Получатель";
         sourceItem.sku = "10";
         sourceItem.nameRu = "Товар";
         sourceItem.unitPrice = money("100.00");
@@ -97,6 +104,9 @@ class OrderServiceTest {
         assertThat(saved.getValue().paymentStatus).isEqualTo(PaymentStatus.PENDING);
         assertThat(saved.getValue().paymentMethod).isEqualTo(PaymentMethod.ON_RECEIPT);
         assertThat(saved.getValue().paidTotal).isEqualByComparingTo("0");
+        assertThat(saved.getValue().invoiceIssuedAt).isNull();
+        assertThat(saved.getValue().regularBuyerId).isEqualTo(source.regularBuyerId);
+        assertThat(saved.getValue().regularBuyerName).isEqualTo("ИП Получатель");
         assertThat(saved.getValue().reservationExpiresAt).isAfter(Instant.now());
         assertThat(saved.getValue().items)
                 .singleElement()
@@ -106,6 +116,7 @@ class OrderServiceTest {
                             assertThat(item.quantity).isEqualByComparingTo("2");
                             assertThat(item.lineTotal).isEqualByComparingTo("200");
                             assertThat(item.madeToOrder).isTrue();
+                            assertThat(item.measurementUnit).isEqualTo(MeasurementUnit.KG);
                             assertThat(item.assembled).isFalse();
                             assertThat(item.checked).isFalse();
                         });
@@ -386,6 +397,7 @@ class OrderServiceTest {
         user.name = "Клиент";
         user.email = "client@example.com";
         when(repository.findWithItemsById(order.id)).thenReturn(Optional.of(order));
+        when(repository.findForUpdateById(order.id)).thenReturn(Optional.of(order));
         when(repository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(users.byId(8L)).thenReturn(user);
 
@@ -547,7 +559,9 @@ class OrderServiceTest {
 
         assertThat(fixture.order.status).isEqualTo(OrderStatus.PROCESSING);
         assertThat(fixture.order.reservationExpiresAt)
-                .isBetween(startedAt.plusSeconds(24 * 60 * 60), Instant.now().plusSeconds(24 * 60 * 60));
+                .isBetween(
+                        startedAt.plusSeconds(24 * 60 * 60),
+                        Instant.now().plusSeconds(24 * 60 * 60));
         verify(fixture.warehouse).reserveOrder(fixture.order);
         verify(fixture.repository).save(fixture.order);
     }
@@ -573,7 +587,8 @@ class OrderServiceTest {
         Fixture fixture = new Fixture();
         fixture.order.status = OrderStatus.PROCESSING;
         fixture.order.reservationExpiresAt = Instant.now().minusSeconds(1);
-        when(fixture.repository.findExpiredReservationIds(any())).thenReturn(List.of(fixture.order.id));
+        when(fixture.repository.findExpiredReservationIds(any()))
+                .thenReturn(List.of(fixture.order.id));
         when(fixture.repository.findForUpdateById(fixture.order.id))
                 .thenReturn(Optional.of(fixture.order));
 
@@ -671,8 +686,11 @@ class OrderServiceTest {
         fixture.order.reservationExpiresAt = Instant.now().plusSeconds(3600);
         when(fixture.warehouse.hasRecordedOrderSale(fixture.order)).thenReturn(true);
 
-        fixture.service.updateItemQuantity(fixture.order.id, fixture.first.id,
-                new OrderItemQuantityUpdateRequest(new BigDecimal("3")), 17L);
+        fixture.service.updateItemQuantity(
+                fixture.order.id,
+                fixture.first.id,
+                new OrderItemQuantityUpdateRequest(new BigDecimal("3")),
+                17L);
 
         assertThat(fixture.first.quantity).isEqualByComparingTo("3");
         verify(fixture.warehouse).reserveOrder(fixture.order, true);
@@ -734,10 +752,16 @@ class OrderServiceTest {
         Fixture fixture = new Fixture();
         fixture.order.reservationExpiresAt = Instant.now().plusSeconds(3600);
 
-        fixture.service.updateItemQuantity(fixture.order.id, fixture.first.id,
-                new OrderItemQuantityUpdateRequest(BigDecimal.ONE), 1L);
-        fixture.service.updateItemQuantity(fixture.order.id, fixture.first.id,
-                new OrderItemQuantityUpdateRequest(new BigDecimal("1.000")), 1L);
+        fixture.service.updateItemQuantity(
+                fixture.order.id,
+                fixture.first.id,
+                new OrderItemQuantityUpdateRequest(BigDecimal.ONE),
+                1L);
+        fixture.service.updateItemQuantity(
+                fixture.order.id,
+                fixture.first.id,
+                new OrderItemQuantityUpdateRequest(new BigDecimal("1.000")),
+                1L);
 
         verify(fixture.warehouse, times(2))
                 .reduceOrderReservations(fixture.order, fixture.first.productId);
@@ -783,6 +807,109 @@ class OrderServiceTest {
     }
 
     @Test
+    void itemUnitEditPersistsOnlyUnitAndRetainsPricesQuantitiesAndFulfillment() {
+        Fixture fixture = new Fixture();
+        fixture.order.status = OrderStatus.PROCESSING;
+        fixture.first.assembled = true;
+        fixture.first.checked = true;
+        var result =
+                fixture.service.updateItemMeasurementUnit(
+                        fixture.order.id,
+                        fixture.first.id,
+                        new OrderItemMeasurementUnitUpdateRequest(MeasurementUnit.KG),
+                        8L);
+        assertThat(result.items().getFirst().measurementUnit()).isEqualTo(MeasurementUnit.KG);
+        assertThat(fixture.first.quantity).isEqualByComparingTo("2");
+        assertThat(fixture.first.unitPrice).isEqualByComparingTo("10");
+        assertThat(fixture.first.confirmedUnitPrice).isEqualByComparingTo("10");
+        assertThat(fixture.first.lineTotal).isEqualByComparingTo("20");
+        assertThat(fixture.first.confirmedLineTotal).isEqualByComparingTo("20");
+        assertThat(fixture.order.total).isEqualByComparingTo("100");
+        assertThat(fixture.order.paidTotal).isEqualByComparingTo("100");
+        assertThat(fixture.first.assembled).isTrue();
+        assertThat(fixture.first.checked).isTrue();
+        assertThat(fixture.second.measurementUnit).isEqualTo(MeasurementUnit.PIECE);
+        verify(fixture.repository).save(fixture.order);
+        verify(fixture.audit)
+                .record(
+                        eq("ORDER_ITEM_MEASUREMENT_UNIT_UPDATE"),
+                        eq("ORDER"),
+                        eq(fixture.order.id),
+                        any(),
+                        eq(
+                                List.of(
+                                        new kz.company.shop.orders.dto.OrderActivityChangeDto(
+                                                "Единица измерения: " + fixture.first.nameRu,
+                                                "шт",
+                                                "кг"))));
+        verifyNoInteractions(fixture.products, fixture.wallets);
+        verify(fixture.warehouse, never()).reserveOrder(any());
+        verify(fixture.warehouse, never()).postOrderSale(any(), any());
+        verify(fixture.warehouse, never()).reduceOrderReservations(any(), any());
+    }
+
+    @Test
+    void itemUnitEditRejectsForeignItemsAndMissingUnitBeforeSaving() {
+        Fixture fixture = new Fixture();
+        assertThatThrownBy(
+                        () ->
+                                fixture.service.updateItemMeasurementUnit(
+                                        fixture.order.id,
+                                        999L,
+                                        new OrderItemMeasurementUnitUpdateRequest(
+                                                MeasurementUnit.KG),
+                                        8L))
+                .isInstanceOf(AppExceptions.NotFound.class);
+        assertThatThrownBy(
+                        () ->
+                                fixture.service.updateItemMeasurementUnit(
+                                        fixture.order.id,
+                                        fixture.first.id,
+                                        new OrderItemMeasurementUnitUpdateRequest(null),
+                                        8L))
+                .isInstanceOf(AppExceptions.BadRequest.class);
+        assertThat(fixture.first.measurementUnit).isEqualTo(MeasurementUnit.PIECE);
+        verify(fixture.repository, never()).save(any());
+        verifyNoInteractions(fixture.audit, fixture.products, fixture.warehouse);
+    }
+
+    @Test
+    void itemUnitEditUsesExistingEditableStatusRules() {
+        for (OrderStatus status :
+                List.of(
+                        OrderStatus.READY_FOR_PICKUP,
+                        OrderStatus.COMPLETED,
+                        OrderStatus.CANCELLED)) {
+            Fixture fixture = new Fixture();
+            fixture.order.status = status;
+            assertThatThrownBy(
+                            () ->
+                                    fixture.service.updateItemMeasurementUnit(
+                                            fixture.order.id,
+                                            fixture.first.id,
+                                            new OrderItemMeasurementUnitUpdateRequest(
+                                                    MeasurementUnit.KG),
+                                            8L))
+                    .isInstanceOf(AppExceptions.BadRequest.class);
+            assertThat(fixture.first.measurementUnit).isEqualTo(MeasurementUnit.PIECE);
+            verify(fixture.repository, never()).save(any());
+            verifyNoInteractions(fixture.audit, fixture.products, fixture.warehouse);
+        }
+    }
+
+    @Test
+    void repeatedItemUnitEditDoesNotWriteAnotherAuditEvent() {
+        Fixture fixture = new Fixture();
+        fixture.service.updateItemMeasurementUnit(
+                fixture.order.id,
+                fixture.first.id,
+                new OrderItemMeasurementUnitUpdateRequest(MeasurementUnit.PIECE),
+                8L);
+        verify(fixture.repository, never()).save(any());
+        verifyNoInteractions(fixture.audit, fixture.products);
+    }
+
+    @Test
     void updateItemQuantityAcceptsQuantityBelowOneAndRecalculatesTotal() {
         Fixture fixture = new Fixture();
 
@@ -804,7 +931,8 @@ class OrderServiceTest {
         var updated =
                 fixture.service.updateItemOrder(
                         fixture.order.id,
-                        new OrderItemOrderUpdateRequest(List.of(fixture.second.id, fixture.first.id)),
+                        new OrderItemOrderUpdateRequest(
+                                List.of(fixture.second.id, fixture.first.id)),
                         1L);
 
         assertThat(updated.items()).extracting(item -> item.id()).containsExactly(102L, 101L);
@@ -816,6 +944,146 @@ class OrderServiceTest {
                         eq("ORDER"),
                         eq(fixture.order.id),
                         contains("Изменил порядок"));
+    }
+
+    @Test
+    void paymentReleasePersistsSelectedUnitsAndFirstActualReleaseDate() {
+        Fixture fixture = new Fixture();
+        fixture.order.createdAt = Instant.parse("2026-01-01T00:00:00Z");
+        fixture.order.paymentStatus = PaymentStatus.PENDING;
+        Instant before = Instant.now();
+
+        var result =
+                release(
+                        fixture,
+                        List.of(new OrderItemUnitRequest(fixture.first.id, MeasurementUnit.KG)));
+
+        assertThat(result.invoiceIssuedAt())
+                .isAfterOrEqualTo(before)
+                .isBeforeOrEqualTo(Instant.now());
+        assertThat(result.invoiceIssuedAt()).isNotEqualTo(fixture.order.createdAt);
+        assertThat(result.items().getFirst().measurementUnit()).isEqualTo(MeasurementUnit.KG);
+        assertThat(result.items().get(1).measurementUnit()).isEqualTo(MeasurementUnit.PIECE);
+        verify(fixture.repository).save(fixture.order);
+        Instant issuedAt = result.invoiceIssuedAt();
+
+        var repeated =
+                release(
+                        fixture,
+                        List.of(new OrderItemUnitRequest(fixture.first.id, MeasurementUnit.PIECE)));
+        assertThat(repeated.invoiceIssuedAt()).isEqualTo(issuedAt);
+        assertThat(repeated.items().getFirst().measurementUnit()).isEqualTo(MeasurementUnit.KG);
+        verify(fixture.warehouse).postOrderSale(fixture.order, 8L);
+    }
+
+    @Test
+    void invalidUnitsAreRejectedBeforePaymentOrWarehouseMutation() {
+        for (List<OrderItemUnitRequest> units :
+                List.of(
+                        List.of(new OrderItemUnitRequest(999L, MeasurementUnit.KG)),
+                        List.of(
+                                new OrderItemUnitRequest(101L, MeasurementUnit.KG),
+                                new OrderItemUnitRequest(101L, MeasurementUnit.PIECE)),
+                        List.of(new OrderItemUnitRequest(101L, null)),
+                        List.of(new OrderItemUnitRequest(null, MeasurementUnit.KG)),
+                        java.util.Collections.<OrderItemUnitRequest>singletonList(null))) {
+            Fixture fixture = new Fixture();
+            fixture.order.paymentStatus = PaymentStatus.PENDING;
+            assertThatThrownBy(() -> release(fixture, units))
+                    .isInstanceOf(AppExceptions.BadRequest.class);
+            assertThat(fixture.order.paymentStatus).isEqualTo(PaymentStatus.PENDING);
+            assertThat(fixture.order.invoiceIssuedAt).isNull();
+            assertThat(fixture.first.measurementUnit).isEqualTo(MeasurementUnit.PIECE);
+            verify(fixture.repository, never()).save(any());
+            verifyNoInteractions(fixture.warehouse);
+        }
+    }
+
+    @Test
+    void failedWarehouseReleaseDoesNotApplyUnitsOrInvoiceDate() {
+        Fixture fixture = new Fixture();
+        doThrow(new AppExceptions.BadRequest("Нет остатков"))
+                .when(fixture.warehouse)
+                .postOrderSale(fixture.order, 8L);
+        assertThatThrownBy(
+                        () ->
+                                release(
+                                        fixture,
+                                        List.of(
+                                                new OrderItemUnitRequest(
+                                                        fixture.first.id, MeasurementUnit.KG))))
+                .isInstanceOf(AppExceptions.BadRequest.class);
+        assertThat(fixture.first.measurementUnit).isEqualTo(MeasurementUnit.PIECE);
+        assertThat(fixture.order.invoiceIssuedAt).isNull();
+        verify(fixture.repository, never()).save(any());
+    }
+
+    @Test
+    void releaseWithoutUnitOverridesPreservesSnapshot() {
+        Fixture fixture = new Fixture();
+        fixture.first.measurementUnit = MeasurementUnit.KG;
+        assertThat(release(fixture, null).items().getFirst().measurementUnit())
+                .isEqualTo(MeasurementUnit.KG);
+    }
+
+    @Test
+    void paidOrderStatusReleaseAcceptsUnitsAndKeepsDateAfterReopen() {
+        Fixture fixture = new Fixture();
+        var result =
+                fixture.service.updateStatus(
+                        fixture.order.id,
+                        OrderStatus.COMPLETED,
+                        8L,
+                        List.of(new OrderItemUnitRequest(fixture.first.id, MeasurementUnit.KG)));
+        assertThat(result.items().getFirst().measurementUnit()).isEqualTo(MeasurementUnit.KG);
+        assertThat(result.invoiceIssuedAt()).isNotNull();
+        Instant original = result.invoiceIssuedAt();
+        fixture.service.updateStatus(fixture.order.id, OrderStatus.PROCESSING, 8L);
+        assertThat(release(fixture, null).invoiceIssuedAt()).isEqualTo(original);
+    }
+
+    @Test
+    void unitsCannotBeEditedViaUnrelatedStatusChange() {
+        Fixture fixture = new Fixture();
+        assertThatThrownBy(
+                        () ->
+                                fixture.service.updateStatus(
+                                        fixture.order.id,
+                                        OrderStatus.PROCESSING,
+                                        8L,
+                                        List.of(
+                                                new OrderItemUnitRequest(
+                                                        fixture.first.id, MeasurementUnit.KG))))
+                .isInstanceOf(AppExceptions.BadRequest.class);
+        assertThat(fixture.first.measurementUnit).isEqualTo(MeasurementUnit.PIECE);
+        verifyNoInteractions(fixture.warehouse);
+    }
+
+    @Test
+    void legacyCompletedOrderIsNotAssignedTodaysDateOnRepeatedRelease() {
+        Fixture fixture = new Fixture();
+        fixture.order.status = OrderStatus.COMPLETED;
+        assertThat(release(fixture, null).invoiceIssuedAt()).isNull();
+        verify(fixture.repository, never()).save(any());
+    }
+
+    private static kz.company.shop.orders.dto.OrderDto release(
+            Fixture fixture, List<OrderItemUnitRequest> units) {
+        return fixture.service.completePayment(
+                fixture.order.id,
+                8L,
+                PaymentMethod.CASH,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "Отпуск",
+                false,
+                null,
+                units);
     }
 
     private static BigDecimal money(String value) {
@@ -843,6 +1111,7 @@ class OrderServiceTest {
     private static final class Fixture {
         private final OrderRepository repository = mock(OrderRepository.class);
         private final UserService users = mock(UserService.class);
+        private final ProductService products = mock(ProductService.class);
         private final AuditService audit = mock(AuditService.class);
         private final NotificationService notifications = mock(NotificationService.class);
         private final WalletService wallets = mock(WalletService.class);
@@ -852,7 +1121,7 @@ class OrderServiceTest {
                         repository,
                         mock(UuidV7Generator.class),
                         mock(CartService.class),
-                        mock(ProductService.class),
+                        products,
                         wallets,
                         users,
                         audit,
@@ -887,6 +1156,7 @@ class OrderServiceTest {
             wallet.userId = 8L;
             wallet.balance = money("500.00");
             when(repository.findWithItemsById(order.id)).thenReturn(Optional.of(order));
+            when(repository.findForUpdateById(order.id)).thenReturn(Optional.of(order));
             when(repository.save(any(Order.class)))
                     .thenAnswer(invocation -> invocation.getArgument(0));
             when(users.byId(8L)).thenReturn(user);

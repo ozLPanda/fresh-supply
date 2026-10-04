@@ -16,6 +16,7 @@ import { api } from "@/shared/api/http";
 import { AppButton } from "@/shared/ui/AppButton";
 import { AppAlert, AppSkeleton } from "@/shared/ui/AppFeedback";
 import { DataPanel } from "@/shared/ui/DataPanel";
+import { PaymentInvoiceSettingsPanel } from "./settings/PaymentInvoiceSettingsPanel";
 import "./SettingsPage.css";
 
 const queryKey = ["project-settings"];
@@ -137,6 +138,8 @@ export function SettingsPage() {
           )}
         </div>
       </DataPanel>
+
+      {canManageProjectSettings && <PaymentInvoiceSettingsPanel />}
 
       {canManageProjectSettings &&
         (settings.isLoading ? (

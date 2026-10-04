@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import kz.company.shop.orders.entity.PriceTier;
 
 public record BarcodeOrderCreateRequest(
@@ -18,4 +19,12 @@ public record BarcodeOrderCreateRequest(
         @NotNull @PastOrPresent LocalDate orderDate,
         @NotEmpty @Size(max = 200) List<@Valid BarcodeOrderItemRequest> items,
         @Size(max = 2000) String comment,
-        boolean allowStockShortage) {}
+        boolean allowStockShortage,
+        UUID regularBuyerId) {
+    public BarcodeOrderCreateRequest(Long customerId, String pendingCustomerEmail,
+            String pendingCustomerPhone, PriceTier priceTier, LocalDate orderDate,
+            List<BarcodeOrderItemRequest> items, String comment, boolean allowStockShortage) {
+        this(customerId, pendingCustomerEmail, pendingCustomerPhone, priceTier, orderDate,
+                items, comment, allowStockShortage, null);
+    }
+}

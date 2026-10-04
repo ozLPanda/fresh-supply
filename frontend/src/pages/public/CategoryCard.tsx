@@ -26,7 +26,7 @@ export function CategoryCard({ category, count = 0 }: { category: Category; coun
     cardCategory.slug?.trim() ||
     "Категория";
   const description =
-    cardCategory.descriptionRu?.trim() || "Категория каталога с товарами и техническими решениями.";
+    cardCategory.descriptionRu?.trim() || "Продукты этой категории в каталоге GastroFlow.";
   const href = cardCategory.slug ? `/catalog/${cardCategory.slug}` : "/catalog";
   const canEdit =
     Boolean(cardCategory.id) && (user?.permissions?.includes("categories.update") ?? false);

@@ -58,6 +58,9 @@ public interface ProductRepository
 
     boolean existsBySku(String sku);
 
+    @Query(value = "select nextval('product_sku_seq')", nativeQuery = true)
+    long nextSkuNumber();
+
     long countByActiveTrueAndDeletedAtIsNull();
 
     List<Product> findByActiveTrueAndDeletedAtIsNullOrderByUpdatedAtDesc();

@@ -1,0 +1,63 @@
+.regular-buyers-page {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.regular-buyers-page__cell,
+.regular-buyers-page__mobile-card {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.regular-buyers-page__cell > span {
+  color: var(--text-secondary, #64748b);
+}
+
+.regular-buyers-page__mobile-card .app-badge {
+  justify-self: start;
+}
+
+.regular-buyers-page__mobile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.regular-buyers-modal {
+  width: min(640px, calc(100vw - 32px));
+}
+
+.regular-buyers-modal__form {
+  display: grid;
+  min-width: 0;
+  gap: 16px;
+  padding-bottom: 2px;
+}
+
+.regular-buyers-modal__contacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.regular-buyers-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+@media (max-width: 639px) {
+  .regular-buyers-modal__contacts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .regular-buyers-modal__actions > .app-button {
+    flex: 1 1 120px;
+  }
+}

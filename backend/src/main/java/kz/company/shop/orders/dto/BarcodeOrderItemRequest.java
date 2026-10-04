@@ -6,9 +6,15 @@ import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
+import kz.company.shop.products.entity.MeasurementUnit;
 
 public record BarcodeOrderItemRequest(
         @NotNull @Positive Long productId,
         @NotNull @DecimalMin("0.001") @DecimalMax("999.0") @Digits(integer = 3, fraction = 3)
                 BigDecimal quantity,
-        @NotNull @DecimalMin("0.00") BigDecimal unitPrice) {}
+        @NotNull @DecimalMin("0.00") BigDecimal unitPrice,
+        MeasurementUnit measurementUnit) {
+    public BarcodeOrderItemRequest(Long productId, BigDecimal quantity, BigDecimal unitPrice) {
+        this(productId, quantity, unitPrice, null);
+    }
+}

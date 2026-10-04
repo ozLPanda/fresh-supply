@@ -14,7 +14,7 @@
 
 | Файл и компоненты | Назначение и применение |
 | --- | --- |
-| [AppButton.tsx](src/shared/ui/AppButton.tsx) — `AppButton`, `AppActionMenu`, `AppSplitButton` | Кнопки с вариантами оформления и состоянием загрузки, меню действий и основное действие с дополнительным меню. Используйте для действий форм, карточек и таблиц. |
+| [AppButton.tsx](src/shared/ui/AppButton.tsx) — `AppButton`, `AppActionMenu`, `AppSplitButton` | Кнопки с вариантами оформления и состоянием загрузки, меню действий и основное действие с дополнительным меню. `AppSplitButton` поддерживает загрузку, блокировку и доступное название меню; используйте для действий форм, карточек и таблиц. |
 | [AppField.tsx](src/shared/ui/AppField.tsx) — `AppInput`, `AppTextarea`, `AppNumberInput`, `AppMoneyInput`, `AppPhoneInput`, `AppSearchInput`, `AppSelect` | Поля с подписями, подсказками и ошибками; селект имеет нативный и расширенный режимы. Выбирайте нужный тип поля вместо создания собственной базовой разметки. |
 | [AppControls.tsx](src/shared/ui/AppControls.tsx) — `AppCheckbox`, `AppSwitch`, `AppRadioGroup`, `AppFileUpload`, `AppTabs` | Флажки, переключатели, выбор одного варианта, загрузка файлов и вкладки. Применяйте для соответствующих элементов формы и переключения разделов; у `AppTabs` вкладка может быть выровнена к правому краю строки. |
 | [AppDatePicker.tsx](src/shared/ui/AppDatePicker.tsx) — `AppDatePicker`, `AppDateTimePicker`, `AppDateRangePicker` | Выбор даты, даты со временем или диапазона; календарь ограничивается доступной областью экрана и прокручивается при открытой клавиатуре. `AppDateTimePicker` поддерживает обязательное значение, нативную валидацию формы и `onValidityChange`, чтобы неверный ввод не отправлял прежнюю дату. |
@@ -42,6 +42,12 @@
 
 Дополнительные источники: [низкоуровневые Radix/shadcn-обёртки](src/components/ui/), [интерактивный UI Kit](src/pages/admin/UiKitPage.tsx), [справочник API общего UI](../.agents/skills/company-shop-ui/references/components.md). Для обычной разработки сначала выбирайте готовые `App*`.
 
+## Общие предметные компоненты: бренд
+
+| Файл и компоненты | Назначение и применение |
+| --- | --- |
+| [StoreLogo.tsx](src/shared/components/brand/StoreLogo.tsx) — `StoreLogo` | Единый логотип GastroFlow для витрины, админки и входа. Компактный вариант и CSS-переменная `--brand-logo-width` задают размер без копирования разметки. |
+
 ## Общие предметные компоненты: товары поставщиков
 
 | Файл и компоненты | Назначение и применение |
@@ -61,14 +67,22 @@
 | --- | --- |
 | [BarcodeScannerModal.tsx](src/features/barcodeScanner/BarcodeScannerModal.tsx) — `BarcodeScannerModal` | Модальное сканирование штрихкода камерой с обработкой состояния доступа и переходом к ручному вводу. Кандидат для сценариев выбора товара по штрихкоду. |
 | [OrderQuantityInput.tsx](src/features/orders/OrderQuantityInput.tsx) — `OrderQuantityInput` | Поле количества с нормализацией десятичного ввода до трёх знаков; по умолчанию ограничено диапазоном от 0,001 до 999, границы настраиваются. Применяйте только там, где подходят эти правила количества, а не как универсальный числовой ввод. |
+| [RegularBuyerSelect.tsx](src/features/orders/RegularBuyerSelect.tsx) — `RegularBuyerSelect` | Выбор постоянного покупателя для заказа с поиском и явным вариантом без покупателя. Загружает справочник с учётом прав, сохраняет текущий архивный выбор и объясняет заполнение поля получателя в накладной. |
 | [OrderProductAvailability.tsx](src/features/orders/OrderProductAvailability.tsx) — `OrderProductAvailability` | Метки «Под заказ» и складских остатков с состоянием загрузки; на ПК сохраняет компактные метки с подсказкой, на мобильных экранах подробности наличия и резерва раскрываются нажатием. Показ остатков управляется правами через `showStock`. |
 | [OrderProductPickerModal.tsx](src/features/orders/OrderProductPickerModal.tsx) — `OrderProductPickerModal` | Диалог поиска и выбора товаров с вводом количества для заказов и складских документов. Для инвентаризации `inventoryMode` показывает таблицу как в заказах (фото, цена, меню и постраничная навигация) на ПК и компактный список при ширине до 960px, ввод фактического количества, сканирование артикула, загрузку следующих результатов и число подсчитанных позиций; `isProductInDocument` отмечает выбранный товар даже с нулём. Для заказов до 767px использует мобильные карточки, явное повторное добавление со счётчиком, обратную связь и меню карточки, редактирования и складских сведений. На ПК сохраняет таблицу и прежние кнопки; `mobileAvailabilityOnly` ограничивает добавленные сведения об остатках мобильным видом. |
-| [OrderCompletionFlow.tsx](src/features/orders/OrderCompletionFlow.tsx) — `OrderCompletionFlow` | Последовательность диалогов завершения заказа, ввода оплаты и выбора печати накладной; отпуск с расхождением и комментарием доступен через `canReleaseWithStockShortage` по разрешению `warehouse.negative_stock`. Используйте для этого процесса целиком с учётом его запросов к API заказов. |
+| [OrderCompletionFlow.tsx](src/features/orders/OrderCompletionFlow.tsx) — `OrderCompletionFlow` | Последовательность диалогов завершения заказа, выбора единиц позиций, ввода оплаты и выбора печати накладной или счёта на оплату; оплаченные заказы завершает без повторной оплаты; отпуск с расхождением и комментарием доступен через `canReleaseWithStockShortage` по разрешению `warehouse.negative_stock`. Используйте для этого процесса целиком с учётом его запросов к API заказов. |
+| [OrderItemUnitFields.tsx](src/features/orders/OrderItemUnitFields.tsx) — `OrderItemUnitFields` | Выбор кг/шт для каждой позиции при отпуске заказа из списка или карточки. Получает значения и обработчик снаружи; количество и цену не пересчитывает. |
 | [MadeToOrderCartConfirmationModal.tsx](src/features/commerce/MadeToOrderCartConfirmationModal.tsx) — `MadeToOrderCartConfirmationModal` | Подтверждение добавления товара под заказ с опцией запоминания выбора. Состояние и сохранение выбора передаются родительским компонентом. |
 | [CartPriceLevels.tsx](src/features/commerce/CartPriceLevels.tsx) — `CartPriceLevels` | Представление уровней цен корзины, порогов и причин недоступности. Подходит для объяснения покупателю применяемого уровня по готовым данным корзины. |
 | [TemporaryInvoicePanel.tsx](src/features/commerce/TemporaryInvoicePanel.tsx) — `TemporaryInvoicePanel` | Панель выбора уровня цены и формирования временной накладной для выбранных позиций корзины. Зависит от API предварительного расчёта и PDF корзины. |
 | [NotificationCenter.tsx](src/features/notifications/NotificationCenter.tsx) — `NotificationCenter` | Загрузка уведомлений пользователя, отметки о прочтении и переход по выбранному уведомлению через `AppNotificationMenu`. Воспроизводит сигнал при новом заказе; постоянного блока состояния Web Push в меню нет. |
-| [PushNotificationPrompt.tsx](src/features/notifications/PushNotificationPrompt.tsx) — `PushNotificationPrompt` | Общее приглашение подключить Web Push для авторизованного пользователя через `AppModal`, один раз за сессию вкладки/приложения. Сохраняет ограничение при переходах и перезагрузке страницы, сбрасывает его при выходе; уже разрешённые подписки синхронизируются автоматически. |
+| [PushNotificationPrompt.tsx](src/features/notifications/PushNotificationPrompt.tsx) — `PushNotificationPrompt` | Общее приглашение подключить Web Push для авторизованного пользователя через `AppModal`, один раз за сессию вкладки/приложения. Сохраняет ограничение при переходах и перезагрузке страницы, сбрасывает его при выходе; уже разрешённые подписки синхронизируются автоматически. В GastroFlow приглашение скрыто через `showPrompt={false}`, синхронизация разрешённых подписок сохраняется. |
+
+## Локальные компоненты: настройки
+
+| Файл и компоненты | Назначение и применение |
+| --- | --- |
+| [PaymentInvoiceSettingsPanel.tsx](src/pages/admin/settings/PaymentInvoiceSettingsPanel.tsx) — `PaymentInvoiceSettingsPanel` | Форма общих реквизитов поставщика и условий оплаты для PDF-счёта. Используется в настройках при праве `pages.settings.view`; сохраняет введённый черновик при фоновой загрузке данных. |
 
 ## Локальные компоненты: складские формы
 
@@ -99,7 +113,6 @@
 | [StoreEmptyState.tsx](src/pages/public/StoreEmptyState.tsx) — `StoreEmptyState` | Пустое состояние с описанием, тоном, дополнительным действием и повтором запроса. Используйте в списках витрины без результатов или при ошибке. |
 | [ProductPriceHistory.tsx](src/pages/public/ProductPriceHistory.tsx) — `ProductPriceHistory` | График истории цены конкретного товара с переключением периода и загрузкой из API. Подходит для готового блока истории товара, а для иных данных используйте `AppChart`. |
 | [ProductReviews.tsx](src/pages/public/ProductReviews.tsx) — `ProductReviews` | Отзывы товара с формой публикации, изображениями и ответами. Используйте как предметный блок отзывов с учётом commerce-контекста и API отзывов. |
-| [StoreLogo.tsx](src/pages/public/StoreLogo.tsx) — `StoreLogo` | Логотип магазина с компактным вариантом. Кандидат для единого отображения фирменного знака при сохранении его стилей и ресурса изображения. |
 | [HomeHeroAlternative.tsx](src/pages/public/HomeHeroAlternative.tsx) — `HomeHeroAlternative` | Главный промоблок витрины с поиском и анимированной визуальной частью. Подходит для главной страницы магазина и зависит от её содержания и категорий. |
 
 ## Локальные компоненты: МКС

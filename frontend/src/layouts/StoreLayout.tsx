@@ -17,7 +17,7 @@ import { Category } from "@/shared/types/models";
 import { isRenderableCategory } from "@/pages/public/store-utils";
 import { AppButton } from "@/shared/ui/AppButton";
 import { AppTooltip } from "@/shared/ui/AppFeedback";
-import { StoreLogo } from "@/pages/public/StoreLogo";
+import { StoreLogo } from "@/shared/components/brand/StoreLogo";
 import { useCommerce } from "@/features/commerce/CommerceProvider";
 import { NotificationCenter } from "@/features/notifications/NotificationCenter";
 import { formatMoney } from "@/pages/public/store-utils";
@@ -174,8 +174,8 @@ export function StoreLayout({
           <div className="store-footer__brand">
             <StoreLogo />
             <p>
-              Профессиональное оборудование для отопления и инженерных систем. Подбираем решения для
-              объектов любого масштаба.
+              Паназиатские продукты, овощи, фрукты и бакалея. Всё необходимое для вашей кухни в
+              одном каталоге.
             </p>
           </div>
           <div className="store-footer__group">
@@ -189,14 +189,13 @@ export function StoreLayout({
           <div className="store-footer__group">
             <h3>Поддержка</h3>
             <a href={`tel:${supportPhone.replace(/\s/g, "")}`}>Связаться с нами</a>
-            <a href="mailto:sales@active.kz">sales@active.kz</a>
             <span>Пн-Пт: 09:00 - 18:00</span>
           </div>
           <div className="store-footer__group">
             <h3>Контакты</h3>
             <span>Казахстан, г. Павлодар</span>
             <span>{supportPhone}</span>
-            <span>© 2026 Фирма Актив</span>
+            <span>© 2026 GastroFlow</span>
           </div>
           <p className="store-footer__legal">
             Информация на сайте носит справочный характер и не является публичной офертой. Цены,

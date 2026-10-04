@@ -30,6 +30,7 @@ export type BarcodeOrderDraft = {
   priceAdjustmentHistoryByLine: Record<number, PriceAdjustmentHistoryEntry[]>;
   comment: string;
   selectedCustomerId: number | null;
+  regularBuyerId: string | null;
   selectedPendingBinding: PendingCustomerBinding | null;
 };
 
@@ -102,6 +103,7 @@ function parseLine(value: unknown): BarcodeOrderLine | null {
     name,
     mainImageUrl: value.mainImageUrl,
     madeToOrder: value.madeToOrder,
+    measurementUnit: value.measurementUnit === "KG" ? "KG" : "PIECE",
     retailPrice,
     wholesalePrice,
     bulkWholesalePrice,
@@ -216,6 +218,11 @@ function parseDraft(value: unknown, mode: OrderCreateMode): BarcodeOrderDraft | 
       Number.isInteger(selectedCustomerId) &&
       selectedCustomerId > 0
         ? selectedCustomerId
+        : null,
+    regularBuyerId:
+      typeof value.regularBuyerId === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.regularBuyerId)
+        ? value.regularBuyerId
         : null,
     selectedPendingBinding: parsePendingBinding(value.selectedPendingBinding),
   };

@@ -209,16 +209,15 @@ export function CatalogPage() {
   return (
     <StoreLayout categories={categories}>
       <SeoMeta
-        title={`Каталог товаров для отопления и сантехники${filters.page > 1 ? ` — страница ${filters.page}` : ""} | Фирма «Актив»`}
-        description="Каталог товаров для отопления, водоснабжения и сантехники. Выбирайте оборудование и комплектующие по названию, артикулу и категории."
+        title={`Каталог продуктов${filters.page > 1 ? ` — страница ${filters.page}` : ""} | GastroFlow`}
+        description="Овощи, фрукты, бакалея и паназиатские продукты. Поиск по названию, артикулу и категории."
         canonicalPath={canonicalPath}
         robots={filtered || productsQuery.isError ? "noindex,follow" : "index,follow"}
         structuredData={{
           "@context": "https://schema.org",
           "@type": "CollectionPage",
-          name: "Каталог отопительного оборудования и сантехники",
-          description:
-            "Каталог отопительного оборудования, водоснабжения и сантехники в Павлодаре.",
+          name: "Каталог продуктов GastroFlow",
+          description: "Каталог овощей, фруктов, бакалеи и паназиатских продуктов.",
           url: `${window.location.origin}${canonicalPath}`,
         }}
       />
@@ -237,7 +236,7 @@ export function CatalogPage() {
             categories={categories}
             value={searchDraft}
             onValueChange={setSearchDraft}
-            placeholder="Поиск"
+            placeholder="Название продукта или артикул"
             searchSource="CATALOG"
           />
         </div>
@@ -279,7 +278,8 @@ export function CatalogPage() {
                 tone="danger"
                 onRetry={() => productsQuery.refetch()}
               >
-                Не удалось получить товары. Проверьте API и повторите загрузку страницы.
+                Не удалось загрузить продукты. Проверьте подключение к интернету и попробуйте ещё
+                раз.
               </AppAlert>
             ) : products.length > 0 && pagination ? (
               <>

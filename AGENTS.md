@@ -4,6 +4,21 @@ This is a separate copy of the shop business modules with Hackalem's visual desi
 Keep all existing routes, permissions and business flows. See `docs/project-merge.md`
 and `docs/design-system.md`. Source projects are references, not runtime dependencies.
 
+## Git publication and PC update commands
+
+- When the user asks to push this project (including «пуш в гит» or «отправь в гит»),
+  use [.agents/skills/fresh-supply-git-update/SKILL.md](.agents/skills/fresh-supply-git-update/SKILL.md).
+- After a successful push, always include copyable commands to pull and apply the
+  actual published changes on the user's Windows/WSL PC. Select the minimum
+  container actions using the workflow below, and include a readiness check.
+  A commit link alone is not a complete response to a push request.
+- The post-push update instructions are text only: put them in a Markdown `bash`
+  code block with a short explanation for the user to run manually. Do not execute
+  that block or its Docker/log/health checks on the Mac, Windows/WSL PC, or any
+  other host unless the user separately and explicitly asks you to apply the update.
+  A push request authorizes the agreed Git work, not an application deployment.
+  For documentation-only changes, say that no container action is needed.
+
 # Container workflow
 
 ## Browser verification of admin pages

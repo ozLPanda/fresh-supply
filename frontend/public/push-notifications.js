@@ -6,11 +6,11 @@ self.addEventListener("push", (event) => {
     payload = {};
   }
 
-  const title = payload.title || "Фирма «Актив»";
+  const title = payload.title || "GastroFlow";
   const options = {
     body: payload.body || "Поступил новый заказ.",
-    icon: "/pwa-192x192.png",
-    badge: "/pwa-192x192.png",
+    icon: "/pwa-192x192.png?v=gastroflow-1",
+    badge: "/pwa-192x192.png?v=gastroflow-1",
     tag: payload.tag || "company-shop-order",
     data: { actionUrl: payload.actionUrl || "/admin/orders" },
   };
@@ -19,8 +19,10 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = new URL(event.notification.data?.actionUrl || "/admin/orders", self.location.origin)
-    .href;
+  const targetUrl = new URL(
+    event.notification.data?.actionUrl || "/admin/orders",
+    self.location.origin,
+  ).href;
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
       const existing = clients.find((client) => client.url === targetUrl);

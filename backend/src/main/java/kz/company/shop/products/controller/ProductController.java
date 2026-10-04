@@ -192,6 +192,13 @@ public class ProductController {
         return ApiResponse.ok(productService.create(dto));
     }
 
+    @PostMapping("/next-sku")
+    @PreAuthorize("hasAuthority('products.create')")
+    public ApiResponse<Map<String, String>> nextSku() {
+        auth.require("products.create");
+        return ApiResponse.ok(Map.of("sku", productService.nextSku()));
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('products.update')")
     public ApiResponse<ProductDto> update(

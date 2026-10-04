@@ -60,6 +60,82 @@ class OrderControllerTest {
     }
 
     @Test
+    void regularBuyerEndpointChecksPermissionAndPassesBindingAndClear() throws Exception {
+        UUID id = UUID.randomUUID();
+        UUID buyerId = UUID.randomUUID();
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(
+                        "/api/admin/orders/" + id + "/regular-buyer")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"regularBuyerId\":\"" + buyerId + "\"}"))
+                .andExpect(status().isOk());
+        verify(orders).updateRegularBuyer(id, buyerId, 7L);
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(
+                        "/api/admin/orders/" + id + "/regular-buyer")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"regularBuyerId\":null}"))
+                .andExpect(status().isOk());
+        verify(orders).updateRegularBuyer(id, null, 7L);
+        org.mockito.Mockito.verify(auth, org.mockito.Mockito.times(2)).require("orders.update");
+    }
+
+    @Test
+    void itemUnitEndpointChecksPermissionAndPassesCurrentActor() throws Exception {
+        UUID id = UUID.randomUUID();
+        mvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                                        "/api/admin/orders/" + id + "/items/101/measurement-unit")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"measurementUnit\":\"KG\"}"))
+                .andExpect(status().isOk());
+        verify(auth).require("orders.update");
+        verify(orders)
+                .updateItemMeasurementUnit(
+                        id,
+                        101L,
+                        new kz.company.shop.orders.dto.OrderItemMeasurementUnitUpdateRequest(
+                                kz.company.shop.products.entity.MeasurementUnit.KG),
+                        7L);
+    }
+
+    @Test
+    void itemUnitEndpointRejectsMissingNullAndUnknownUnits() throws Exception {
+        for (String body :
+                java.util.List.of(
+                        "{}", "{\"measurementUnit\":null}", "{\"measurementUnit\":\"LITER\"}")) {
+            mvc.perform(
+                            org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                    .patch(
+                                            "/api/admin/orders/"
+                                                    + UUID.randomUUID()
+                                                    + "/items/101/measurement-unit")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(body))
+                    .andExpect(status().isBadRequest());
+        }
+        org.mockito.Mockito.verifyNoInteractions(orders);
+    }
+
+    @Test
+    void paidOrderStatusReleasePassesSelectedItemUnits() throws Exception {
+        UUID id = UUID.randomUUID();
+        mvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                                        "/api/admin/orders/" + id + "/status")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"status\":\"COMPLETED\",\"itemUnits\":[{\"orderItemId\":101,\"measurementUnit\":\"PIECE\"}]}"))
+                .andExpect(status().isOk());
+        verify(orders)
+                .updateStatus(
+                        id,
+                        kz.company.shop.orders.entity.OrderStatus.COMPLETED,
+                        7L,
+                        java.util.List.of(
+                                new kz.company.shop.orders.dto.OrderItemUnitRequest(
+                                        101L,
+                                        kz.company.shop.products.entity.MeasurementUnit.PIECE)));
+    }
+
+    @Test
     void comparisonPdfUsesReadPermissionAndReturnsInlinePdf() throws Exception {
         UUID orderId = UUID.randomUUID();
         byte[] pdf = "%PDF-comparison".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
@@ -69,8 +145,7 @@ class OrderControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_PDF))
                 .andExpect(
-                        header()
-                                .string(
+                        header().string(
                                         "Content-Disposition",
                                         org.hamcrest.Matchers.containsString(
                                                 "inline; filename=\"order-comparison-"

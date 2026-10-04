@@ -59,7 +59,8 @@ export function SeoMeta({
       return;
     }
     const imageUrl =
-      absoluteUrl(image) ?? new URL("/pwa-512x512.png", window.location.origin).toString();
+      absoluteUrl(image) ??
+      new URL("/brand/gastroflow-logo.png", window.location.origin).toString();
 
     document.title = title;
     document.documentElement.lang = "ru";
@@ -70,7 +71,7 @@ export function SeoMeta({
     const structuredItems = Array.isArray(structuredData) ? structuredData : [structuredData];
     const isProduct = structuredItems.some((item) => item?.["@type"] === "Product");
     upsertMeta("property", "og:type", isProduct ? "product" : "website");
-    upsertMeta("property", "og:site_name", "Фирма «Актив»");
+    upsertMeta("property", "og:site_name", "GastroFlow");
     upsertMeta("property", "og:title", title);
     upsertMeta("property", "og:description", description);
     upsertMeta("property", "og:url", canonical);

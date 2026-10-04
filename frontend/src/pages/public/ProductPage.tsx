@@ -130,8 +130,8 @@ export function ProductPage() {
         <SeoMeta
           title={
             productQuery.isLoading
-              ? "Загрузка товара | Фирма «Актив»"
-              : "Товар недоступен | Фирма «Актив»"
+              ? "Загрузка товара | GastroFlow"
+              : "Товар недоступен | GastroFlow"
           }
           description="Информация о товаре временно недоступна или товар не найден."
           canonicalPath={`/product/${id}`}
@@ -141,11 +141,11 @@ export function ProductPage() {
       )}
       {product && (
         <SeoMeta
-          title={`${product.nameRu} — купить в Фирме «Актив»`}
+          title={`${product.nameRu} — купить в GastroFlow`}
           description={
             product.shortDescriptionRu?.trim() ||
             product.descriptionRu?.trim() ||
-            `${product.nameRu}. Артикул ${product.sku}. Цена и заказ в Фирме «Актив».`
+            `${product.nameRu}. Артикул ${product.sku}. Цена и заказ в GastroFlow.`
           }
           canonicalPath={`/product/${product.id}`}
           image={imageSrc || null}

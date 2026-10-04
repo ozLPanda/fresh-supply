@@ -5,7 +5,8 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AdminPage } from "@/layouts/AdminPage";
 import { api, API_URL } from "@/shared/api/http";
 import { fetchAllCategories } from "@/shared/api/catalog";
-import { Product, ProductImage } from "@/shared/types/models";
+import { MeasurementUnit, Product, ProductImage } from "@/shared/types/models";
+import { measurementUnitOptions } from "@/shared/lib/measurementUnit";
 import { AppButton } from "@/shared/ui/AppButton";
 import { AppCard } from "@/shared/ui/AppCard";
 import { AppSwitch, AppTabs } from "@/shared/ui/AppControls";
@@ -87,6 +88,7 @@ export function ProductFormPage({
     nameRu: typeof supplierDraft?.nameRu === "string" ? supplierDraft.nameRu : "",
     nameKk: typeof supplierDraft?.nameKk === "string" ? supplierDraft.nameKk : "",
     price: 0,
+    measurementUnit: "KG",
     active: !supplierDraft,
     madeToOrder: Boolean(supplierDraft),
     incomingPrice:
@@ -98,6 +100,33 @@ export function ProductFormPage({
     deliveryDaysFrom: null,
     deliveryDaysTo: null,
   }));
+  const skuEdited = React.useRef(false);
+  const skuRequest = React.useRef<Promise<{ sku: string }> | null>(null);
+  const [skuLoading, setSkuLoading] = useState(!id && !supplierDraft?.sku?.trim());
+  const [skuLoadFailed, setSkuLoadFailed] = useState(false);
+
+  React.useEffect(() => {
+    if (id || supplierDraft?.sku?.trim()) return;
+    let cancelled = false;
+    // Reuse the request across StrictMode effect replays without caching an article across forms.
+    skuRequest.current ??= api<{ sku: string }>("/api/products/next-sku", { method: "POST" });
+    skuRequest.current
+      .then(({ sku }) => {
+        if (!cancelled && !skuEdited.current) {
+          setProduct((current) => (current.sku.trim() ? current : { ...current, sku }));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setSkuLoadFailed(true);
+      })
+      .finally(() => {
+        if (!cancelled) setSkuLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, supplierDraft?.sku]);
+
   const categories = useQuery({ queryKey: ["categories"], queryFn: () => fetchAllCategories() });
   const existing = useQuery({
     queryKey: ["product", id],
@@ -115,7 +144,7 @@ export function ProductFormPage({
       return;
     }
     initializedProductId.current = existing.data.id;
-    setProduct(existing.data);
+    setProduct({ ...existing.data, measurementUnit: existing.data.measurementUnit ?? "PIECE" });
   }, [existing.data, id]);
 
   const pendingPreviews = useMemo(
@@ -278,7 +307,18 @@ export function ProductFormPage({
           <AppInput
             label="Артикул"
             value={product.sku}
-            onChange={(event) => setProduct({ ...product, sku: event.target.value })}
+            placeholder={skuLoading ? "Присваивается…" : undefined}
+            hint={
+              !id
+                ? skuLoadFailed
+                  ? "Артикул будет присвоен при сохранении. Можно указать вручную."
+                  : "Заполняется автоматически. Можно изменить вручную."
+                : undefined
+            }
+            onChange={(event) => {
+              skuEdited.current = true;
+              setProduct({ ...product, sku: event.target.value });
+            }}
           />
           <AppSelect
             label="Категория"
@@ -306,9 +346,29 @@ export function ProductFormPage({
           />
           <AppInput
             label="Название KZ"
+            hint="Необязательно"
             value={product.nameKk}
             onChange={(event) => setProduct({ ...product, nameKk: event.target.value })}
           />
+          <AppSelect
+            label="Единица измерения по умолчанию"
+            hint="Используется в новых заказах. При отпуске можно выбрать другую единицу для конкретного заказа."
+            fieldClassName="product-editor__status"
+            value={product.measurementUnit ?? "KG"}
+            disabled={save.isPending}
+            onChange={(event) =>
+              setProduct((current) => ({
+                ...current,
+                measurementUnit: event.target.value as MeasurementUnit,
+              }))
+            }
+          >
+            {measurementUnitOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </AppSelect>
           <AppMoneyInput
             label="Цена"
             value={product.price}

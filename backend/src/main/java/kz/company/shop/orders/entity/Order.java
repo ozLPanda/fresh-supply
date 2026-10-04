@@ -24,6 +24,13 @@ public class Order {
     @Column(name = "user_id")
     public Long userId;
 
+    @Column(name = "regular_buyer_id")
+    public UUID regularBuyerId;
+
+    /** Recipient name captured when selected, independent of later directory edits. */
+    @Column(name = "regular_buyer_name", length = 240)
+    public String regularBuyerName;
+
     @Column(name = "created_by_user_id")
     public Long createdByUserId;
 
@@ -108,6 +115,10 @@ public class Order {
 
     @Column(name = "created_at", nullable = false)
     public Instant createdAt = Instant.now();
+
+    /** Actual first successful release time; preserved when printing again. */
+    @Column(name = "invoice_issued_at")
+    public Instant invoiceIssuedAt;
 
     @Column(name = "updated_at", nullable = false)
     public Instant updatedAt = Instant.now();

@@ -673,15 +673,6 @@ export function MksCatalogPage() {
             {importMessage && (
               <AppAlert tone="success" title="Импорт запланирован">
                 {importMessage}
-                {canViewSupplierProducts && (
-                  <AppButton
-                    type="button"
-                    variant="secondary"
-                    onClick={() => navigate("/admin/products/suppliers")}
-                  >
-                    Открыть товары поставщиков
-                  </AppButton>
-                )}
               </AppAlert>
             )}
             {importMutation.error && (

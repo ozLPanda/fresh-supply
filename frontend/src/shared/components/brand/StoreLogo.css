@@ -1,0 +1,21 @@
+.store-logo-shell {
+  display: inline-block;
+  width: var(--brand-logo-width, 240px);
+  max-width: 100%;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.store-logo-shell .store-logo {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3.1;
+  object-fit: cover;
+  object-position: center;
+  mix-blend-mode: multiply;
+}
+
+.store-logo-shell.is-compact {
+  width: var(--brand-logo-width, 180px);
+}
