@@ -41,8 +41,19 @@ docker compose up -d
 ```
 
 При первом запуске без локальных образов соберите их однократно командой
-`docker compose build`, затем повторите `docker compose up -d`.
+`docker compose build backend frontend embedding-service`, затем повторите
+`docker compose up -d --no-build`.
 Embeddings загружает модель при сборке, поэтому первая сборка требует сети и времени.
+Локальное S3-хранилище использует готовый образ
+`pgsty/silo:RELEASE.2026-09-16T00-00-00Z` — поддерживаемый форк MinIO от PGSTY.
+Прежний образ `minio/minio` больше недоступен для публичного скачивания.
+Имя сервиса `minio`, переменные `MINIO_*` и адрес backend сохранены.
+При первом запуске на Windows/WSL сборка хранилища не нужна: выполните
+`docker compose pull minio`, затем `docker compose up -d --no-build`.
+Проверены запуск amd64, healthcheck и создание/чтение/удаление объектов в пустом
+тестовом хранилище. Перед переходом с уже заполненного MinIO сделайте резервную
+копию и проверьте [инструкцию миграции PGSTY](https://silo.pgsty.com/compatibility/migration/);
+совместимость существующей базы IAM и настроек в этой проверке не тестировалась.
 В дальнейшем исходники frontend/backend подключены через bind mounts: изменение
 стилей не требует пересборки контейнеров. Подробности в `AGENTS.md`.
 
