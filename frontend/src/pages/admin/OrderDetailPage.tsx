@@ -288,9 +288,12 @@ function generatedPaymentPrintComment(
   return [invoiceTemplate.trim(), payment].filter(Boolean).join("\n");
 }
 
-function invoicePdfUrl(order: Order, includePrintComment: boolean) {
+type InvoicePrintTemplate = "standard" | "z2";
+
+function invoicePdfUrl(order: Order, includePrintComment: boolean, template: InvoicePrintTemplate) {
   const query = includePrintComment ? "" : "?includePrintComment=false";
-  return `${API_URL}/api/admin/orders/${order.id}/invoice.pdf${query}`;
+  const document = template === "z2" ? "invoice-z2.pdf" : "invoice.pdf";
+  return `${API_URL}/api/admin/orders/${order.id}/${document}${query}`;
 }
 
 function OrderItemQuantityControl({
@@ -399,7 +402,11 @@ function PaymentAmountInput({
   );
 }
 
-async function openInvoicePdf(order: Order, includePrintComment: boolean) {
+async function openInvoicePdf(
+  order: Order,
+  includePrintComment: boolean,
+  template: InvoicePrintTemplate,
+) {
   const previewWindow = window.open("about:blank", "_blank");
   if (!previewWindow) {
     appToast.error("Браузер заблокировал новую вкладку. Разрешите всплывающие окна и повторите.");
@@ -410,7 +417,7 @@ async function openInvoicePdf(order: Order, includePrintComment: boolean) {
   previewWindow.document.body.textContent = "Загружаем накладную…";
 
   try {
-    const response = await fetch(invoicePdfUrl(order, includePrintComment), {
+    const response = await fetch(invoicePdfUrl(order, includePrintComment, template), {
       credentials: "include",
     });
     if (!response.ok) {
@@ -538,6 +545,8 @@ export function AdminOrderDetailPage() {
   const [paymentInvoiceOpening, setPaymentInvoiceOpening] = useState(false);
   const [comparisonPdfOpening, setComparisonPdfOpening] = useState(false);
   const [invoicePrintOptionsOpen, setInvoicePrintOptionsOpen] = useState(false);
+  const [invoicePrintTemplate, setInvoicePrintTemplate] =
+    useState<InvoicePrintTemplate>("standard");
   const [manualItemOpen, setManualItemOpen] = useState(false);
   const [manualItemName, setManualItemName] = useState("");
   const [manualItemPrice, setManualItemPrice] = useState<number | null>(null);
@@ -1593,18 +1602,24 @@ export function AdminOrderDetailPage() {
     });
   }
 
-  function openInvoice(includePrintComment: boolean) {
+  function openInvoice(
+    includePrintComment: boolean,
+    template: InvoicePrintTemplate = invoicePrintTemplate,
+  ) {
     if (!order) return;
     setInvoiceOpening(true);
-    void openInvoicePdf(order, includePrintComment).finally(() => setInvoiceOpening(false));
+    void openInvoicePdf(order, includePrintComment, template).finally(() =>
+      setInvoiceOpening(false),
+    );
   }
 
-  function handleInvoiceClick() {
+  function handleInvoiceClick(template: InvoicePrintTemplate = "standard") {
+    setInvoicePrintTemplate(template);
     if (order?.printComment?.trim()) {
       setInvoicePrintOptionsOpen(true);
       return;
     }
-    openInvoice(false);
+    openInvoice(false, template);
   }
 
   function handleComparisonPdfClick() {
@@ -1660,9 +1675,14 @@ export function AdminOrderDetailPage() {
               variant="secondary"
               loading={invoiceOpening || paymentInvoiceOpening}
               loadingText="Открываем PDF..."
-              onClick={handleInvoiceClick}
+              onClick={() => handleInvoiceClick()}
               menuLabel="Другие документы для печати"
               actions={[
+                {
+                  label: "Накладная PDF",
+                  icon: <Printer size={18} />,
+                  onSelect: () => handleInvoiceClick("z2"),
+                },
                 {
                   label: "Счёт на оплату PDF",
                   icon: <Printer size={18} />,
@@ -1671,7 +1691,7 @@ export function AdminOrderDetailPage() {
               ]}
             >
               <Printer size={18} />
-              Накладная PDF
+              Накладная З-2
             </AppSplitButton>
             <AppButton
               type="button"
@@ -2607,7 +2627,7 @@ export function AdminOrderDetailPage() {
           />
 
           <AppModal
-            title="Вариант накладной"
+            title={invoicePrintTemplate === "z2" ? "Накладная PDF" : "Накладная З-2"}
             description="Можно открыть оба варианта. Это окно останется открытым после выбора."
             open={invoicePrintOptionsOpen}
             onOpenChange={setInvoicePrintOptionsOpen}
@@ -2681,6 +2701,14 @@ export function AdminOrderDetailPage() {
                 menuLabel="Другие документы для печати"
                 actions={[
                   {
+                    label: "Накладная PDF",
+                    icon: <Printer size={18} />,
+                    onSelect: () => {
+                      setCompletionPrintPromptOpen(false);
+                      handleInvoiceClick("z2");
+                    },
+                  },
+                  {
                     label: "Счёт на оплату PDF",
                     icon: <Printer size={18} />,
                     onSelect: handlePaymentInvoiceClick,
@@ -2688,11 +2716,12 @@ export function AdminOrderDetailPage() {
                 ]}
                 onClick={() => {
                   setCompletionPrintPromptOpen(false);
+                  setInvoicePrintTemplate("standard");
                   setInvoicePrintOptionsOpen(true);
                 }}
               >
                 <Printer size={18} />
-                Накладная PDF
+                Накладная З-2
               </AppSplitButton>
             </div>
           </AppModal>

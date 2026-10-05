@@ -23,6 +23,149 @@ import org.junit.jupiter.api.Test;
 
 class OrderInvoicePdfServiceTest {
     @Test
+    void compactZ2UsesSourceLayoutWithCorrectSupplierReleaseDateAndMeasurementUnits()
+            throws Exception {
+        OrderItemDto kilograms =
+                recordWith(
+                        invoiceItem(),
+                        "measurementUnit",
+                        kz.company.shop.products.entity.MeasurementUnit.KG);
+        kilograms = recordWith(kilograms, "quantity", new BigDecimal("2.75"));
+        kilograms = recordWith(kilograms, "lineTotal", new BigDecimal("33962.50"));
+        OrderDto order =
+                recordWith(
+                        orderWithPrintComment("Передать получателю лично", List.of(kilograms, invoiceItem())),
+                        "invoiceIssuedAt",
+                        Instant.parse("2026-10-03T23:10:00Z"));
+        byte[] pdf = new OrderInvoicePdfService().generateZ2(order, null, true);
+        savePreview("invoice-z2-preview.pdf", pdf);
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            String text = new PDFTextStripper().getText(document).replace('\u00a0', ' ');
+            assertThat(document.getNumberOfPages()).isEqualTo(1);
+            assertThat(text)
+                    .contains(
+                            "Товарная накладная № 20260904001 от 4 октября 2026 г.",
+                            "Поставщик:",
+                            "ИП \"GASTROFLOW\"",
+                            "Кол-во",
+                            "Цена, ₸",
+                            "Сумма, ₸",
+                            "2.75",
+                            "кг",
+                            "шт.",
+                            "33 962,50",
+                            "46 312,50",
+                            "Передать получателю лично")
+                    .doesNotContain("Фирма", "Форма З-2", "Приложение 26", "4 сентября");
+        }
+    }
+
+    @Test
+    void compactZ2PadsSourceInvoiceNumberAndFallsBackToCreationDate() throws Exception {
+        OrderDto order =
+                recordWith(orderWithPrintComment(null, List.of(invoiceItem())), "displayCode", "ORD-42");
+        OrderInvoicePdfService service = new OrderInvoicePdfService();
+        try (PDDocument document = Loader.loadPDF(service.generateZ2(order, null, false))) {
+            assertThat(new PDFTextStripper().getText(document))
+                    .contains("Товарная накладная № 0000000042 от 4 сентября 2026 г.");
+        }
+        order = recordWith(order, "displayCode", "Ручной заказ");
+        try (PDDocument document = Loader.loadPDF(service.generateZ2(order, null, false))) {
+            assertThat(new PDFTextStripper().getText(document))
+                    .contains("Товарная накладная № Ручной заказ от 4 сентября 2026 г.");
+        }
+    }
+
+    @Test
+    void compactZ2RetainsReturnAmountsAndCanOmitPrintComment() throws Exception {
+        OrderItemDto kilograms =
+                recordWith(
+                        invoiceItem(),
+                        "measurementUnit",
+                        kz.company.shop.products.entity.MeasurementUnit.KG);
+        kilograms = recordWith(kilograms, "quantity", new BigDecimal("4.5"));
+        kilograms = recordWith(kilograms, "unitPrice", new BigDecimal("100"));
+        kilograms = recordWith(kilograms, "lineTotal", new BigDecimal("450"));
+        OrderItemDto piece = recordWith(invoiceItem(), "id", 2L);
+        piece = recordWith(piece, "unitPrice", new BigDecimal("200"));
+        piece = recordWith(piece, "lineTotal", new BigDecimal("200"));
+        OrderDto order =
+                orderWithPrintComment("Скрываемый комментарий", List.of(kilograms, piece));
+        OrderReturnSummaryDto summary =
+                new OrderReturnSummaryDto(
+                        new BigDecimal("650"),
+                        new BigDecimal("325"),
+                        new BigDecimal("325"),
+                        List.of(
+                                new OrderReturnSummaryDto.Item(
+                                        1L,
+                                        new BigDecimal("4.5"),
+                                        new BigDecimal("1.25"),
+                                        new BigDecimal("3.25"),
+                                        new BigDecimal("450"),
+                                        new BigDecimal("125"),
+                                        new BigDecimal("325")),
+                                new OrderReturnSummaryDto.Item(
+                                        2L,
+                                        BigDecimal.ONE,
+                                        BigDecimal.ONE,
+                                        BigDecimal.ZERO,
+                                        new BigDecimal("200"),
+                                        new BigDecimal("200"),
+                                        BigDecimal.ZERO)),
+                        List.of());
+        byte[] pdf = new OrderInvoicePdfService().generateZ2(order, summary, false);
+        savePreview("invoice-z2-returns-preview.pdf", pdf);
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            String text = new PDFTextStripper().getText(document).replace('\u00a0', ' ');
+            assertThat(text)
+                    .contains(
+                            "Возвращена часть товара",
+                            "Возвращено полностью",
+                            "кг",
+                            "шт.",
+                            "4,5",
+                            "3,25",
+                            "450,00",
+                            "650,00",
+                            "325,00",
+                            "Сумма до возврата",
+                            "К возврату",
+                            "Итого после возврата")
+                    .doesNotContain("Скрываемый комментарий");
+        }
+    }
+
+    @Test
+    void compactZ2KeepsDiscountedLineAmountsForUntouchedReturnSummaryItems() throws Exception {
+        OrderItemDto discounted = recordWith(invoiceItem(), "unitPrice", new BigDecimal("95"));
+        discounted = recordWith(discounted, "lineTotal", new BigDecimal("95"));
+        OrderReturnSummaryDto summary =
+                new OrderReturnSummaryDto(
+                        new BigDecimal("100"),
+                        BigDecimal.ZERO,
+                        new BigDecimal("100"),
+                        List.of(
+                                new OrderReturnSummaryDto.Item(
+                                        discounted.id(),
+                                        BigDecimal.ONE,
+                                        BigDecimal.ZERO,
+                                        BigDecimal.ONE,
+                                        new BigDecimal("100"),
+                                        BigDecimal.ZERO,
+                                        new BigDecimal("100"))),
+                        List.of());
+        try (PDDocument document =
+                Loader.loadPDF(
+                        new OrderInvoicePdfService()
+                                .generateZ2(orderWithPrintComment(null, List.of(discounted)), summary, true))) {
+            assertThat(new PDFTextStripper().getText(document))
+                    .contains("95,00")
+                    .doesNotContain("100,00", "Возвращена часть товара");
+        }
+    }
+
+    @Test
     void recipientComesOnlyFromRegularBuyerSnapshot() throws Exception {
         OrderDto order = recordWith(orderWithPrintComment(null, List.of(invoiceItem())),
                 "customerName", "Клиент аккаунта");
@@ -121,7 +264,8 @@ class OrderInvoicePdfServiceTest {
 
             assertThat(text)
                     .contains("Временная накладная", "Насос циркуляционный", "24 700,00", "₸");
-            assertThat(text).doesNotContain("Крупный опт", "СКО", "Прибыль");
+            assertThat(text)
+                    .doesNotContain("Крупный опт", "СКО", "Прибыль", "ИП \"GASTROFLOW\"");
         }
     }
 

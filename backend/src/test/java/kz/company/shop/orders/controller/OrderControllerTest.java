@@ -30,6 +30,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 class OrderControllerTest {
     private final OrderService orders = mock(OrderService.class);
     private final OrderComparisonPdfService comparisonPdf = mock(OrderComparisonPdfService.class);
+    private final OrderInvoicePdfService invoicePdf = mock(OrderInvoicePdfService.class);
+    private final OrderReturnSummaryService returns = mock(OrderReturnSummaryService.class);
     private final AuthContext auth = mock(AuthContext.class);
     private MockMvc mvc;
 
@@ -39,10 +41,10 @@ class OrderControllerTest {
                 MockMvcBuilders.standaloneSetup(
                                 new OrderController(
                                         orders,
-                                        mock(OrderInvoicePdfService.class),
+                                        invoicePdf,
                                         comparisonPdf,
                                         mock(OrderIncomingPriceCheckService.class),
-                                        mock(OrderReturnSummaryService.class),
+                                        returns,
                                         mock(OrderActivityService.class),
                                         auth))
                         .setControllerAdvice(new GlobalExceptionHandler())
@@ -133,6 +135,42 @@ class OrderControllerTest {
                                 new kz.company.shop.orders.dto.OrderItemUnitRequest(
                                         101L,
                                         kz.company.shop.products.entity.MeasurementUnit.PIECE)));
+    }
+
+    @Test
+    void z2PdfUsesOrderReturnsAndCommentChoiceWithoutChangingOrder() throws Exception {
+        UUID id = UUID.randomUUID();
+        var order = mock(kz.company.shop.orders.dto.OrderDto.class);
+        var summary = mock(kz.company.shop.orders.dto.OrderReturnSummaryDto.class);
+        when(order.displayCode()).thenReturn("45");
+        when(orders.adminGet(id)).thenReturn(order);
+        when(returns.summary(id)).thenReturn(summary);
+        byte[] pdf = "%PDF-z2".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        when(invoicePdf.generateZ2(order, summary, true)).thenReturn(pdf);
+        when(invoicePdf.generateZ2(order, summary, false)).thenReturn(pdf);
+
+        for (String query : java.util.List.of("", "?includePrintComment=false")) {
+            mvc.perform(get("/api/admin/orders/" + id + "/invoice-z2.pdf" + query))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                    .andExpect(header().string("Content-Disposition",
+                            "inline; filename=\"nakladnaya-z2-45.pdf\""))
+                    .andExpect(content().bytes(pdf));
+        }
+        verify(invoicePdf).generateZ2(order, summary, true);
+        verify(invoicePdf).generateZ2(order, summary, false);
+        verify(auth, org.mockito.Mockito.times(2)).require("orders.read");
+        verify(orders, org.mockito.Mockito.times(2)).adminGet(id);
+        org.mockito.Mockito.verifyNoMoreInteractions(orders, invoicePdf);
+    }
+
+    @Test
+    void z2PdfDeniesAccessBeforeReadingOrderWithoutPermission() throws Exception {
+        org.mockito.Mockito.doThrow(new kz.company.shop.common.exception.AppExceptions.Forbidden("orders.read"))
+                .when(auth).require("orders.read");
+        mvc.perform(get("/api/admin/orders/{id}/invoice-z2.pdf", UUID.randomUUID()))
+                .andExpect(status().isForbidden());
+        org.mockito.Mockito.verifyNoInteractions(orders, returns, invoicePdf);
     }
 
     @Test

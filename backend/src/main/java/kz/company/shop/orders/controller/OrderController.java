@@ -205,6 +205,25 @@ public class OrderController {
     }
 
     @GetMapping(
+            value = "/admin/orders/{id}/invoice-z2.pdf",
+            produces = MediaType.APPLICATION_PDF_VALUE)
+    @PreAuthorize("hasAuthority('orders.read')")
+    public ResponseEntity<byte[]> invoiceZ2Pdf(
+            @PathVariable UUID id,
+            @RequestParam(defaultValue = "true") boolean includePrintComment) {
+        auth.require("orders.read");
+        OrderDto order = service.adminGet(id);
+        OrderReturnSummaryDto returnSummary = returnSummaryService.summary(id);
+        String fileName = "nakladnaya-z2-" + order.displayCode() + ".pdf";
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(
+                        "Content-Disposition",
+                        ContentDisposition.inline().filename(fileName).build().toString())
+                .body(invoicePdfService.generateZ2(order, returnSummary, includePrintComment));
+    }
+
+    @GetMapping(
             value = "/admin/orders/{id}/comparison.pdf",
             produces = MediaType.APPLICATION_PDF_VALUE)
     @PreAuthorize("hasAuthority('orders.read')")

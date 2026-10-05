@@ -33,6 +33,8 @@ public class OrderInvoicePdfService {
     private static final String TENGE_SYMBOL = "₸";
     private static final ZoneId TIME_ZONE = ZoneId.of("Asia/Almaty");
     private static final Locale RUSSIAN_LOCALE = Locale.forLanguageTag("ru-RU");
+    private static final DateTimeFormatter COMPACT_DATE_FORMATTER =
+            DateTimeFormatter.ofPattern("d MMMM yyyy 'г.'", RUSSIAN_LOCALE);
     private static final float PAGE_WIDTH = PDRectangle.A4.getWidth();
     private static final float PAGE_HEIGHT = PDRectangle.A4.getHeight();
     private static final float MARGIN = 40;
@@ -76,6 +78,41 @@ public class OrderInvoicePdfService {
                         .toList(),
                 InvoiceTotals.from(order.total(), returnSummary),
                 includePrintComment ? order.printComment() : null);
+    }
+
+    /** Prints the compact order delivery note used by the source shop. */
+    public byte[] generateZ2(
+            OrderDto order, OrderReturnSummaryDto returnSummary, boolean includePrintComment) {
+        String number = order.displayCode().replaceAll("\\D", "");
+        number =
+                number.isEmpty()
+                        ? order.displayCode()
+                        : String.format("%010d", new java.math.BigInteger(number));
+        String title =
+                "Товарная накладная № "
+                        + number
+                        + " от "
+                        + COMPACT_DATE_FORMATTER.format(
+                                (order.invoiceIssuedAt() == null
+                                                ? order.createdAt()
+                                                : order.invoiceIssuedAt())
+                                        .atZone(TIME_ZONE));
+        Map<Long, OrderReturnSummaryDto.Item> returnsByItemId =
+                returnSummary == null
+                        ? Map.of()
+                        : returnSummary.items().stream()
+                                .collect(
+                                        java.util.stream.Collectors.toMap(
+                                                OrderReturnSummaryDto.Item::orderItemId,
+                                                item -> item));
+        return generate(
+                title,
+                order.items().stream()
+                        .map(item -> invoiceItem(item, returnsByItemId.get(item.id())))
+                        .toList(),
+                InvoiceTotals.from(order.total(), returnSummary),
+                includePrintComment ? order.printComment() : null,
+                "ИП \"GASTROFLOW\"");
     }
 
     private static final float FORM_MARGIN = 24;
@@ -594,12 +631,21 @@ public class OrderInvoicePdfService {
 
     private byte[] generate(
             String title, List<InvoiceItem> items, InvoiceTotals totals, String printComment) {
+        return generate(title, items, totals, printComment, "GastroFlow");
+    }
+
+    private byte[] generate(
+            String title,
+            List<InvoiceItem> items,
+            InvoiceTotals totals,
+            String printComment,
+            String supplier) {
         try (PDDocument document = new PDDocument();
                 ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             InvoiceFonts fonts = loadUnicodeFonts(document);
             TableLayout tableLayout = TableLayout.forItemCount(items.size());
             PageState page = newPage(document);
-            page.y = drawHeader(page, title, fonts);
+            page.y = drawHeader(page, title, supplier, fonts);
             drawTableHeader(page, fonts, tableLayout);
 
             for (int index = 0; index < items.size(); index++) {
@@ -666,7 +712,8 @@ public class OrderInvoicePdfService {
         return new PageState(new PDPageContentStream(document, page), PAGE_HEIGHT - MARGIN);
     }
 
-    private float drawHeader(PageState page, String title, InvoiceFonts fonts) throws IOException {
+    private float drawHeader(PageState page, String title, String supplier, InvoiceFonts fonts)
+            throws IOException {
         text(page, title, MARGIN, page.y, fonts, 14, true);
         page.content.setLineWidth(1.2f);
         page.content.moveTo(MARGIN, page.y - 7);
@@ -674,7 +721,14 @@ public class OrderInvoicePdfService {
         page.content.stroke();
         page.y -= 32;
         text(page, "Поставщик:", MARGIN, page.y, fonts, 10, false);
-        text(page, "GastroFlow", MARGIN + 62, page.y, fonts, 10, true);
+        text(
+                page,
+                supplier,
+                MARGIN + width(fonts.regular(), "Поставщик:", 10) + 8,
+                page.y,
+                fonts,
+                10,
+                true);
         return page.y - 22;
     }
 
@@ -715,7 +769,7 @@ public class OrderInvoicePdfService {
                     String.valueOf(index),
                     String.join("\n", product),
                     item.quantity().stripTrailingZeros().toPlainString(),
-                    "шт.",
+                    item.kilograms() ? "кг" : "шт.",
                     money(item.unitPrice()),
                     money(item.lineTotal())
                 },
@@ -779,7 +833,7 @@ public class OrderInvoicePdfService {
                 bottom,
                 height,
                 3,
-                List.of(new InvoiceCellLine("шт.", false)),
+                List.of(new InvoiceCellLine(item.kilograms() ? "кг" : "шт.", false)),
                 fonts,
                 layout,
                 CellAlignment.CENTER);
