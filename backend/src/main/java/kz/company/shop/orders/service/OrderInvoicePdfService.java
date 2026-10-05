@@ -112,7 +112,8 @@ public class OrderInvoicePdfService {
                         .toList(),
                 InvoiceTotals.from(order.total(), returnSummary),
                 includePrintComment ? order.printComment() : null,
-                "ИП \"GASTROFLOW\"");
+                "ИП \"GASTROFLOW\"",
+                order.regularBuyerName() == null ? "" : order.regularBuyerName());
     }
 
     private static final float FORM_MARGIN = 24;
@@ -631,7 +632,7 @@ public class OrderInvoicePdfService {
 
     private byte[] generate(
             String title, List<InvoiceItem> items, InvoiceTotals totals, String printComment) {
-        return generate(title, items, totals, printComment, "GastroFlow");
+        return generate(title, items, totals, printComment, "GastroFlow", null);
     }
 
     private byte[] generate(
@@ -639,13 +640,14 @@ public class OrderInvoicePdfService {
             List<InvoiceItem> items,
             InvoiceTotals totals,
             String printComment,
-            String supplier) {
+            String supplier,
+            String buyer) {
         try (PDDocument document = new PDDocument();
                 ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             InvoiceFonts fonts = loadUnicodeFonts(document);
             TableLayout tableLayout = TableLayout.forItemCount(items.size());
             PageState page = newPage(document);
-            page.y = drawHeader(page, title, supplier, fonts);
+            page.y = drawHeader(page, title, supplier, buyer, fonts);
             drawTableHeader(page, fonts, tableLayout);
 
             for (int index = 0; index < items.size(); index++) {
@@ -712,7 +714,8 @@ public class OrderInvoicePdfService {
         return new PageState(new PDPageContentStream(document, page), PAGE_HEIGHT - MARGIN);
     }
 
-    private float drawHeader(PageState page, String title, String supplier, InvoiceFonts fonts)
+    private float drawHeader(
+            PageState page, String title, String supplier, String buyer, InvoiceFonts fonts)
             throws IOException {
         text(page, title, MARGIN, page.y, fonts, 14, true);
         page.content.setLineWidth(1.2f);
@@ -729,6 +732,19 @@ public class OrderInvoicePdfService {
                 fonts,
                 10,
                 true);
+        if (buyer != null) {
+            page.y -= 18;
+            text(page, "Покупатель:", MARGIN, page.y, fonts, 10, false);
+            float buyerX = MARGIN + width(fonts.regular(), "Покупатель:", 10) + 8;
+            List<String> buyerLines =
+                    buyer.isBlank()
+                            ? List.of()
+                            : wrap(buyer, fonts.bold(), 10, PAGE_WIDTH - MARGIN - buyerX);
+            for (int index = 0; index < buyerLines.size(); index++) {
+                if (index > 0) page.y -= 13;
+                text(page, buyerLines.get(index), buyerX, page.y, fonts, 10, true);
+            }
+        }
         return page.y - 22;
     }
 

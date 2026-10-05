@@ -23,6 +23,49 @@ import org.junit.jupiter.api.Test;
 
 class OrderInvoicePdfServiceTest {
     @Test
+    void compactInvoicePrintsBuyerOnlyFromRegularBuyerSnapshot() throws Exception {
+        OrderDto order =
+                recordWith(
+                        orderWithPrintComment(null, List.of(invoiceItem())),
+                        "customerName",
+                        "Клиент аккаунта");
+        OrderInvoicePdfService service = new OrderInvoicePdfService();
+        for (String buyer : new String[] {null, "", "ИП Постоянный покупатель"}) {
+            OrderDto current = recordWith(order, "regularBuyerName", buyer);
+            try (PDDocument document = Loader.loadPDF(service.generateZ2(current, null, false))) {
+                String text = new PDFTextStripper().getText(document);
+                assertThat(text)
+                        .contains("Покупатель:")
+                        .doesNotContain("Клиент аккаунта");
+                if (buyer != null && !buyer.isBlank()) {
+                    assertThat(text).contains("Покупатель: " + buyer);
+                }
+            }
+        }
+    }
+
+    @Test
+    void compactInvoiceWrapsLongBuyerNameBeforeProductTable() throws Exception {
+        String buyer =
+                "ТОО Международная компания по поставкам овощей, фруктов и продуктов питания"
+                        + " для ресторанов и гостиниц города Алматы";
+        OrderDto order =
+                recordWith(
+                        orderWithPrintComment(null, List.of(invoiceItem())),
+                        "regularBuyerName",
+                        buyer);
+        try (PDDocument document =
+                Loader.loadPDF(new OrderInvoicePdfService().generateZ2(order, null, false))) {
+            PDFTextStripper stripper = new PDFTextStripper();
+            stripper.setSortByPosition(true);
+            String text = stripper.getText(document).replaceAll("\\s+", " ");
+            assertThat(document.getNumberOfPages()).isEqualTo(1);
+            assertThat(text).contains("Покупатель: " + buyer);
+            assertThat(text.indexOf("города Алматы")).isLessThan(text.indexOf("Кол-во"));
+        }
+    }
+
+    @Test
     void compactZ2UsesSourceLayoutWithCorrectSupplierReleaseDateAndMeasurementUnits()
             throws Exception {
         OrderItemDto kilograms =
