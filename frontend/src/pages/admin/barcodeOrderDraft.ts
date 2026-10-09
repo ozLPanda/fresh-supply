@@ -49,6 +49,19 @@ export type BarcodeOrderDraft = {
   selectedPendingBinding: PendingCustomerBinding | null;
 };
 
+export type OrderDraftEntry = {
+  id: string;
+  title: string;
+  assistantSessionId?: string;
+  data: BarcodeOrderDraft;
+};
+
+export type OrderDraftWorkspace = {
+  version: 2;
+  activeId: string | null;
+  drafts: OrderDraftEntry[];
+};
+
 type StoredBarcodeOrderDraft = BarcodeOrderDraft & {
   version: 1;
   mode: OrderCreateMode;
@@ -324,5 +337,209 @@ export function clearBarcodeOrderDraft(
     localStorage.removeItem(storageKey(userId, mode, assistantSessionId));
   } catch {
     // Local storage may be unavailable in private or restricted browser sessions.
+  }
+}
+
+function workspaceKey(userId: number, mode: OrderCreateMode) {
+  return `${DRAFT_PREFIX}_v2_${userId}_${mode}`;
+}
+
+function emptyWorkspace(): OrderDraftWorkspace {
+  return { version: 2, activeId: null, drafts: [] };
+}
+
+function parseEntry(value: unknown, mode: OrderCreateMode): OrderDraftEntry | null {
+  if (
+    !isRecord(value) ||
+    !nonEmptyString(value.id) ||
+    !nonEmptyString(value.title) ||
+    (value.assistantSessionId !== undefined && !nonEmptyString(value.assistantSessionId)) ||
+    !isRecord(value.data)
+  ) {
+    return null;
+  }
+  const data = parseDraft({ ...value.data, version: 1, mode }, mode);
+  return data
+    ? {
+        id: value.id as string,
+        title: value.title as string,
+        ...(value.assistantSessionId
+          ? { assistantSessionId: value.assistantSessionId as string }
+          : {}),
+        data,
+      }
+    : null;
+}
+
+function parseWorkspace(value: unknown, mode: OrderCreateMode): OrderDraftWorkspace {
+  if (!isRecord(value) || value.version !== 2 || !Array.isArray(value.drafts)) {
+    return emptyWorkspace();
+  }
+  const seen = new Set<string>();
+  const drafts = value.drafts.flatMap((candidate) => {
+    const entry = parseEntry(candidate, mode);
+    if (!entry || seen.has(entry.id)) return [];
+    seen.add(entry.id);
+    return [entry];
+  });
+  return {
+    version: 2,
+    drafts,
+    activeId:
+      typeof value.activeId === "string" && seen.has(value.activeId)
+        ? value.activeId
+        : (drafts[0]?.id ?? null),
+  };
+}
+
+function parseStoredJson(serialized: string | null): unknown {
+  try {
+    return JSON.parse(serialized ?? "null");
+  } catch {
+    return null;
+  }
+}
+
+/** Read fresh storage before each mutation so another draft's changes are retained. */
+function loadWorkspace(userId: number, mode: OrderCreateMode) {
+  const stored = parseStoredJson(localStorage.getItem(workspaceKey(userId, mode)));
+  const workspace = parseWorkspace(stored, mode);
+  const legacyBase = storageKey(userId, mode);
+  const legacyAssistantPrefix = `${legacyBase}_assistant_`;
+  const importedLegacyKeys =
+    isRecord(stored) && stored.version === 2 && Array.isArray(stored.importedLegacyKeys)
+      ? stored.importedLegacyKeys.filter(
+          (key): key is string =>
+            typeof key === "string" &&
+            (key === legacyBase || key.startsWith(legacyAssistantPrefix)),
+        )
+      : [];
+  const legacyKeys: string[] = [];
+  // Snapshot keys before cleanup; removing items changes localStorage indices.
+  for (let index = 0; index < localStorage.length; index++) {
+    const key = localStorage.key(index);
+    if (key === legacyBase || key?.startsWith(legacyAssistantPrefix)) legacyKeys.push(key);
+  }
+  legacyKeys.sort((a, b) => (a === legacyBase ? -1 : b === legacyBase ? 1 : a.localeCompare(b)));
+  const migratedKeys: string[] = [];
+  for (const key of legacyKeys) {
+    if (importedLegacyKeys.includes(key)) {
+      migratedKeys.push(key);
+      continue;
+    }
+    const data = parseDraft(parseStoredJson(localStorage.getItem(key)), mode);
+    if (!data) continue;
+    const assistantSessionId =
+      key === legacyBase ? undefined : key.slice(legacyAssistantPrefix.length);
+    if (assistantSessionId === "") continue;
+    const id = assistantSessionId ? `legacy-assistant-${assistantSessionId}` : "legacy-default";
+    if (!workspace.drafts.some((draft) => draft.id === id)) {
+      workspace.drafts.push({
+        id,
+        title: assistantSessionId ? "Заказ из ассистента" : "Заказ",
+        ...(assistantSessionId ? { assistantSessionId } : {}),
+        data,
+      });
+    }
+    migratedKeys.push(key);
+  }
+  workspace.activeId ??= workspace.drafts[0]?.id ?? null;
+  return { workspace, migratedKeys, importedLegacyKeys };
+}
+
+function persistWorkspace(
+  userId: number,
+  mode: OrderCreateMode,
+  workspace: OrderDraftWorkspace,
+  migratedKeys: string[],
+  importedLegacyKeys: string[],
+) {
+  localStorage.setItem(
+    workspaceKey(userId, mode),
+    JSON.stringify({
+      ...workspace,
+      importedLegacyKeys: [...new Set([...importedLegacyKeys, ...migratedKeys])],
+    }),
+  );
+  // Migration is committed before removing its sources. Failed cleanup is safe to retry.
+  for (const key of migratedKeys) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // The v2 copy exists; deterministic IDs prevent duplicate imports next time.
+    }
+  }
+}
+
+export function readOrderDraftWorkspace(
+  userId: number,
+  mode: OrderCreateMode,
+): OrderDraftWorkspace {
+  try {
+    const { workspace, migratedKeys, importedLegacyKeys } = loadWorkspace(userId, mode);
+    if (migratedKeys.length) {
+      try {
+        persistWorkspace(userId, mode, workspace, migratedKeys, importedLegacyKeys);
+      } catch {
+        // Return recoverable legacy data without deleting it when storage is full.
+      }
+    }
+    return workspace;
+  } catch {
+    return emptyWorkspace();
+  }
+}
+
+export function writeOrderDraftEntry(
+  userId: number,
+  mode: OrderCreateMode,
+  entry: OrderDraftEntry,
+): boolean {
+  try {
+    const parsed = parseEntry(entry, mode);
+    if (!parsed) return false;
+    parsed.data.savedAt = new Date().toISOString();
+    const { workspace, migratedKeys, importedLegacyKeys } = loadWorkspace(userId, mode);
+    const index = workspace.drafts.findIndex((draft) => draft.id === parsed.id);
+    if (index === -1) workspace.drafts.push(parsed);
+    else workspace.drafts[index] = parsed;
+    workspace.activeId ??= parsed.id;
+    persistWorkspace(userId, mode, workspace, migratedKeys, importedLegacyKeys);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function removeOrderDraftEntry(userId: number, mode: OrderCreateMode, id: string): boolean {
+  try {
+    const { workspace, migratedKeys, importedLegacyKeys } = loadWorkspace(userId, mode);
+    const index = workspace.drafts.findIndex((draft) => draft.id === id);
+    // Removal is idempotent: an unsaved entry or another tab may already have removed it.
+    if (index !== -1) workspace.drafts.splice(index, 1);
+    if (workspace.activeId === id) {
+      workspace.activeId =
+        workspace.drafts[Math.min(index, workspace.drafts.length - 1)]?.id ?? null;
+    }
+    persistWorkspace(userId, mode, workspace, migratedKeys, importedLegacyKeys);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function activateOrderDraftEntry(
+  userId: number,
+  mode: OrderCreateMode,
+  id: string,
+): boolean {
+  try {
+    const { workspace, migratedKeys, importedLegacyKeys } = loadWorkspace(userId, mode);
+    if (!workspace.drafts.some((draft) => draft.id === id)) return false;
+    workspace.activeId = id;
+    persistWorkspace(userId, mode, workspace, migratedKeys, importedLegacyKeys);
+    return true;
+  } catch {
+    return false;
   }
 }

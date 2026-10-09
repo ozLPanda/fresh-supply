@@ -7,20 +7,87 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import kz.company.shop.files.service.ObjectStorageService;
 import kz.company.shop.orders.entity.FulfillmentType;
 import kz.company.shop.orders.entity.Order;
 import kz.company.shop.orders.entity.PaymentMethod;
 import kz.company.shop.orders.repository.OrderRepository;
+import kz.company.shop.regularbuyers.entity.RegularBuyer;
+import kz.company.shop.regularbuyers.repository.RegularBuyerRepository;
+import kz.company.shop.users.entity.User;
+import kz.company.shop.users.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @Transactional
 class OrderAdminPageIntegrationTest {
+    @MockBean private ObjectStorageService objectStorage;
     @Autowired private OrderService service;
     @Autowired private OrderRepository repository;
+    @Autowired private RegularBuyerRepository buyers;
+    @Autowired private UserRepository users;
+
+    @Test
+    void searchesRegularBuyerSnapshotBeforePaginationWithoutCustomerAccount() {
+        RegularBuyer buyer = new RegularBuyer();
+        buyer.id = UUID.randomUUID();
+        buyer.name = "Переименованный покупатель";
+        buyer.archived = true;
+        buyers.saveAndFlush(buyer);
+
+        Order first = order(999101, null, null);
+        Order second = order(999102, null, null);
+        Order deleted = order(999103, null, null);
+        for (Order order : List.of(first, second, deleted)) {
+            order.regularBuyerId = buyer.id;
+            order.regularBuyerName = "ИП Котёл покупательпоиск2099";
+        }
+        deleted.deletedAt = Instant.now();
+        repository.saveAllAndFlush(List.of(first, second, deleted));
+
+        var firstPage = service.adminPage("КОТЁЛ покупательпоиск2099", null, null,
+                List.of(), List.of(), null, "id", false, 1, 1);
+        var secondPage = service.adminPage("котел покупательпоиск2099", null, null,
+                List.of(), List.of(), null, "id", false, 2, 1);
+
+        assertThat(firstPage.totalItems()).isEqualTo(2);
+        assertThat(firstPage.totalPages()).isEqualTo(2);
+        assertThat(firstPage.items()).extracting(item -> item.id()).containsExactly(first.id);
+        assertThat(secondPage.items()).extracting(item -> item.id()).containsExactly(second.id);
+        assertThat(firstPage.items().getFirst().userId()).isNull();
+        assertThat(firstPage.items().getFirst().customerName()).isNull();
+        assertThat(firstPage.items().getFirst().regularBuyerName())
+                .isEqualTo("ИП Котёл покупательпоиск2099");
+    }
+
+    @Test
+    void sortsByDisplayedBuyerNameWithAccountFallbackForBlankOrMissingSnapshot() {
+        Order regular = order(999201, "покупательсортировка2099", null);
+        regular.regularBuyerName = "  Alpha  ";
+        regular.userId = customer("Zulu").id;
+        Order blankSnapshot = order(999202, "покупательсортировка2099", null);
+        blankSnapshot.regularBuyerName = "   ";
+        blankSnapshot.userId = customer("  Beta  ").id;
+        Order accountOnly = order(999203, "покупательсортировка2099", null);
+        accountOnly.userId = customer("Charlie").id;
+        Order buyerOnly = order(999204, "покупательсортировка2099", null);
+        buyerOnly.regularBuyerName = "Delta";
+        repository.saveAllAndFlush(List.of(regular, blankSnapshot, accountOnly, buyerOnly));
+
+        var ascending = service.adminPage("покупательсортировка2099", null, null,
+                List.of(), List.of(), null, "customer", false, 1, 10);
+        var descending = service.adminPage("покупательсортировка2099", null, null,
+                List.of(), List.of(), null, "customer", true, 1, 10);
+
+        assertThat(ascending.items()).extracting(item -> item.id())
+                .containsExactly(regular.id, blankSnapshot.id, accountOnly.id, buyerOnly.id);
+        assertThat(descending.items()).extracting(item -> item.id())
+                .containsExactly(buyerOnly.id, accountOnly.id, blankSnapshot.id, regular.id);
+    }
 
     @Test
     void searchesSubstringsAcrossDateAndDailyNumber() {
@@ -113,6 +180,13 @@ class OrderAdminPageIntegrationTest {
         var summary = service.adminSummary(LocalDate.of(2099, 1, 1), LocalDate.of(2099, 1, 1));
         assertThat(summary.total()).isGreaterThanOrEqualTo(2);
         assertThat(summary.newOrders()).isGreaterThanOrEqualTo(2);
+    }
+
+    private User customer(String name) {
+        User user = new User();
+        user.name = name;
+        user.passwordHash = "test-only";
+        return users.saveAndFlush(user);
     }
 
     private Order order(long dailyNumber, String comment, String printComment) {

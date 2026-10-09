@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -74,8 +74,6 @@ import {
 } from "@/features/orders/OrderQuantityInput";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  clearBarcodeOrderDraft,
-  readBarcodeOrderDraft,
   type BarcodeOrderLine,
   type BarcodeOrderDraft,
   type AssistantDraftReview,
@@ -83,8 +81,8 @@ import {
   type PendingCustomerBinding,
   type PriceAdjustmentHistoryEntry,
   type PriceAdjustmentOperation,
-  writeBarcodeOrderDraft,
 } from "./barcodeOrderDraft";
+import { OrderDraftWorkspace, type OrderDraftFormProps } from "./OrderDraftWorkspace";
 import "./BarcodeOrderCreatePage.css";
 import "./OrderWorkspace.css";
 
@@ -251,14 +249,32 @@ function productToOrderProduct(product: Product): BarcodeOrderProduct | null {
 }
 
 export function BarcodeOrderCreatePage() {
-  return <OrderCreatePage mode="barcode" />;
+  return <OrderCreateWorkspacePage mode="barcode" />;
 }
 
 export function ProductSelectionOrderCreatePage() {
-  return <OrderCreatePage mode="selection" />;
+  return <OrderCreateWorkspacePage mode="selection" />;
 }
 
-function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
+function OrderCreateWorkspacePage({ mode }: { mode: OrderCreateMode }) {
+  const { user } = useCommerce();
+  return (
+    <OrderDraftWorkspace key={`${user?.id ?? "anonymous"}:${mode}`} mode={mode}>
+      {(props) => <OrderCreatePage key={props.draftEntry.id} mode={mode} {...props} />}
+    </OrderDraftWorkspace>
+  );
+}
+
+function OrderCreatePage({
+  mode,
+  draftEntry,
+  onSaveDraft,
+  onDraftCreated,
+  onNewDraft,
+  renderDraftPanel,
+}: { mode: OrderCreateMode } & OrderDraftFormProps) {
+  const initialDraftRef = useRef(draftEntry.data);
+  const draftCreatedRef = useRef(false);
   const location = useLocation();
   const navigate = useNavigate();
   const assistantParam = new URLSearchParams(location.search).get("assistantSession");
@@ -268,29 +284,50 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
       ? assistantParam
       : undefined;
   const isAssistantImport = assistantParam !== null;
-  const [assistantImport, setAssistantImport] = useState<AssistantDraftReview | undefined>();
+  const [assistantImport, setAssistantImport] = useState<AssistantDraftReview | undefined>(
+    initialDraftRef.current.assistantImport,
+  );
   const [assistantReviewExpanded, setAssistantReviewExpanded] = useState(true);
   const returnPath = orderCreateReturnPath(location.state, location.pathname);
   const returnState = (location.state as { returnState?: unknown } | null)?.returnState;
+  const createdOrderReturnState = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    // The submitted assistant source now points to a completed order. Returning to it
+    // would immediately reopen that order instead of the remaining draft workspace.
+    params.delete("assistantSession");
+    const search = params.toString();
+    return {
+      returnTo: `${location.pathname}${search ? `?${search}` : ""}${location.hash}`,
+      returnState: { returnTo: returnPath, returnState },
+    };
+  }, [location.pathname, location.search, location.hash, returnPath, returnState]);
   const { user: activeUser } = useCommerce();
-  const [lines, setLines] = useState<BarcodeOrderLine[]>([]);
-  const [priceTier, setPriceTier] = useState<BarcodeOrderPriceTier>("RETAIL");
-  const [orderDate, setOrderDate] = useState(localDateInputValue);
-  const [selectedPriceLineIds, setSelectedPriceLineIds] = useState<number[]>([]);
+  const [lines, setLines] = useState<BarcodeOrderLine[]>(initialDraftRef.current.lines);
+  const [priceTier, setPriceTier] = useState<BarcodeOrderPriceTier>(
+    initialDraftRef.current.priceTier,
+  );
+  const [orderDate, setOrderDate] = useState(initialDraftRef.current.orderDate);
+  const [selectedPriceLineIds, setSelectedPriceLineIds] = useState<number[]>(
+    initialDraftRef.current.selectedPriceLineIds,
+  );
   const [priceAdjustmentOperation, setPriceAdjustmentOperation] =
-    useState<PriceAdjustmentOperation>("PERCENT");
-  const [priceAdjustmentValue, setPriceAdjustmentValue] = useState("");
+    useState<PriceAdjustmentOperation>(initialDraftRef.current.priceAdjustmentOperation);
+  const [priceAdjustmentValue, setPriceAdjustmentValue] = useState(
+    initialDraftRef.current.priceAdjustmentValue,
+  );
   const [priceAdjustmentOriginalPrices, setPriceAdjustmentOriginalPrices] = useState<
     Record<number, number>
-  >({});
+  >(initialDraftRef.current.priceAdjustmentOriginalPrices);
   const [priceAdjustmentHistoryByLine, setPriceAdjustmentHistoryByLine] = useState<
     Record<number, PriceAdjustmentHistoryEntry[]>
-  >({});
+  >(initialDraftRef.current.priceAdjustmentHistoryByLine);
   const [clearTableOpen, setClearTableOpen] = useState(false);
   const [draggedLineId, setDraggedLineId] = useState<number | null>(null);
   const [dragOverLineId, setDragOverLineId] = useState<number | null>(null);
-  const [comment, setComment] = useState("");
-  const [regularBuyerId, setRegularBuyerId] = useState<string | null>(null);
+  const [comment, setComment] = useState(initialDraftRef.current.comment);
+  const [regularBuyerId, setRegularBuyerId] = useState<string | null>(
+    initialDraftRef.current.regularBuyerId,
+  );
   const [scannerOpen, setScannerOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [manualCode, setManualCode] = useState("");
@@ -303,9 +340,11 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
   const [customerSearch, setCustomerSearch] = useState("");
   const [regularBuyerSearch, setRegularBuyerSearch] = useState("");
   const [customerBindingMode, setCustomerBindingMode] = useState("regular-buyer");
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(
+    initialDraftRef.current.selectedCustomerId,
+  );
   const [selectedPendingBinding, setSelectedPendingBinding] =
-    useState<PendingCustomerBinding | null>(null);
+    useState<PendingCustomerBinding | null>(initialDraftRef.current.selectedPendingBinding);
   const [submittingAction, setSubmittingAction] = useState<OrderSubmission["action"] | null>(null);
   const [checkingStock, setCheckingStock] = useState(false);
   const [stockShortageOpen, setStockShortageOpen] = useState(false);
@@ -322,7 +361,6 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
     continued: boolean;
   } | null>(null);
   const [draftDateChoice, setDraftDateChoice] = useState("");
-  const [newDraftOpen, setNewDraftOpen] = useState(false);
   const [removedLine, setRemovedLine] = useState<RemovedOrderLine | null>(null);
   const removedLineRef = useRef<RemovedOrderLine | null>(null);
   const activeUserId = activeUser?.id ?? null;
@@ -331,7 +369,7 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
     activeUser?.permissions?.includes("warehouse.negative_stock") ?? false;
   const canUpdateProducts = activeUser?.permissions?.includes("products.update") ?? false;
   const draftScope = activeUserId
-    ? `${activeUserId}:${mode}${isAssistantImport ? `:assistant:${assistantParam}` : ""}`
+    ? `${activeUserId}:${mode}:${draftEntry.id}${isAssistantImport ? `:assistant:${assistantParam}` : ""}`
     : null;
   const assistantSource = useQuery({
     queryKey: ["order-assistant", "form-source", activeUserId, assistantSessionId],
@@ -378,14 +416,16 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
       return;
     const source = assistantSource.data;
     if (source.orderId) {
+      draftCreatedRef.current = true;
+      onDraftCreated(draftEntry.id);
       navigate(`/admin/orders/${source.orderId}`, {
         replace: true,
-        state: { returnTo: returnPath, returnState },
+        state: createdOrderReturnState,
       });
       return;
     }
     if (source.mode !== "CREATE" || restoredDraftScope === draftScope) return;
-    const stored = readBarcodeOrderDraft(activeUserId, mode, assistantSessionId);
+    const stored = initialDraftRef.current;
     if (stored?.assistantImport?.sessionId === assistantSessionId) {
       restoreForm(stored);
     } else {
@@ -432,8 +472,9 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
     mode,
     restoredDraftScope,
     navigate,
-    returnPath,
-    returnState,
+    createdOrderReturnState,
+    draftEntry.id,
+    onDraftCreated,
   ]);
 
   useEffect(() => {
@@ -446,20 +487,19 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
     }
 
     if (isAssistantImport) return;
-    const draft = readBarcodeOrderDraft(activeUserId, mode);
-    restoreForm(draft);
+    const draft = initialDraftRef.current;
     setRestoredDraftScope(draftScope);
     const hasDraft = Boolean(draft && (draft.lines.length || draft.comment.trim()));
     setRestoredDraftInfo(
       draft && hasDraft
-        ? { orderDate: draft.orderDate, savedAt: draft.savedAt, continued: false }
+        ? {
+            orderDate: draft.orderDate,
+            savedAt: draft.savedAt,
+            continued: draft.orderDate === localDateInputValue(),
+          }
         : null,
     );
     setDraftDateChoice("");
-
-    if (draft?.lines.length) {
-      appToast.info("Восстановлен незавершённый заказ на этом устройстве");
-    }
   }, [activeUserId, draftScope, mode, isAssistantImport]);
 
   useEffect(
@@ -470,34 +510,32 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
     [draftScope],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (
+      draftCreatedRef.current ||
       !activeUserId ||
       restoredDraftScope !== draftScope ||
       (isAssistantImport && (!assistantSessionId || !assistantImport))
     )
       return;
-    writeBarcodeOrderDraft(
-      activeUserId,
-      mode,
-      {
-        assistantImport,
-        lines,
-        priceTier,
-        orderDate,
-        selectedPriceLineIds,
-        priceAdjustmentOperation,
-        priceAdjustmentValue,
-        priceAdjustmentOriginalPrices,
-        priceAdjustmentHistoryByLine,
-        comment,
-        regularBuyerId,
-        selectedCustomerId,
-        selectedPendingBinding,
-      },
-      assistantSessionId,
-    );
+    onSaveDraft(draftEntry.id, {
+      assistantImport,
+      lines,
+      priceTier,
+      orderDate,
+      selectedPriceLineIds,
+      priceAdjustmentOperation,
+      priceAdjustmentValue,
+      priceAdjustmentOriginalPrices,
+      priceAdjustmentHistoryByLine,
+      comment,
+      regularBuyerId,
+      selectedCustomerId,
+      selectedPendingBinding,
+    });
   }, [
+    draftEntry.id,
+    onSaveDraft,
     assistantImport,
     assistantSessionId,
     isAssistantImport,
@@ -590,9 +628,10 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
         : createBarcodeOrder(payload);
     },
     onSuccess: (order) => {
-      if (activeUserId) clearBarcodeOrderDraft(activeUserId, mode, assistantSessionId);
+      draftCreatedRef.current = true;
+      onDraftCreated(draftEntry.id);
       appToast.success(`Заказ № ${order.displayCode} создан и передан в работу`);
-      navigate(`/admin/orders/${order.id}`, { state: { returnTo: returnPath, returnState } });
+      navigate(`/admin/orders/${order.id}`, { state: createdOrderReturnState });
     },
     onError: async (error, submission) => {
       if (isAssistantImport) void assistantSource.refetch();
@@ -1011,29 +1050,6 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
     });
   }
 
-  function startNewDraft() {
-    if (activeUserId) clearBarcodeOrderDraft(activeUserId, mode, assistantSessionId);
-    removedLineRef.current = null;
-    setRemovedLine(null);
-    appToast.dismiss(`order-line-removal-${draftScope}`);
-    setLines([]);
-    setPriceTier("RETAIL");
-    setOrderDate(localDateInputValue());
-    setSelectedPriceLineIds([]);
-    setPriceAdjustmentOperation("PERCENT");
-    setPriceAdjustmentValue("");
-    setPriceAdjustmentOriginalPrices({});
-    setPriceAdjustmentHistoryByLine({});
-    setComment("");
-    setRegularBuyerId(null);
-    setSelectedCustomerId(null);
-    setSelectedPendingBinding(null);
-    setRestoredDraftInfo(null);
-    setDraftDateChoice("");
-    setNewDraftOpen(false);
-    appToast.info("Начат новый заказ с сегодняшней датой");
-  }
-
   const selectedPriceLineIdSet = useMemo(
     () => new Set(selectedPriceLineIds),
     [selectedPriceLineIds],
@@ -1076,6 +1092,7 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
     return sum + (price === null ? 0 : price * line.quantity);
   }, 0);
   const canContinue =
+    restoredDraftScope === draftScope &&
     lines.length > 0 &&
     missingPriceLines.length === 0 &&
     (!restoredDraftInfo || restoredDraftInfo.continued) &&
@@ -1424,6 +1441,7 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
           </AppButton>
         }
       >
+        {renderDraftPanel(createOrder.isPending || checkingStock)}
         {invalid || wrongMode || assistantSource.isError ? (
           <AppAlert
             title="Не удалось открыть заявку"
@@ -1491,6 +1509,8 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
           ? "Сканируйте штрихкод камерой телефона или введите код вручную. Цена и итог заказа рассчитываются для выбранного типа продажи."
           : "Подберите товары из каталога, укажите количество, единицу измерения и тип цены. Заказ будет создан с тем же процессом оплаты и сборки."}
       </AppAlert>
+
+      {renderDraftPanel(createOrder.isPending || checkingStock)}
 
       {assistantImport && (
         <section className="barcode-order-assistant-review" aria-label="Проверка заявки помощника">
@@ -1599,7 +1619,7 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
         </section>
       )}
 
-      {restoredDraftInfo && (
+      {restoredDraftInfo && !restoredDraftInfo.continued && (
         <section className="barcode-order-draft" aria-label="Восстановленный черновик">
           <div className="barcode-order-draft__info">
             <strong>
@@ -1649,7 +1669,12 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
               </AppButton>
             </>
           )}
-          <AppButton type="button" variant="secondary" onClick={() => setNewDraftOpen(true)}>
+          <AppButton
+            type="button"
+            variant="secondary"
+            disabled={orderSubmissionPending}
+            onClick={onNewDraft}
+          >
             Начать новый
           </AppButton>
         </section>
@@ -1864,14 +1889,8 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
               type="button"
               disabled={!canContinue}
               onClick={() => {
-                if (!isAssistantImport) {
-                  setSelectedCustomerId(null);
-                  setSelectedPendingBinding(null);
-                }
                 setCustomerBindingMode(
-                  isAssistantImport && (selectedCustomerId || selectedPendingBinding)
-                    ? "user"
-                    : "regular-buyer",
+                  selectedCustomerId || selectedPendingBinding ? "user" : "regular-buyer",
                 );
                 setCustomerModalOpen(true);
               }}
@@ -1882,23 +1901,6 @@ function OrderCreatePage({ mode }: { mode: OrderCreateMode }) {
           </div>
         </div>
       </DataPanel>
-
-      <AppModal
-        title="Начать новый заказ?"
-        description="Восстановленный черновик будет удалён. Новый заказ начнётся с сегодняшней датой."
-        open={newDraftOpen}
-        onOpenChange={setNewDraftOpen}
-        contentClassName="barcode-order-modal"
-      >
-        <div className="barcode-order-modal__actions">
-          <AppButton type="button" variant="ghost" onClick={() => setNewDraftOpen(false)}>
-            Отмена
-          </AppButton>
-          <AppButton type="button" onClick={startNewDraft}>
-            Начать новый
-          </AppButton>
-        </div>
-      </AppModal>
 
       <AppModal
         title="Очистить таблицу?"

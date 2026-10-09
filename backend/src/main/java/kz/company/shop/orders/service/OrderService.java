@@ -360,6 +360,11 @@ public class OrderService {
                                         normalizedOrderSearchField(cb, root.get("printComment")),
                                         pattern,
                                         '\\'));
+                        alternatives.add(
+                                cb.like(
+                                        normalizedOrderSearchField(cb, root.get("regularBuyerName")),
+                                        pattern,
+                                        '\\'));
                         Subquery<Long> customer = query.subquery(Long.class);
                         Root<User> user = customer.from(User.class);
                         customer.select(user.get("id"))
@@ -397,9 +402,12 @@ public class OrderService {
                     Subquery<String> customerName = query.subquery(String.class);
                     Root<User> user = customerName.from(User.class);
                     customerName
-                            .select(user.get("name"))
+                            .select(cb.nullif(cb.trim(user.get("name")), ""))
                             .where(cb.equal(user.get("id"), root.get("userId")));
-                    sortValue = customerName;
+                    sortValue =
+                            cb.coalesce(
+                                    cb.nullif(cb.trim(root.<String>get("regularBuyerName")), ""),
+                                    customerName);
                 } else if ("fulfillment".equals(sort)) {
                     Subquery<Long> assembledCount = query.subquery(Long.class);
                     Root<OrderItem> item = assembledCount.from(OrderItem.class);

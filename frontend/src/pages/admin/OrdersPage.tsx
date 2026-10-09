@@ -19,6 +19,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useCommerce } from "@/features/commerce/CommerceProvider";
 import { OrderAssistantModal } from "@/features/orders/OrderAssistantModal";
 import { OrderCompletionFlow } from "@/features/orders/OrderCompletionFlow";
+import { getOrderBuyerName } from "@/features/orders/orderBuyer";
 import { PRICE_TIER_LABELS, priceTierTone } from "@/features/orders/price-tier";
 import { AdminPage } from "@/layouts/AdminPage";
 import { api } from "@/shared/api/http";
@@ -492,13 +493,18 @@ export function AdminOrdersPage() {
     {
       id: "customer",
       header: "Клиент",
-      value: (order) => `${order.customerName ?? ""} ${order.customerEmail ?? ""}`.trim(),
+      value: (order) =>
+        `${getOrderBuyerName(order) ?? ""} ${order.customerName ?? ""} ${order.customerEmail ?? ""}`.trim(),
       searchable: true,
       sortable: true,
       cell: (order) => (
         <div className="admin-table-main">
-          <strong>{order.customerName ?? "Без привязки к клиенту"}</strong>
-          <span>{order.customerEmail ?? "Заказ создан администратором"}</span>
+          <strong>{getOrderBuyerName(order) ?? "Без привязки к клиенту"}</strong>
+          <span>
+            {order.regularBuyerName?.trim()
+              ? "Постоянный покупатель"
+              : (order.customerEmail ?? "Заказ создан администратором")}
+          </span>
         </div>
       ),
     },
@@ -661,7 +667,7 @@ export function AdminOrdersPage() {
             </AppBadge>
           </div>
           <span className="admin-orders-card__customer">
-            {order.customerName ?? "Без привязки к клиенту"}
+            {getOrderBuyerName(order) ?? "Без привязки к клиенту"}
           </span>
           <div className="admin-orders-card__summary">
             <strong>{formatMoney(order.total)}</strong>

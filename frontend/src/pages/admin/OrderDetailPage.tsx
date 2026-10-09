@@ -36,6 +36,7 @@ import {
 import { useCommerce } from "@/features/commerce/CommerceProvider";
 import { RegularBuyerSelect } from "@/features/orders/RegularBuyerSelect";
 import { OrderCompletionFlow } from "@/features/orders/OrderCompletionFlow";
+import { getOrderBuyerName } from "@/features/orders/orderBuyer";
 import { openPaymentInvoicePdf } from "@/features/orders/openPaymentInvoicePdf";
 import {
   OrderItemUnitFields,
@@ -1840,10 +1841,18 @@ export function AdminOrderDetailPage() {
                           <div className="admin-detail-list">
                             <div>
                               <span>Имя</span>
-                              <strong>{order.customerName ?? "Без привязки"}</strong>
+                              <strong>{getOrderBuyerName(order) ?? "Без привязки"}</strong>
                             </div>
+                            {order.regularBuyerName?.trim() && order.customerName && (
+                              <div>
+                                <span>Аккаунт клиента</span>
+                                <strong>{order.customerName}</strong>
+                              </div>
+                            )}
                             <div>
-                              <span>Email</span>
+                              <span>
+                                {order.regularBuyerName?.trim() ? "Email аккаунта" : "Email"}
+                              </span>
                               <strong>{order.customerEmail ?? "—"}</strong>
                             </div>
                             <div>
@@ -1854,7 +1863,11 @@ export function AdminOrderDetailPage() {
                           {order.userId && (
                             <div className="admin-panel-footer">
                               <AppButton asChild variant="secondary">
-                                <Link to={`/admin/users/${order.userId}`}>Карточка клиента</Link>
+                                <Link to={`/admin/users/${order.userId}`}>
+                                  {order.regularBuyerName?.trim()
+                                    ? "Аккаунт клиента"
+                                    : "Карточка клиента"}
+                                </Link>
                               </AppButton>
                             </div>
                           )}
@@ -2843,7 +2856,7 @@ export function AdminOrderDetailPage() {
                 <div className="admin-price-review-form__toolbar">
                   <div>
                     <span>Заказ № {order.displayCode}</span>
-                    <strong>{order.customerName ?? "Без привязки к клиенту"}</strong>
+                    <strong>{getOrderBuyerName(order) ?? "Без привязки к клиенту"}</strong>
                   </div>
                   <AppBadge tone={hasPriceChanges ? "orange" : "slate"}>
                     {hasPriceChanges ? "Есть изменения" : "Без изменений"}
