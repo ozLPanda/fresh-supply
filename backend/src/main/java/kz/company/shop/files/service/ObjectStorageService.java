@@ -1,76 +1,28 @@
 package kz.company.shop.files.service;
 
-import io.minio.BucketExistsArgs;
-import io.minio.GetObjectArgs;
-import io.minio.MakeBucketArgs;
-import io.minio.MinioClient;
-import io.minio.PutObjectArgs;
-import io.minio.RemoveObjectArgs;
-import io.minio.StatObjectArgs;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import kz.company.shop.common.exception.AppExceptions;
-import kz.company.shop.files.config.ObjectStorageConfig;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
-import org.springframework.stereotype.Service;
 
-@Service
-public class ObjectStorageService {
-    private final MinioClient client;
-    private final String bucket;
+public abstract class ObjectStorageService {
+    public abstract void ensureBucket();
 
-    public ObjectStorageService(MinioClient client, ObjectStorageConfig.Properties properties) {
-        this.client = client;
-        this.bucket = properties.bucket();
+    public abstract void put(String objectKey, InputStream stream, long size, String contentType);
+
+    public abstract StoredObject get(String objectKey);
+
+    public abstract void delete(String objectKey);
+
+    /** Extra stored keys, including objects not currently referenced by business rows. */
+    public java.util.Set<String> listObjectKeys() {
+        return java.util.Set.of();
     }
 
-    @EventListener(ApplicationReadyEvent.class)
-    public void ensureBucket() {
-        try {
-            if (!client.bucketExists(BucketExistsArgs.builder().bucket(bucket).build())) {
-                client.makeBucket(MakeBucketArgs.builder().bucket(bucket).build());
-            }
-        } catch (Exception ex) {
-            throw new IllegalStateException("Не удалось подготовить файловое хранилище", ex);
-        }
-    }
-
-    public void put(String objectKey, InputStream stream, long size, String contentType) {
-        try {
-            client.putObject(
-                    PutObjectArgs.builder().bucket(bucket).object(objectKey).stream(
-                                    stream, size, -1)
-                            .contentType(contentType)
-                            .build());
-        } catch (Exception ex) {
-            throw new AppExceptions.BadRequest("Не удалось сохранить файл");
-        }
-    }
-
-    public StoredObject get(String objectKey) {
-        try {
-            var metadata =
-                    client.statObject(
-                            StatObjectArgs.builder().bucket(bucket).object(objectKey).build());
-            var stream =
-                    client.getObject(
-                            GetObjectArgs.builder().bucket(bucket).object(objectKey).build());
-            return new StoredObject(stream, metadata.size(), metadata.contentType());
-        } catch (Exception ex) {
-            throw new AppExceptions.NotFound("Файл не найден");
-        }
-    }
-
-    public void delete(String objectKey) {
-        try {
-            client.removeObject(
-                    RemoveObjectArgs.builder().bucket(bucket).object(objectKey).build());
-        } catch (Exception ex) {
-            throw new AppExceptions.BadRequest("Не удалось удалить файл");
-        }
+    /** Detect concurrent external replacement while a snapshot is reading the object. */
+    public String fingerprint(String objectKey) {
+        return contentHash(objectKey);
     }
 
     public String contentHash(String objectKey) {

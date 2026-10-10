@@ -149,11 +149,9 @@ class SecurityConfig implements WebMvcConfigurer {
                                         .permitAll()
                                         .requestMatchers(HttpMethod.POST, "/api/products/*/views")
                                         .permitAll()
-                                        .requestMatchers(
-                                                HttpMethod.GET, "/api/whatsapp/webhook")
+                                        .requestMatchers(HttpMethod.GET, "/api/whatsapp/webhook")
                                         .permitAll()
-                                        .requestMatchers(
-                                                HttpMethod.POST, "/api/whatsapp/webhook")
+                                        .requestMatchers(HttpMethod.POST, "/api/whatsapp/webhook")
                                         .permitAll()
                                         .requestMatchers("/actuator/health", "/actuator/health/**")
                                         .permitAll()
@@ -185,13 +183,12 @@ class SecurityConfig implements WebMvcConfigurer {
     }
 
     @Bean
-    AuthRateLimitFilter authRateLimitFilter(
-            RedisRateLimiter rateLimiter, ObjectMapper objectMapper) {
+    AuthRateLimitFilter authRateLimitFilter(RateLimiter rateLimiter, ObjectMapper objectMapper) {
         return new AuthRateLimitFilter(rateLimiter, objectMapper);
     }
 
     @Bean
-    ApiRateLimitFilter apiRateLimitFilter(RedisRateLimiter rateLimiter, ObjectMapper objectMapper) {
+    ApiRateLimitFilter apiRateLimitFilter(RateLimiter rateLimiter, ObjectMapper objectMapper) {
         return new ApiRateLimitFilter(rateLimiter, objectMapper);
     }
 

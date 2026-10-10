@@ -11,6 +11,7 @@ const entityLabels: Record<string, string> = {
   audit: "Журнал действий",
   whatsapp: "WhatsApp",
   deployments: "Сборка обновлений",
+  data: "Перенос данных",
   "pages.dashboard": "Админ-панель → Главная",
   "pages.products": "Админ-панель → Товары",
   "pages.supplier-products": "Админ-панель → Товары поставщиков",
@@ -37,6 +38,7 @@ const entityLabels: Record<string, string> = {
 const actionLabels: Record<string, string> = {
   create: "Создание",
   import: "Импорт и синхронизация",
+  export: "Экспорт",
   read: "Просмотр",
   update: "Редактирование",
   delete: "Удаление",

@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "postgresVersion": "18.6",
+  "pgvectorVersion": "0.8.6",
+  "model": {
+    "repository": "intfloat/multilingual-e5-base",
+    "revision": "d128750597153bb5987e10b1c3493a34e5a4502a",
+    "sha256": "a18a44fad1d0b46ded15928144138cff1135d5cc8233bdd90be5f18822de09a7"
+  },
+  "targets": {
+    "darwin-arm64": {
+      "java": {
+        "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_aarch64_mac_hotspot_21.0.12.1_1.tar.gz",
+        "sha256": "dec50fc6f9fcd4fe3ae8cabf5a5fa68f6afc48841f7698e468e9aa5d54beed84"
+      },
+      "postgres": {
+        "url": "https://github.com/boomship/postgres-vector-embedded/releases/download/v0.3.1/postgres-lite-darwin-arm64.tar.gz",
+        "sha256": "5ced879c2707bc69149bb1f7bf158b2ddd9804e140ae0f408b9fbcb1c81adf73"
+      },
+      "python": {
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261003/cpython-3.11.17%2B20261003-aarch64-apple-darwin-install_only_stripped.tar.gz",
+        "sha256": "0c9fbd0b2ddfbb6877493a650259bf379ee71a91b17f0f5f06dd2dcd52fbcade"
+      }
+    },
+    "win32-x64": {
+      "java": {
+        "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_x64_windows_hotspot_21.0.12.1_1.zip",
+        "sha256": "d35f31e712f0fcf6ac5a093edc90204fbff22f720ba3950bd09d331d5e621636"
+      },
+      "postgres": {
+        "url": "https://github.com/boomship/postgres-vector-embedded/releases/download/v0.3.1/postgres-lite-win32-x64.tar.gz",
+        "sha256": "920bebd11a2cc336096b3df382ed02c21df050d18a25420bf9049e50dd5bb38e"
+      },
+      "python": {
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261003/cpython-3.11.17%2B20261003-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
+        "sha256": "861f9a03b0c4ca537da1754ed0556e0628dd2114a1be36e8aae6b1e2bb1304a0"
+      }
+    }
+  },
+  "javaVersion": "21.0.12.1+1",
+  "windowsCpuTorch": {
+    "version": "2.5.1+cpu",
+    "url": "https://download-r2.pytorch.org/whl/cpu/torch-2.5.1%2Bcpu-cp311-cp311-win_amd64.whl",
+    "sha256": "81531d4d5ca74163dc9574b87396531e546a60cceb6253303c7db6a21e867fdf"
+  }
+}

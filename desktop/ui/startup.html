@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'"
+    />
+    <title>Ovoshi Help</title>
+    <link rel="stylesheet" href="startup.css" />
+    <script src="startup.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <span class="brand">Ovoshi Help</span>
+      <h1 id="title">Готовим приложение</h1>
+      <p id="status" role="status" aria-live="polite">
+        Первый запуск может занять немного времени.
+      </p>
+      <form id="setup" hidden>
+        <p>
+          Создайте доступ администратора к своей локальной базе. Вход
+          выполняется по телефону.
+        </p>
+        <label for="phone">Телефон администратора</label>
+        <input
+          id="phone"
+          type="tel"
+          inputmode="tel"
+          placeholder="+7 (___) ___-__-__"
+          autocomplete="tel"
+          maxlength="40"
+          required
+        />
+        <label for="password">Пароль — минимум 16 символов</label>
+        <input
+          id="password"
+          type="password"
+          minlength="16"
+          maxlength="64"
+          autocomplete="new-password"
+          required
+        />
+        <label for="confirmation">Повторите пароль</label>
+        <input
+          id="confirmation"
+          type="password"
+          minlength="16"
+          maxlength="64"
+          autocomplete="new-password"
+          required
+        />
+        <p id="error" class="error" role="alert"></p>
+        <button type="submit">Начать работу</button>
+      </form>
+      <form id="import" hidden>
+        <p>
+          Загрузите данные из веб-приложения. После переноса вход выполняется с
+          учётной записью сайта.
+        </p>
+        <label for="source-url">Адрес backend сайта</label>
+        <input
+          id="source-url"
+          type="url"
+          placeholder="http://localhost:8084"
+          autocomplete="url"
+          required
+        />
+        <label for="source-phone">Телефон на сайте</label>
+        <input
+          id="source-phone"
+          type="tel"
+          inputmode="tel"
+          placeholder="+7 (___) ___-__-__"
+          maxlength="40"
+          autocomplete="username"
+          required
+        />
+        <label for="source-password">Пароль на сайте</label>
+        <input
+          id="source-password"
+          type="password"
+          minlength="8"
+          maxlength="100"
+          autocomplete="current-password"
+          required
+        />
+        <p id="import-error" class="error" role="alert"></p>
+        <button type="submit">Загрузить данные</button>
+        <button id="import-cancel" class="secondary" type="button">
+          Продолжить без импорта
+        </button>
+      </form>
+      <p class="note">Данные сохраняются на этом компьютере.</p>
+    </main>
+  </body>
+</html>

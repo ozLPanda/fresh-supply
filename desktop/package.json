@@ -1,0 +1,90 @@
+{
+  "name": "ovoshi-help-desktop",
+  "version": "0.1.2",
+  "private": true,
+  "description": "Ovoshi Help — локальное приложение для Windows и macOS",
+  "author": "Ovoshi Help",
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.cjs",
+    "test:integration": "node scripts/smoke-app.cjs",
+    "prepare:runtime": "node scripts/prepare-runtime.cjs",
+    "pack": "electron-builder --dir --publish never",
+    "dist:mac": "electron-builder --mac dmg zip --publish never",
+    "dist:win": "electron-builder --win nsis --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.9",
+    "pg": "8.16.3",
+    "yauzl": "3.4.0"
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "kz.ovoshi.help.desktop",
+    "productName": "Ovoshi Help",
+    "icon": "../frontend/public/pwa-512x512.png",
+    "asar": true,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**",
+      "ui/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "runtime",
+        "to": "runtime",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "artifactName": "OvoshiHelp-${version}-${os}-${arch}.${ext}",
+    "mac": {
+      "minimumSystemVersion": "14.0",
+      "category": "public.app-category.business",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "hardenedRuntime": true,
+      "extendInfo": {
+        "NSCameraUsageDescription": "Камера используется для сканирования штрихкодов и фотографий товаров.",
+        "NSMicrophoneUsageDescription": "Микрофон используется при работе с голосовыми функциями приложения."
+      },
+      "identity": null
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ozLPanda",
+        "repo": "fresh-supply",
+        "releaseType": "draft"
+      }
+    ]
+  }
+}

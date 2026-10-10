@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import kz.company.shop.auth.repository.AuthSessionRepository;
 import kz.company.shop.common.exception.AppExceptions;
 import kz.company.shop.common.security.CurrentUser;
+import kz.company.shop.common.validation.PhoneNumbers;
 import kz.company.shop.orders.service.PendingOrderCustomerBindingService;
 import kz.company.shop.permissions.repository.PermissionRepository;
 import kz.company.shop.roles.entity.Role;
@@ -330,12 +331,6 @@ public class UserService {
     }
 
     private String normalizePhone(String value) {
-        String digits = value == null ? "" : value.replaceAll("\\D", "");
-        if (digits.startsWith("8")) digits = "7" + digits.substring(1);
-        if (digits.length() == 10) digits = "7" + digits;
-        if (digits.length() != 11 || !digits.startsWith("7")) {
-            throw new AppExceptions.BadRequest("Укажите корректный номер телефона");
-        }
-        return "+" + digits;
+        return PhoneNumbers.normalize(value);
     }
 }

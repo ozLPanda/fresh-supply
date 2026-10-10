@@ -10,7 +10,7 @@ MODEL_NAME = os.getenv("MODEL_NAME", "intfloat/multilingual-e5-base")
 MODEL_DIR = os.getenv("MODEL_DIR", "/models/multilingual-e5-base")
 
 app = FastAPI(title="Company Shop Embedding Service")
-model = SentenceTransformer(MODEL_DIR)
+model = SentenceTransformer(MODEL_DIR, device=os.getenv("MODEL_DEVICE") or None)
 dimensions = model.get_sentence_embedding_dimension()
 
 

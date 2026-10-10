@@ -4,9 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { ApiError, api } from "@/shared/api/http";
 import { NotificationItem, NotificationList } from "@/shared/types/models";
 import { AppNotificationMenu } from "@/shared/ui/AppNotificationMenu";
+import {
+  createDesktopNotificationTracker,
+  internalNotificationTarget,
+} from "./desktopNotifications";
 
 export const notificationsQueryKey = ["notifications", "mine"] as const;
 const emptyNotifications: NotificationList = { items: [], unreadCount: 0 };
+const desktopMode = import.meta.env.VITE_DESKTOP_MODE === "true";
 
 async function playNewOrderSound() {
   try {
@@ -44,15 +49,18 @@ export function NotificationCenter({ userId }: { userId?: number }) {
   const queryClient = useQueryClient();
   const queryKey = [...notificationsQueryKey, userId] as const;
   const knownNotificationIds = useRef<Set<number> | null>(null);
+  const desktopTracker = useRef(createDesktopNotificationTracker());
+  const nativeNotifications = useRef(new Set<Notification>());
   const query = useQuery({
     queryKey,
     queryFn: fetchNotifications,
     enabled: Boolean(userId),
     refetchInterval: 15_000,
-    refetchIntervalInBackground: false,
+    refetchIntervalInBackground: desktopMode,
   });
 
   useEffect(() => {
+    if (desktopMode) return;
     const notifications = query.data;
     if (!notifications) return;
     const currentIds = new Set(notifications.items.map((item) => item.id));
@@ -106,8 +114,46 @@ export function NotificationCenter({ userId }: { userId?: number }) {
 
   function select(item: NotificationItem) {
     if (!item.read) markRead.mutate(item.id);
-    if (item.actionUrl) navigate(item.actionUrl);
+    const target = internalNotificationTarget(item.actionUrl);
+    if (target) navigate(target);
   }
+
+  const selectNotification = useRef(select);
+  selectNotification.current = select;
+
+  useEffect(() => {
+    const shown = nativeNotifications.current;
+    return () => {
+      // Native alerts must not retain actions from a previous signed-in account.
+      for (const notification of shown) notification.close();
+      shown.clear();
+      desktopTracker.current = createDesktopNotificationTracker();
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    if (!desktopMode || !userId || !query.data || !query.isFetchedAfterMount) return;
+    const fresh = desktopTracker.current.observe(query.data.items, userId);
+    if (fresh.some((item) => item.type === "NEW_ORDER")) void playNewOrderSound();
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    for (const item of fresh) {
+      try {
+        const notification = new Notification(item.title, {
+          body: item.message,
+          tag: `ovoshi-help-${userId}-${item.id}`,
+        });
+        nativeNotifications.current.add(notification);
+        notification.onclose = () => nativeNotifications.current.delete(notification);
+        notification.onclick = () => {
+          window.focus();
+          notification.close();
+          selectNotification.current(item);
+        };
+      } catch {
+        // OS permissions can change while running. In-app notifications remain available.
+      }
+    }
+  }, [query.data, query.isFetchedAfterMount, userId]);
 
   return (
     <AppNotificationMenu

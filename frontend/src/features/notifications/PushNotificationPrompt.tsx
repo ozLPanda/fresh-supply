@@ -6,6 +6,7 @@ import { AppAlert, AppModal } from "@/shared/ui/AppFeedback";
 import { pushPromptSession } from "./pushPromptSession";
 import { useAdminPush } from "./useAdminPush";
 import "./PushNotificationPrompt.css";
+const desktopMode = import.meta.env.VITE_DESKTOP_MODE === "true";
 
 export function PushNotificationPrompt({ showPrompt = true }: { showPrompt?: boolean }) {
   const { user, authLoading } = useCommerce();
@@ -76,16 +77,26 @@ export function PushNotificationPrompt({ showPrompt = true }: { showPrompt?: boo
       title="Включить уведомления?"
       description={
         user?.permissions.includes("orders.read")
-          ? "Получайте уведомления о новых заказах, даже когда приложение закрыто."
-          : "Получайте уведомления об изменении статуса и цен вашего заказа."
+          ? desktopMode
+            ? "Получайте уведомления о новых заказах, пока приложение открыто, в том числе в фоне."
+            : "Получайте уведомления о новых заказах, даже когда приложение закрыто."
+          : desktopMode
+            ? "Получайте уведомления об изменении статуса и цен заказа, пока приложение открыто, в том числе в фоне."
+            : "Получайте уведомления об изменении статуса и цен вашего заказа."
       }
       contentClassName="push-notification-prompt"
     >
       <div className="push-notification-prompt__content">
         {blocked ? (
-          <AppAlert title="Разрешите уведомления в браузере" tone="warning">
-            Откройте настройки этого сайта в браузере и разрешите уведомления. Затем нажмите
-            «Проверить снова».
+          <AppAlert
+            title={
+              desktopMode ? "Разрешите уведомления приложения" : "Разрешите уведомления в браузере"
+            }
+            tone="warning"
+          >
+            {desktopMode
+              ? "Откройте настройки уведомлений Windows или macOS и разрешите уведомления Ovoshi Help. Затем нажмите «Проверить снова»."
+              : "Откройте настройки этого сайта в браузере и разрешите уведомления. Затем нажмите «Проверить снова»."}
           </AppAlert>
         ) : status === "error" ? (
           <AppAlert title="Не удалось подключить уведомления" tone="danger">

@@ -13,8 +13,10 @@ export type AdminPushStatus =
   | "error";
 
 export type AdminPushState = { status: AdminPushStatus; message?: string };
+const desktopMode = import.meta.env.VITE_DESKTOP_MODE === "true";
 
 function supportsPush() {
+  if (desktopMode) return window.isSecureContext && "Notification" in window;
   return (
     window.isSecureContext &&
     "Notification" in window &&
@@ -60,6 +62,12 @@ export function useAdminPush(enabled: boolean, userId?: number) {
         }
         if (askPermission && permission === "default") {
           setState({ status: "available" });
+          return permission;
+        }
+        if (desktopMode) {
+          // Electron delivers native notifications locally. PWA/VAPID registration
+          // would wait forever because the desktop bundle has no service worker.
+          setState({ status: permission === "granted" ? "connected" : "available" });
           return permission;
         }
         timeout = setTimeout(() => controller.abort(), 20_000);

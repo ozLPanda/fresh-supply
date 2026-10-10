@@ -43,7 +43,7 @@ class SecurityBoundaryTest {
     @Autowired private MockMvc mvc;
 
     @MockBean private AuthService authService;
-    @MockBean private RedisRateLimiter rateLimiter;
+    @MockBean private RateLimiter rateLimiter;
     @MockBean private ProductService productService;
 
     @Test

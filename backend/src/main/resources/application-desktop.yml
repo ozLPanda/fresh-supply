@@ -1,0 +1,52 @@
+# Launched with a private native PostgreSQL/pgvector process, without Docker.
+server:
+  shutdown: graceful
+  address: 127.0.0.1
+  port: ${SERVER_PORT:18084}
+  forward-headers-strategy: none
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  web:
+    resources:
+      add-mappings: false
+app:
+  cors:
+    allowed-origins: http://127.0.0.1:${server.port}
+  auth:
+    rotate-seed-admin: true
+    cookie:
+      secure: false
+      same-site: Strict
+  desktop:
+    imported-data: ${APP_DESKTOP_IMPORTED_DATA:false}
+    admin-phone: ${APP_DESKTOP_ADMIN_PHONE:}
+    control-token: ${APP_DESKTOP_CONTROL_TOKEN}
+    web-root: ${APP_DESKTOP_WEB_ROOT:../frontend/dist}
+  files:
+    storage:
+      directory: ${APP_DESKTOP_DATA_DIR}/files
+  data-transfer:
+    temp-dir: ${APP_DESKTOP_DATA_DIR}/temp/data-transfer
+  price-import:
+    temp-dir: ${APP_DESKTOP_DATA_DIR}/temp/price-imports
+  embeddings:
+    enabled: ${APP_EMBEDDINGS_ENABLED:true}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db,desktopStorage,desktopEmbeddings
+  health:
+    redis:
+      enabled: false

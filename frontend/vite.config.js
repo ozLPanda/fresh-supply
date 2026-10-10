@@ -18,6 +18,7 @@ export default defineConfig(({ command, mode }) => {
       react(),
       tailwindcss(),
       VitePWA({
+        disable: env.VITE_DESKTOP_MODE === "true",
         registerType: "prompt",
         injectRegister: false,
         // A development service worker can cache Vite modules and leave the UI on an old version.

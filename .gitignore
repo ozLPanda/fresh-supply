@@ -46,3 +46,11 @@ scripts/lan-root-ca-android.cer
 
 # One-off local data-processing helpers.
 scripts/*.py
+
+# Standalone desktop bundles, build downloads, and isolated test data
+desktop/runtime/
+desktop/.cache/
+desktop/dist/
+desktop/.test-data/
+desktop/runtime-win32-x64/
+desktop/dist-win/

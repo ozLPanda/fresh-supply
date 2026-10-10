@@ -1,0 +1,114 @@
+name: Build standalone desktop installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['desktop-v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            target: mac
+            architecture: arm64
+          - os: windows-2025
+            target: win
+            architecture: x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            desktop/package-lock.json
+            frontend/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Verify native build architecture
+        run: node -e "if(process.arch !== '${{ matrix.architecture }}') process.exit(1)"
+      - name: Verify release tag matches application version
+        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: node -e "const v=require('./desktop/package.json').version;if(process.env.RELEASE_TAG !== 'desktop-v'+v) throw Error('Release tag does not match desktop package version')"
+      - name: Install desktop build dependencies
+        working-directory: desktop
+        run: npm ci
+      - name: Test desktop supervisor and updater
+        working-directory: desktop
+        run: npm test
+      - name: Test backend desktop contracts
+        working-directory: backend
+        run: mvn -B "-Dtest=Desktop*Test,DataTransfer*Test,SeedAdminCredentialRotatorTest,SecurityBoundaryTest,UserServiceTest" test
+      - name: Prepare complete offline runtime
+        working-directory: desktop
+        run: node scripts/prepare-runtime.cjs
+      - name: Test frontend notifications
+        working-directory: frontend
+        run: node --test src/features/notifications/desktopNotifications.test.mjs src/features/notifications/pushSubscription.test.mjs src/features/notifications/pushPromptSession.test.mjs
+      - name: Audit native portability
+        working-directory: desktop
+        run: node scripts/audit-native.cjs
+      - name: Verify portable database and offline inference
+        working-directory: desktop
+        run: node scripts/verify-runtime.cjs
+      - name: Verify application startup, persistence and backups
+        working-directory: desktop
+        run: node scripts/smoke-app.cjs
+      - name: Verify complete website export and desktop import
+        working-directory: desktop
+        run: node scripts/smoke-data-transfer.cjs
+      - name: Build installer
+        working-directory: desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run dist:${{ matrix.target }}
+      - name: Create installer checksums
+        working-directory: desktop
+        run: node scripts/checksums.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OvoshiHelp-${{ matrix.target }}-${{ matrix.architecture }}
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.dmg
+            desktop/dist/*.zip
+            desktop/dist/latest*.yml
+            desktop/dist/*.blockmap
+            desktop/dist/SHA256SUMS
+          retention-days: 14
+
+  # Draft releases deliberately require review before being offered as stable.
+  # Signing/notarization must be configured before enabling automatic install.
+  draft-release:
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: installers
+      - name: Create draft GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$RELEASE_TAG" --draft --title "Ovoshi Help $RELEASE_TAG" --notes "Standalone desktop build. Review OS installation checks and signing status before publication."
+          find installers -type f ! -name SHA256SUMS ! -name 'builder-debug.yml' -print0 | xargs -0 gh release upload "$RELEASE_TAG"
+          cat installers/*/SHA256SUMS > installers/SHA256SUMS
+          gh release upload "$RELEASE_TAG" installers/SHA256SUMS

@@ -13,10 +13,8 @@ import org.springframework.http.MediaType;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Shared, Redis-backed rate limit for anonymous authentication endpoints.
- *
- * <p>Redis is deliberately used instead of process memory so the limit remains effective when
- * several backend instances serve requests at the same time.
+ * Rate limit for anonymous authentication endpoints. Production instances share Redis counters; the
+ * loopback desktop backend uses a bounded local counter.
  */
 final class AuthRateLimitFilter extends OncePerRequestFilter {
     private static final String LOGIN_PATH = "/api/auth/login";
@@ -26,10 +24,10 @@ final class AuthRateLimitFilter extends OncePerRequestFilter {
     private static final int REGISTER_LIMIT = 5;
     private static final Duration REGISTER_WINDOW = Duration.ofHours(1);
 
-    private final RedisRateLimiter rateLimiter;
+    private final RateLimiter rateLimiter;
     private final ObjectMapper objectMapper;
 
-    AuthRateLimitFilter(RedisRateLimiter rateLimiter, ObjectMapper objectMapper) {
+    AuthRateLimitFilter(RateLimiter rateLimiter, ObjectMapper objectMapper) {
         this.rateLimiter = rateLimiter;
         this.objectMapper = objectMapper;
     }

@@ -690,8 +690,8 @@ function App() {
             />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
-          <PwaExperience />
-          <PushNotificationPrompt showPrompt={false} />
+          {import.meta.env.VITE_DESKTOP_MODE !== "true" && <PwaExperience />}
+          <PushNotificationPrompt showPrompt={import.meta.env.VITE_DESKTOP_MODE === "true"} />
           <AppToaster />
         </BrowserRouter>
       </CommerceProvider>

@@ -17,10 +17,10 @@ final class ApiRateLimitFilter extends OncePerRequestFilter {
     private static final int LIMIT = 300;
     private static final Duration WINDOW = Duration.ofMinutes(1);
 
-    private final RedisRateLimiter rateLimiter;
+    private final RateLimiter rateLimiter;
     private final ObjectMapper objectMapper;
 
-    ApiRateLimitFilter(RedisRateLimiter rateLimiter, ObjectMapper objectMapper) {
+    ApiRateLimitFilter(RateLimiter rateLimiter, ObjectMapper objectMapper) {
         this.rateLimiter = rateLimiter;
         this.objectMapper = objectMapper;
     }
@@ -29,7 +29,7 @@ final class ApiRateLimitFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
         return "OPTIONS".equalsIgnoreCase(request.getMethod())
-                || path.startsWith("/actuator/")
+                || !path.startsWith("/api/")
                 || "/api/auth/login".equals(path)
                 || "/api/auth/register".equals(path);
     }
