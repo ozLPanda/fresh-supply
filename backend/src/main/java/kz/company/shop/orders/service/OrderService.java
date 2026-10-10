@@ -245,6 +245,23 @@ public class OrderService {
             boolean descending,
             int page,
             int size) {
+        return adminPage(search, createdFrom, createdTo, statuses, priceTiers, stockShortage,
+                List.of(), sort, descending, page, size);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResult<OrderDto> adminPage(
+            String search,
+            LocalDate createdFrom,
+            LocalDate createdTo,
+            List<OrderStatus> statuses,
+            List<PriceTier> priceTiers,
+            Boolean stockShortage,
+            List<UUID> regularBuyerIds,
+            String sort,
+            boolean descending,
+            int page,
+            int size) {
         int safePage = Math.max(page, 1);
         int safeSize = Math.clamp(size, 1, 100);
         Page<Order> result =
@@ -256,6 +273,7 @@ public class OrderService {
                                 statuses,
                                 priceTiers,
                                 stockShortage,
+                                regularBuyerIds,
                                 sort,
                                 descending),
                         PageRequest.of(safePage - 1, safeSize));
@@ -271,7 +289,7 @@ public class OrderService {
     public OrderListSummaryDto adminSummary(LocalDate createdFrom, LocalDate createdTo) {
         Specification<Order> dateFilter =
                 adminOrdersFilter(
-                        null, createdFrom, createdTo, List.of(), List.of(), null, null, true);
+                        null, createdFrom, createdTo, List.of(), List.of(), null, List.of(), null, true);
         long total = repository.count(dateFilter);
         long newOrders =
                 repository.count(
@@ -299,6 +317,7 @@ public class OrderService {
             List<OrderStatus> statuses,
             List<PriceTier> priceTiers,
             Boolean stockShortage,
+            List<UUID> regularBuyerIds,
             String sort,
             boolean descending) {
         return (root, query, cb) -> {
@@ -329,6 +348,8 @@ public class OrderService {
                 predicates.add(root.get("status").in(statuses));
             if (priceTiers != null && !priceTiers.isEmpty())
                 predicates.add(root.get("priceTier").in(priceTiers));
+            if (regularBuyerIds != null && !regularBuyerIds.isEmpty())
+                predicates.add(root.get("regularBuyerId").in(regularBuyerIds));
             if (stockShortage != null) {
                 Subquery<Long> shortage = query.subquery(Long.class);
                 Root<OrderItem> item = shortage.from(OrderItem.class);

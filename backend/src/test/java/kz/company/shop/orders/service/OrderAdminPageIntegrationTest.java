@@ -10,7 +10,9 @@ import java.util.UUID;
 import kz.company.shop.files.service.ObjectStorageService;
 import kz.company.shop.orders.entity.FulfillmentType;
 import kz.company.shop.orders.entity.Order;
+import kz.company.shop.orders.entity.OrderStatus;
 import kz.company.shop.orders.entity.PaymentMethod;
+import kz.company.shop.orders.entity.PriceTier;
 import kz.company.shop.orders.repository.OrderRepository;
 import kz.company.shop.regularbuyers.entity.RegularBuyer;
 import kz.company.shop.regularbuyers.repository.RegularBuyerRepository;
@@ -30,6 +32,99 @@ class OrderAdminPageIntegrationTest {
     @Autowired private OrderRepository repository;
     @Autowired private RegularBuyerRepository buyers;
     @Autowired private UserRepository users;
+
+    @Test
+    void filtersByBuyerIdsAcrossNamesAndAccountsBeforePagination() {
+        RegularBuyer archived = buyer("Переименован", true);
+        RegularBuyer active = buyer("Совпадающее имя", false);
+        RegularBuyer other = buyer(active.name, false);
+        Order first = order(999301, "фильтрпокупателей2099", null);
+        first.regularBuyerId = archived.id;
+        first.regularBuyerName = "Старое имя";
+        first.userId = customer(active.name).id;
+        Order second = order(999302, first.comment, null);
+        second.regularBuyerId = active.id;
+        second.regularBuyerName = active.name;
+        Order third = order(999303, first.comment, null);
+        third.regularBuyerId = archived.id;
+        Order sameName = order(999304, first.comment, null);
+        sameName.regularBuyerId = other.id;
+        sameName.regularBuyerName = active.name;
+        Order accountOnly = order(999305, first.comment, null);
+        accountOnly.userId = first.userId;
+        Order deleted = order(999306, first.comment, null);
+        deleted.regularBuyerId = archived.id;
+        deleted.deletedAt = Instant.now();
+        repository.saveAllAndFlush(List.of(first, second, third, sameName, accountOnly, deleted));
+
+        var archivedOnly = service.adminPage(first.comment, null, null,
+                List.of(), List.of(), null, List.of(archived.id), "id", false, 1, 100);
+        assertThat(archivedOnly.items()).extracting(item -> item.id())
+                .containsExactly(first.id, third.id);
+        assertThat(archivedOnly.items().getFirst().customerName()).isEqualTo(active.name);
+        assertThat(archivedOnly.items().getFirst().regularBuyerName()).isEqualTo("Старое имя");
+
+        var firstPage = service.adminPage(first.comment, null, null,
+                List.of(), List.of(), null, List.of(archived.id, active.id), "id", false, 1, 2);
+        var secondPage = service.adminPage(first.comment, null, null,
+                List.of(), List.of(), null, List.of(archived.id, active.id), "id", false, 2, 2);
+        assertThat(firstPage.totalItems()).isEqualTo(3);
+        assertThat(firstPage.totalPages()).isEqualTo(2);
+        assertThat(firstPage.items()).extracting(item -> item.id()).containsExactly(first.id, second.id);
+        assertThat(secondPage.items()).extracting(item -> item.id()).containsExactly(third.id);
+        assertThat(secondPage.totalItems()).isEqualTo(3);
+        assertThat(service.adminPage(first.comment, null, null, List.of(), List.of(), null,
+                List.of(UUID.randomUUID()), "id", false, 1, 10).totalItems()).isZero();
+    }
+
+    @Test
+    void combinesBuyerSelectionWithOtherOrderFilters() {
+        RegularBuyer selected = buyer("Выбранный", false);
+        RegularBuyer other = buyer("Другой", false);
+        Order matching = order(999401, "совместныйфильтр2099", null);
+        Order wrongStatus = order(999402, matching.comment, null);
+        Order wrongPrice = order(999403, matching.comment, null);
+        Order wrongDate = order(999404, matching.comment, null);
+        Order wrongSearch = order(999405, "несовпадение", null);
+        Order wrongBuyer = order(999406, matching.comment, null);
+        var orders = List.of(matching, wrongStatus, wrongPrice, wrongDate, wrongSearch, wrongBuyer);
+        for (Order order : orders) {
+            order.regularBuyerId = selected.id;
+            order.status = OrderStatus.PROCESSING;
+            order.priceTier = PriceTier.WHOLESALE;
+        }
+        wrongStatus.status = OrderStatus.NEW;
+        wrongPrice.priceTier = PriceTier.RETAIL;
+        wrongDate.createdAt = Instant.parse("2099-01-02T06:00:00Z");
+        wrongBuyer.regularBuyerId = other.id;
+        repository.saveAllAndFlush(orders);
+
+        var result = service.adminPage(matching.comment, LocalDate.of(2099, 1, 1),
+                LocalDate.of(2099, 1, 1), List.of(OrderStatus.PROCESSING),
+                List.of(PriceTier.WHOLESALE), false, List.of(selected.id), "id", false, 1, 1);
+        assertThat(result.totalItems()).isEqualTo(1);
+        assertThat(result.totalPages()).isEqualTo(1);
+        assertThat(result.items()).extracting(item -> item.id()).containsExactly(matching.id);
+    }
+
+    @Test
+    void absentAndEmptyBuyerSelectionKeepExistingResults() {
+        RegularBuyer selected = buyer("Покупатель", false);
+        Order withBuyer = order(999501, "пустойфильтр2099", null);
+        withBuyer.regularBuyerId = selected.id;
+        Order withoutBuyer = order(999502, withBuyer.comment, null);
+        repository.saveAllAndFlush(List.of(withBuyer, withoutBuyer));
+
+        var original = service.adminPage(withBuyer.comment, null, null,
+                List.of(), List.of(), null, "id", false, 1, 10);
+        for (List<UUID> ids : java.util.Arrays.asList(null, List.<UUID>of())) {
+            var result = service.adminPage(withBuyer.comment, null, null,
+                    List.of(), List.of(), null, ids, "id", false, 1, 10);
+            assertThat(result.totalItems()).isEqualTo(original.totalItems()).isEqualTo(2);
+            assertThat(result.items()).extracting(item -> item.id())
+                    .containsExactly(withBuyer.id, withoutBuyer.id);
+        }
+    }
 
     @Test
     void searchesRegularBuyerSnapshotBeforePaginationWithoutCustomerAccount() {
@@ -180,6 +275,14 @@ class OrderAdminPageIntegrationTest {
         var summary = service.adminSummary(LocalDate.of(2099, 1, 1), LocalDate.of(2099, 1, 1));
         assertThat(summary.total()).isGreaterThanOrEqualTo(2);
         assertThat(summary.newOrders()).isGreaterThanOrEqualTo(2);
+    }
+
+    private RegularBuyer buyer(String name, boolean archived) {
+        RegularBuyer buyer = new RegularBuyer();
+        buyer.id = UUID.randomUUID();
+        buyer.name = name;
+        buyer.archived = archived;
+        return buyers.saveAndFlush(buyer);
     }
 
     private User customer(String name) {

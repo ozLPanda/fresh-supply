@@ -3,6 +3,37 @@
   white-space: nowrap;
 }
 
+.admin-orders-buyer-filter {
+  flex: 1 1 220px;
+  min-width: min(220px, 100%);
+}
+
+.admin-orders-buyer-filter .app-select-trigger {
+  height: 42px;
+  min-height: 42px;
+  padding-block: 8px;
+}
+
+.admin-orders-panel .app-data-table__filters-row {
+  flex-wrap: wrap;
+}
+
+.admin-orders-panel .app-data-table__filters-row > .app-date-field {
+  flex: 0 1 240px;
+  min-width: min(200px, 100%);
+}
+
+.admin-orders-panel .app-data-table__filters-row .app-select-trigger {
+  height: 42px;
+  padding-block: 8px;
+}
+
+@media (max-width: 767px) {
+  .admin-orders-buyer-filter .app-select-trigger {
+    min-height: 44px;
+  }
+}
+
 .admin-orders-panel .app-data-table__table td[data-column-id="actions"] {
   vertical-align: middle;
 }

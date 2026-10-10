@@ -1,4 +1,12 @@
-import { type MouseEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type MouseEvent,
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type SortingState, type VisibilityState } from "@tanstack/react-table";
 import {
@@ -23,6 +31,7 @@ import { getOrderBuyerName } from "@/features/orders/orderBuyer";
 import { PRICE_TIER_LABELS, priceTierTone } from "@/features/orders/price-tier";
 import { AdminPage } from "@/layouts/AdminPage";
 import { api } from "@/shared/api/http";
+import { fetchRegularBuyers } from "@/shared/api/regularBuyers";
 import { formatDateTime } from "@/shared/lib/dateTime";
 import { Order, OrderReturnStatistic, PagedResult } from "@/shared/types/models";
 import { formatMoney } from "@/pages/public/store-utils";
@@ -37,7 +46,8 @@ import {
 } from "@/shared/ui/AppDataTable";
 import { AppContextMenu, type AppContextMenuAction } from "@/shared/ui/AppContextMenu";
 import { AppDateRangePicker, type AppDateRange } from "@/shared/ui/AppDatePicker";
-import { AppModal, AppTooltip } from "@/shared/ui/AppFeedback";
+import { AppAlert, AppModal, AppTooltip } from "@/shared/ui/AppFeedback";
+import { AppSelect } from "@/shared/ui/AppField";
 import { appToast } from "@/shared/ui/AppToast";
 import { DataPanel } from "@/shared/ui/DataPanel";
 import { MetricCard } from "@/shared/ui/MetricCard";
@@ -51,6 +61,7 @@ type OrdersTableState = {
   pageSize: number;
   sorting: SortingState;
   filterValues: AppDataTableFilterValues;
+  regularBuyerIds: string[];
   density: AppDataTableDensity;
   columnVisibility: VisibilityState;
   scrollY: number;
@@ -68,6 +79,7 @@ const DEFAULT_ORDERS_TABLE_STATE: OrdersTableState = {
   pageSize: 10,
   sorting: [],
   filterValues: {},
+  regularBuyerIds: [],
   density: "default",
   columnVisibility: {},
   scrollY: 0,
@@ -102,6 +114,17 @@ function getOrdersTableState(): OrdersTableState {
               ),
             )
           : {},
+      regularBuyerIds: Array.isArray(value.regularBuyerIds)
+        ? [
+            ...new Set(
+              value.regularBuyerIds.filter(
+                (id): id is string =>
+                  typeof id === "string" &&
+                  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
+              ),
+            ),
+          ]
+        : [],
       density:
         value.density === "compact" || value.density === "comfortable" ? value.density : "default",
       columnVisibility:
@@ -183,6 +206,18 @@ export function AdminOrdersPage() {
   const [filterValues, setFilterValues] = useState<AppDataTableFilterValues>(
     initialState.filterValues,
   );
+  const [regularBuyerIds, setRegularBuyerIds] = useState<string[]>(
+    initialState.regularBuyerIds ?? [],
+  );
+  const persistedBuyerIdsRef = useRef(JSON.stringify(initialState.regularBuyerIds ?? []));
+  const canReadRegularBuyers = user?.permissions.some((permission) =>
+    ["regular-buyers.read", "regular-buyers.manage", "orders.update"].includes(permission),
+  );
+  const regularBuyersQuery = useQuery({
+    queryKey: ["regular-buyers", "all"],
+    queryFn: () => fetchRegularBuyers(true),
+    enabled: Boolean(canReadRegularBuyers),
+  });
   const [density, setDensity] = useState<AppDataTableDensity>(initialState.density);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
     initialState.columnVisibility,
@@ -221,6 +256,7 @@ export function AdminOrdersPage() {
       pageSize,
       sorting,
       filterValues,
+      regularBuyerIds,
       createdFrom,
       createdTo,
     ],
@@ -236,6 +272,7 @@ export function AdminOrdersPage() {
       if (isDateKey(createdTo)) params.set("createdTo", createdTo);
       for (const status of filterValues.status ?? []) params.append("status", status);
       for (const tier of selectedPriceTiers) params.append("priceTier", tier);
+      for (const buyerId of regularBuyerIds) params.append("regularBuyerId", buyerId);
       if (stockShortage !== undefined) params.set("stockShortage", String(stockShortage));
       return api<PagedResult<Order>>(`/api/admin/orders/page?${params.toString()}`);
     },
@@ -256,6 +293,42 @@ export function AdminOrdersPage() {
     queryFn: () => api<OrderReturnStatistic[]>("/api/admin/orders/return-statistics"),
   });
   const orders = query.data?.items ?? [];
+  const regularBuyerOptions = useMemo(() => {
+    const buyers = regularBuyersQuery.data ?? [];
+    const nameKey = (name: string) =>
+      name.trim().replace(/\s+/g, " ").toLocaleLowerCase("ru").replace(/ё/g, "е");
+    const counts = new Map<string, number>();
+    buyers.forEach((buyer) =>
+      counts.set(nameKey(buyer.name), (counts.get(nameKey(buyer.name)) ?? 0) + 1),
+    );
+    const options = buyers.map((buyer) => ({
+      value: buyer.id,
+      label: `${buyer.name}${(counts.get(nameKey(buyer.name)) ?? 0) > 1 ? ` · ${buyer.taxId || buyer.phone || buyer.contactName || buyer.id.slice(0, 8)}` : ""}${buyer.archived ? " (в архиве)" : ""}`,
+      keywords: [
+        buyer.name,
+        ...(buyer.aliases ?? []),
+        buyer.taxId ?? "",
+        buyer.phone ?? "",
+      ].flatMap((value) => [value, value.replace(/ё/gi, "е")]),
+    }));
+    // Retain visible, removable selections while the dictionary loads or is unavailable.
+    for (const id of regularBuyerIds) {
+      if (!options.some((option) => option.value === id))
+        options.push({
+          value: id,
+          label:
+            orders.find((order) => order.regularBuyerId === id)?.regularBuyerName ||
+            "Недоступный клиент",
+          keywords: [],
+        });
+    }
+    return options;
+  }, [regularBuyersQuery.data, regularBuyerIds, orders]);
+
+  function setRegularBuyerFilter(ids: string[]) {
+    setRegularBuyerIds(ids);
+    setPage(1);
+  }
   useEffect(() => {
     if (query.data && page > Math.max(query.data.totalPages, 1)) {
       setPage(Math.max(query.data.totalPages, 1));
@@ -286,6 +359,7 @@ export function AdminOrdersPage() {
     pageSize,
     sorting,
     filterValues,
+    regularBuyerIds,
     density,
     columnVisibility,
     scrollY: window.scrollY,
@@ -308,6 +382,19 @@ export function AdminOrdersPage() {
       // The current router entry also carries the snapshot when storage is unavailable.
     }
   }
+
+  useLayoutEffect(() => {
+    const signature = JSON.stringify(regularBuyerIds);
+    if (persistedBuyerIdsRef.current === signature) return;
+    persistedBuyerIdsRef.current = signature;
+    const snapshot = captureTableState();
+    persistTableState(snapshot);
+    // A restored router entry must also receive the latest selection before reload.
+    navigate(`${location.pathname}${location.search}${location.hash}`, {
+      replace: true,
+      state: { ...(location.state as OrdersPageLocationState | null), ordersTableState: snapshot },
+    });
+  }, [regularBuyerIds]);
 
   function openOrder(orderId: string) {
     const ordersTableState = captureTableState();
@@ -818,6 +905,16 @@ export function AdminOrdersPage() {
         />
       </div>
 
+      {regularBuyersQuery.isError && canReadRegularBuyers && (
+        <AppAlert
+          title="Не удалось загрузить постоянных клиентов"
+          tone="warning"
+          onRetry={() => regularBuyersQuery.refetch()}
+        >
+          Текущий фильтр сохранён. Повторите загрузку, чтобы выбрать клиентов из справочника.
+        </AppAlert>
+      )}
+
       <div ref={tablePanelRef}>
         <DataPanel title="Все заказы" className="admin-orders-panel">
           <AppDataTable
@@ -833,19 +930,35 @@ export function AdminOrdersPage() {
             renderMobileRow={renderMobileOrder}
             mobileFilterDialog
             mobileToolbarFilterTags={
-              createdDateRange?.from ? (
-                <button
-                  type="button"
-                  aria-label="Убрать фильтр периода"
-                  onClick={() => setCreatedDateRange(undefined)}
-                >
-                  {createdDateRange.from.toLocaleDateString("ru-RU")}
-                  {createdDateRange.to
-                    ? ` — ${createdDateRange.to.toLocaleDateString("ru-RU")}`
-                    : ""}
-                  <X size={13} aria-hidden="true" />
-                </button>
-              ) : undefined
+              <>
+                {createdDateRange?.from && (
+                  <button
+                    type="button"
+                    aria-label="Убрать фильтр периода"
+                    onClick={() => setCreatedDateRange(undefined)}
+                  >
+                    {createdDateRange.from.toLocaleDateString("ru-RU")}
+                    {createdDateRange.to
+                      ? ` — ${createdDateRange.to.toLocaleDateString("ru-RU")}`
+                      : ""}
+                    <X size={13} aria-hidden="true" />
+                  </button>
+                )}
+                {regularBuyerIds.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-label={`Убрать фильтр клиента: ${regularBuyerOptions.find((option) => option.value === id)?.label ?? "Недоступный клиент"}`}
+                    onClick={() =>
+                      setRegularBuyerFilter(regularBuyerIds.filter((buyerId) => buyerId !== id))
+                    }
+                  >
+                    {regularBuyerOptions.find((option) => option.value === id)?.label ??
+                      "Недоступный клиент"}
+                    <X size={13} aria-hidden="true" />
+                  </button>
+                ))}
+              </>
             }
             initialScrollPosition={initialState.tableScroll}
             onScrollPositionChange={(position) => {
@@ -856,10 +969,35 @@ export function AdminOrdersPage() {
             selectable={false}
             searchPlaceholder="Поиск по номеру, клиенту или комментарию"
             toolbarFilters={
-              <AppDateRangePicker value={createdDateRange} onValueChange={setCreatedDateRange} />
+              <>
+                <AppDateRangePicker value={createdDateRange} onValueChange={setCreatedDateRange} />
+                {(canReadRegularBuyers || regularBuyerIds.length > 0) && (
+                  <AppSelect
+                    fieldClassName="admin-orders-buyer-filter"
+                    ariaLabel="Постоянные клиенты"
+                    placeholder="Постоянные клиенты"
+                    options={regularBuyerOptions}
+                    value={regularBuyerIds}
+                    multiple
+                    searchable
+                    showSelectedTags={false}
+                    multipleValueDisplay="count"
+                    multipleValueLabel={(selected) =>
+                      selected.length === 1 ? selected[0].label : `Клиентов: ${selected.length}`
+                    }
+                    disabled={regularBuyersQuery.isPending && Boolean(canReadRegularBuyers)}
+                    onValueChange={(value) =>
+                      setRegularBuyerFilter(Array.isArray(value) ? value : value ? [value] : [])
+                    }
+                  />
+                )}
+              </>
             }
-            activeToolbarFilters={createdDateRange ? 1 : 0}
-            onClearToolbarFilters={() => setCreatedDateRange(undefined)}
+            activeToolbarFilters={(createdDateRange ? 1 : 0) + (regularBuyerIds.length > 0 ? 1 : 0)}
+            onClearToolbarFilters={() => {
+              setCreatedDateRange(undefined);
+              setRegularBuyerFilter([]);
+            }}
             defaultPageSize={initialState.pageSize}
             initialPage={1}
             searchValue={search}
