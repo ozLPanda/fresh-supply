@@ -1006,7 +1006,8 @@ function createDataImporter({
       });
       const journalHandle = await fs.open(
         path.join(runtime.userData, "data-import-pending.json"),
-        "r",
+        // Windows FlushFileBuffers requires a handle opened with write access.
+        "r+",
       );
       try {
         await journalHandle.sync();
