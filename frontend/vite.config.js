@@ -28,8 +28,8 @@ export default defineConfig(({ command, mode }) => {
         },
         manifest: {
           id: "/",
-          name: "GastroFlow",
-          short_name: "GastroFlow",
+          name: "fresh-supply",
+          short_name: "fresh-supply",
           description: "Паназиатские продукты, овощи, фрукты и бакалея",
           lang: "ru",
           start_url: "/",

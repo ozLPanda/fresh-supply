@@ -823,6 +823,26 @@ export function UiKitPage() {
             onValueChange={setMoney}
             hint="Форматируется в тенге"
           />
+          <AppMoneyInput
+            label="Цена с действием"
+            value={money}
+            onValueChange={setMoney}
+            hint="Кнопка справа округляет цену до целого тенге"
+            suffixAction={
+              <AppButton
+                type="button"
+                variant="ghost"
+                aria-label="Округлить цену до тенге"
+                title="Округлить цену до тенге"
+                disabled={money === null}
+                onClick={() =>
+                  setMoney((current) => (current === null ? null : Math.round(current)))
+                }
+              >
+                <Check size={18} aria-hidden="true" />
+              </AppButton>
+            }
+          />
           <AppPhoneInput label="Телефон" value={phone} onValueChange={setPhone} />
           <AppSearchInput label="Поиск" placeholder="Артикул или название" />
           <AppInput

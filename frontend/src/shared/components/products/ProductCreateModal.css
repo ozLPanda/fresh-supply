@@ -1,0 +1,43 @@
+.product-create-modal {
+  width: min(1120px, calc(100vw - 32px));
+  height: min(860px, calc(100dvh - 32px));
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  overflow: hidden;
+  gap: 16px;
+}
+
+.product-create-modal .app-modal__header {
+  display: grid;
+  gap: 8px;
+}
+
+.product-create-modal .app-modal-description {
+  margin-top: 0;
+}
+
+.product-create-modal .product-editor-embed {
+  min-width: 0;
+  padding: 0;
+}
+
+.product-create-modal .product-editor-embed__actions {
+  margin: 0;
+  padding: 14px 0 0;
+}
+
+.product-create-modal .product-editor {
+  gap: 20px;
+}
+
+@media (max-width: 640px) {
+  .product-create-modal {
+    width: calc(100vw - 24px);
+    height: calc(100dvh - 24px);
+    gap: 12px;
+  }
+
+  .product-create-modal .product-editor-embed__actions .app-button {
+    width: 100%;
+  }
+}

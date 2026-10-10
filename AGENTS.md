@@ -1,4 +1,4 @@
-# Ovoshi Help
+# fresh-supply
 
 This is a separate copy of the shop business modules with Hackalem's visual design.
 Keep all existing routes, permissions and business flows. See `docs/project-merge.md`
@@ -6,6 +6,9 @@ and `docs/design-system.md`. Source projects are references, not runtime depende
 
 ## Git publication and PC update commands
 
+- When the user asks to create or publish a desktop release, use
+  [.agents/skills/fresh-supply-desktop-release/SKILL.md](.agents/skills/fresh-supply-desktop-release/SKILL.md).
+  Keep release descriptions and publication replies short.
 - When the user asks to push this project (including «пуш в гит» or «отправь в гит»),
   use [.agents/skills/fresh-supply-git-update/SKILL.md](.agents/skills/fresh-supply-git-update/SKILL.md).
 - After a successful push, always include copyable commands to pull and apply the

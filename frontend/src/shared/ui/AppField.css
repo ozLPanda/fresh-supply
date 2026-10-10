@@ -83,6 +83,18 @@
   padding-right: 0;
 }
 
+.app-money-input-suffix {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-money-input-suffix .app-button {
+  width: 42px;
+  min-height: 42px;
+  padding: 0;
+}
+
 .app-input {
   width: 100%;
   min-height: 44px;

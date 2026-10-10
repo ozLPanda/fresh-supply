@@ -7,11 +7,15 @@ const { createHash } = require("node:crypto");
   const directory = path.resolve(
     process.argv[2] || path.join(__dirname, "../dist"),
   );
+  const { version } = require("../package.json");
   const entries = (await fs.readdir(directory))
-    .filter((name) =>
-      /^(?:OvoshiHelp-.*\.(?:exe|dmg|zip|blockmap)|latest(?:-[\w-]+)?\.yml)$/.test(
-        name,
-      ),
+    .filter(
+      (name) =>
+        /^latest(?:-[\w-]+)?\.yml$/.test(name) ||
+        ([`fresh-supply-${version}-`, `OvoshiHelp-${version}-`].some((prefix) =>
+          name.startsWith(prefix),
+        ) &&
+          /\.(?:exe|dmg|zip|blockmap)$/.test(name)),
     )
     .sort();
   if (!entries.length) throw new Error("No installer artifacts found");

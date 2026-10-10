@@ -69,7 +69,11 @@ function activityDetails(activity: ProductActivity) {
   )?.[1];
   if (!status) {
     if (activity.type === "PRODUCT" && activity.action === "UPDATE") {
-      return <span className="product-activity-history__missing-details">Детали изменения не сохранены</span>;
+      return (
+        <span className="product-activity-history__missing-details">
+          Детали изменения не сохранены
+        </span>
+      );
     }
     return activity.description;
   }

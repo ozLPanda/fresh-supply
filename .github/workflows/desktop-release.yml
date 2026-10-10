@@ -58,6 +58,9 @@ jobs:
       - name: Test frontend notifications
         working-directory: frontend
         run: node --test src/features/notifications/desktopNotifications.test.mjs src/features/notifications/pushSubscription.test.mjs src/features/notifications/pushPromptSession.test.mjs
+      - name: Test product price calculation
+        working-directory: frontend
+        run: node --test src/shared/components/products/productPriceCalculator.test.mjs
       - name: Audit native portability
         working-directory: desktop
         run: node scripts/audit-native.cjs
@@ -77,10 +80,12 @@ jobs:
         run: npm run dist:${{ matrix.target }}
       - name: Create installer checksums
         working-directory: desktop
-        run: node scripts/checksums.cjs
+        run: |
+          node scripts/legacy-installer-aliases.cjs
+          node scripts/checksums.cjs
       - uses: actions/upload-artifact@v4
         with:
-          name: OvoshiHelp-${{ matrix.target }}-${{ matrix.architecture }}
+          name: fresh-supply-${{ matrix.target }}-${{ matrix.architecture }}
           path: |
             desktop/dist/*.exe
             desktop/dist/*.dmg
@@ -108,7 +113,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          gh release create "$RELEASE_TAG" --draft --title "Ovoshi Help $RELEASE_TAG" --notes "Standalone desktop build. Review OS installation checks and signing status before publication."
+          gh release create "$RELEASE_TAG" --draft --title "fresh-supply $RELEASE_TAG" --notes "Обновление приложения."
           find installers -type f ! -name SHA256SUMS ! -name 'builder-debug.yml' -print0 | xargs -0 gh release upload "$RELEASE_TAG"
           cat installers/*/SHA256SUMS > installers/SHA256SUMS
           gh release upload "$RELEASE_TAG" installers/SHA256SUMS

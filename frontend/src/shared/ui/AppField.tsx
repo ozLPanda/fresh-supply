@@ -169,12 +169,14 @@ export function AppMoneyInput({
   onValueChange,
   currency = "₸",
   maximumFractionDigits = 2,
+  suffixAction,
   ...props
 }: Omit<AppInputProps, "value" | "onChange" | "type" | "suffix"> & {
   value: number | null;
   onValueChange: (value: number | null) => void;
   currency?: string;
   maximumFractionDigits?: number;
+  suffixAction?: ReactNode;
 }) {
   const [focused, setFocused] = useState(false);
   const displayValue =
@@ -189,7 +191,16 @@ export function AppMoneyInput({
       {...props}
       value={displayValue}
       inputMode="decimal"
-      suffix={currency}
+      suffix={
+        suffixAction ? (
+          <span className="app-money-input-suffix">
+            <span>{currency}</span>
+            {suffixAction}
+          </span>
+        ) : (
+          currency
+        )
+      }
       onFocus={(event) => {
         setFocused(true);
         props.onFocus?.(event);

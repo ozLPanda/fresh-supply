@@ -1,4 +1,4 @@
-name: Ovoshi Help deployment information
+name: fresh-supply deployment information
 
 on:
   workflow_dispatch:

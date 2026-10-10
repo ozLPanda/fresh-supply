@@ -90,7 +90,7 @@ function PrivateRouteSeo() {
   if (!privateRoute) return null;
   return (
     <SeoMeta
-      title="GastroFlow"
+      title="fresh-supply"
       description="Паназиатские продукты, овощи, фрукты и бакалея. Каталог и заказ онлайн."
       canonicalPath={pathname}
       robots="noindex,nofollow"

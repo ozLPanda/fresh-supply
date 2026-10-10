@@ -247,6 +247,32 @@ test("unsigned Mac accepts a universal desktop installer without invoking update
   manager.dispose();
 });
 
+test("manual update accepts renamed installers on Windows and Mac", async () => {
+  for (const [platform, arch, name] of [
+    ["win32", "x64", "fresh-supply-0.2.0-win-x64.exe"],
+    ["darwin", "arm64", "fresh-supply-0.2.0-mac-arm64.dmg"],
+    ["darwin", "arm64", "fresh-supply-0.2.0-mac-universal.dmg"],
+  ]) {
+    const { manager } = fixture({
+      answers: [1],
+      settings: {
+        allowAutomaticUpdates: false,
+        platform,
+        arch,
+        fetch: async () => ({
+          ok: true,
+          json: async () => ({
+            tag_name: "desktop-v0.2.0",
+            assets: [{ name }],
+          }),
+        }),
+      },
+    });
+    assert.deepEqual(await manager.checkForUpdates(), { status: "cancelled" });
+    manager.dispose();
+  }
+});
+
 test("manual check excludes unrelated releases, prereleases and incompatible installers", async () => {
   for (const release of [
     { tag_name: "v0.2.0", assets: [{ name: "OvoshiHelp-0.2.0-win-x64.exe" }] },

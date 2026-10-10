@@ -348,7 +348,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             </div>
             <div>
               <b>{user?.name ?? "Админ"}</b>
-              <span>GastroFlow</span>
+              <span>fresh-supply</span>
             </div>
           </div>
         </div>

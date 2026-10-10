@@ -90,7 +90,7 @@ function createUpdateManager({
   const show = async (options) => {
     assertActive();
     const result = await dialog.showMessageBox({
-      title: "Обновление Ovoshi Help",
+      title: "Обновление fresh-supply",
       ...options,
     });
     assertActive();
@@ -136,9 +136,11 @@ function createUpdateManager({
     const version = release.tag_name.replace("desktop-v", "");
     const target = { darwin: ["mac", "dmg"], win32: ["win", "exe"] }[platform];
     const installerNames = target
-      ? [arch, ...(platform === "darwin" ? ["universal"] : [])].map(
-          (architecture) =>
+      ? [arch, ...(platform === "darwin" ? ["universal"] : [])].flatMap(
+          (architecture) => [
+            `fresh-supply-${version}-${target[0]}-${architecture}.${target[1]}`,
             `OvoshiHelp-${version}-${target[0]}-${architecture}.${target[1]}`,
+          ],
         )
       : [];
     if (!release.assets?.some((asset) => installerNames.includes(asset.name))) {

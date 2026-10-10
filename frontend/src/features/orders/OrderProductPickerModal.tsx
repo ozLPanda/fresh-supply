@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Check,
   ChevronDown,
@@ -26,6 +26,8 @@ import { formatMoney } from "@/pages/public/store-utils";
 import { OrderProductAvailability } from "./OrderProductAvailability";
 import { normalizeOrderQuantity, OrderQuantityInput } from "./OrderQuantityInput";
 import { BarcodeScannerModal } from "@/features/barcodeScanner/BarcodeScannerModal";
+import { useCommerce } from "@/features/commerce/CommerceProvider";
+import { ProductCreateModal } from "@/shared/components/products/ProductCreateModal";
 import "./OrderProductPickerModal.css";
 
 export type OrderProductPickerPriceTier =
@@ -112,6 +114,13 @@ export function OrderProductPickerModal({
   /** Общее число позиций инвентаризации, в том числе с нулевым количеством. */
   inventoryCount?: number;
 }) {
+  const { user } = useCommerce();
+  const queryClient = useQueryClient();
+  const canCreateProduct = user?.permissions.includes("products.create") ?? false;
+  const [createProductOpen, setCreateProductOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const createButtonRef = useRef<HTMLButtonElement>(null);
+  const scrollSnapshotRef = useRef<{ element: HTMLElement; top: number; left: number }[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [compactInventory, setCompactInventory] = useState(
     () => window.matchMedia("(max-width: 960px)").matches,
@@ -194,6 +203,8 @@ export function OrderProductPickerModal({
 
   useEffect(() => {
     if (!open) {
+      setCreateProductOpen(false);
+      scrollSnapshotRef.current = [];
       setSearch("");
       setPage(1);
       setQuantityByProductId({});
@@ -207,6 +218,52 @@ export function OrderProductPickerModal({
       setScannerOpen(false);
     }
   }, [open]);
+
+  function restorePickerPosition() {
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        for (const { element, top, left } of scrollSnapshotRef.current) {
+          if (!element.isConnected) continue;
+          element.scrollTop = top;
+          element.scrollLeft = left;
+        }
+        createButtonRef.current?.focus({ preventScroll: true });
+      }),
+    );
+  }
+
+  function changeCreatorOpen(next: boolean) {
+    if (next) {
+      scrollSnapshotRef.current = Array.from(
+        pickerRef.current?.querySelectorAll<HTMLElement>(
+          ".app-data-table__scroll, .order-product-picker__order-list, .order-product-picker__mobile-list",
+        ) ?? [],
+      ).map((element) => ({ element, top: element.scrollTop, left: element.scrollLeft }));
+    }
+    setCreateProductOpen(next);
+    if (!next) restorePickerPosition();
+  }
+
+  function refreshCreatedProduct() {
+    // Existing query keys and cached rows keep the picker mounted during refresh.
+    void Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["products"] }),
+      queryClient.invalidateQueries({ queryKey: ["import-created-products"] }),
+    ]).finally(restorePickerPosition);
+  }
+
+  const createProductButton = canCreateProduct ? (
+    <AppButton
+      ref={createButtonRef}
+      type="button"
+      variant="primary"
+      className="order-product-picker__create"
+      onClick={() => changeCreatorOpen(true)}
+    >
+      <Plus size={18} aria-hidden="true" />
+      Создать товар
+    </AppButton>
+  ) : null;
 
   useEffect(() => {
     if (!pendingBarcode || inventoryFetching || search.trim() !== pendingBarcode) {
@@ -557,8 +614,14 @@ export function OrderProductPickerModal({
               : `Найдите товар по названию или артикулу и добавьте его в ${destinationName} кнопкой или двойным щелчком по строке. По ПКМ можно открыть карточку товара.`
         }
         open={open}
-        onOpenChange={onOpenChange}
+        onOpenChange={(next) => {
+          if (!createProductOpen) onOpenChange(next);
+        }}
         onInteractOutside={(event) => {
+          if (createProductOpen) {
+            event.preventDefault();
+            return;
+          }
           const target = event.target;
           if (
             target instanceof Element &&
@@ -570,13 +633,16 @@ export function OrderProductPickerModal({
         contentClassName={`order-product-picker-modal${inventoryMode ? " order-product-picker-modal--inventory" : ""}`}
       >
         <div
+          ref={pickerRef}
           className={`order-product-picker${inventoryMode ? " order-product-picker--inventory" : ""}`}
           tabIndex={inventoryMode ? 0 : undefined}
           aria-label={inventoryMode ? "Подбор товаров для инвентаризации" : undefined}
         >
           {inventoryMode && compactInventory ? (
             <div className="order-product-picker__inventory-search">
-              <div className="order-product-picker__inventory-search-row">
+              <div
+                className={`order-product-picker__inventory-search-row${canCreateProduct ? " has-create" : ""}`}
+              >
                 <AppSearchInput
                   ref={searchInputRef}
                   label="Поиск товара или штрихкода"
@@ -639,6 +705,7 @@ export function OrderProductPickerModal({
                   <ScanLine size={20} aria-hidden="true" />
                   <span>Сканировать</span>
                 </AppButton>
+                {createProductButton}
               </div>
               <div className="order-product-picker__inventory-summary" role="status">
                 <span>
@@ -650,31 +717,34 @@ export function OrderProductPickerModal({
               </div>
             </div>
           ) : (
-            <AppSearchInput
-              ref={searchInputRef}
-              label="Поиск товара"
-              value={search}
-              placeholder="Название или артикул"
-              autoFocus
-              onFocus={(event) => event.currentTarget.select()}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(1);
-                setPendingBarcode(null);
-                setBarcodeError(null);
-              }}
-              onKeyDown={(event) => {
-                if (
-                  inventoryMode &&
-                  event.key === "Enter" &&
-                  /^[A-Za-z0-9._-]+$/.test(search.trim())
-                ) {
-                  event.preventDefault();
-                  searchBarcode(search);
-                }
-              }}
-              error={inventoryMode ? (barcodeError ?? undefined) : undefined}
-            />
+            <div className="order-product-picker__toolbar">
+              <AppSearchInput
+                ref={searchInputRef}
+                label="Поиск товара"
+                value={search}
+                placeholder="Название или артикул"
+                autoFocus
+                onFocus={(event) => event.currentTarget.select()}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                  setPendingBarcode(null);
+                  setBarcodeError(null);
+                }}
+                onKeyDown={(event) => {
+                  if (
+                    inventoryMode &&
+                    event.key === "Enter" &&
+                    /^[A-Za-z0-9._-]+$/.test(search.trim())
+                  ) {
+                    event.preventDefault();
+                    searchBarcode(search);
+                  }
+                }}
+                error={inventoryMode ? (barcodeError ?? undefined) : undefined}
+              />
+              {createProductButton}
+            </div>
           )}
           {inventoryMode ? (
             <div
@@ -684,7 +754,7 @@ export function OrderProductPickerModal({
                 <div className="order-product-picker__mobile-list" key={search}>
                   {inventoryProductsQuery.isLoading ? (
                     <p className="order-product-picker__mobile-state">Загрузка товаров…</p>
-                  ) : inventoryProductsQuery.isError ? (
+                  ) : inventoryProductsQuery.isError && !inventoryProductsQuery.data ? (
                     <p className="order-product-picker__mobile-state" role="alert">
                       Не удалось загрузить каталог товаров
                     </p>
@@ -754,7 +824,11 @@ export function OrderProductPickerModal({
                   columns={columns}
                   rowId={(product) => String(product.id ?? product.sku)}
                   loading={productsQuery.isLoading}
-                  error={productsQuery.isError ? "Не удалось загрузить каталог товаров" : undefined}
+                  error={
+                    productsQuery.isError && !productsQuery.data
+                      ? "Не удалось загрузить каталог товаров"
+                      : undefined
+                  }
                   searchable={false}
                   selectable={false}
                   contextMenuActions={productActions}
@@ -796,7 +870,7 @@ export function OrderProductPickerModal({
                 >
                   {productsQuery.isLoading ? (
                     <p className="order-product-picker__mobile-state">Загрузка товаров…</p>
-                  ) : productsQuery.isError ? (
+                  ) : productsQuery.isError && !productsQuery.data ? (
                     <p className="order-product-picker__mobile-state" role="alert">
                       Не удалось загрузить каталог товаров
                     </p>
@@ -888,7 +962,11 @@ export function OrderProductPickerModal({
                 columns={columns}
                 rowId={(product) => String(product.id ?? product.sku)}
                 loading={productsQuery.isLoading}
-                error={productsQuery.isError ? "Не удалось загрузить каталог товаров" : undefined}
+                error={
+                  productsQuery.isError && !productsQuery.data
+                    ? "Не удалось загрузить каталог товаров"
+                    : undefined
+                }
                 searchable={false}
                 selectable={false}
                 onRowDoubleClick={(product) => {
@@ -921,6 +999,13 @@ export function OrderProductPickerModal({
           </div>
         </div>
       </AppModal>
+      {canCreateProduct && (
+        <ProductCreateModal
+          open={open && createProductOpen}
+          onOpenChange={changeCreatorOpen}
+          onCreated={refreshCreatedProduct}
+        />
+      )}
       <AppModal
         title="Карточка товара"
         open={open && detailProduct !== null}

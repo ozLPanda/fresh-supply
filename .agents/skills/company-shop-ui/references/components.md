@@ -42,7 +42,7 @@ Import through the `@/shared/ui/...` alias. Every shared component must import i
 
 - Shared metadata: `label`, `hint`, `error`, `required`.
 - `AppInput` accepts native input props plus `prefix` and `suffix`.
-- `AppMoneyInput` uses `value: number | null` and `onValueChange`.
+- `AppMoneyInput` uses `value: number | null` and `onValueChange`; optional `suffixAction` adds an action beside the currency inside the input.
 - `AppPhoneInput` uses `value` and `onValueChange`.
 - Enhanced `AppSelect` uses `options`, `value`, `onValueChange`, `multiple`, `searchable`, `clearable`, and `showSelectedTags`.
 

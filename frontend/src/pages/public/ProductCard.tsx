@@ -16,7 +16,7 @@ import {
 } from "./store-utils";
 import { useCommerce } from "@/features/commerce/CommerceProvider";
 import { appToast } from "@/shared/ui/AppToast";
-import { ProductFormPage } from "@/pages/admin/ProductFormPage";
+import { ProductEditor } from "@/shared/components/products/ProductEditor";
 import "./ProductCard.css";
 
 function ProductPlaceholder({ title }: { title: string }) {
@@ -152,7 +152,7 @@ export function ProductCard({ product }: { product: Product }) {
           title="Редактирование товара"
           contentClassName="product-card__edit-modal"
         >
-          <ProductFormPage
+          <ProductEditor
             embedded
             productId={cardProduct.id}
             onSaved={(savedProduct) => {

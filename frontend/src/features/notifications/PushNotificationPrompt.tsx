@@ -95,7 +95,7 @@ export function PushNotificationPrompt({ showPrompt = true }: { showPrompt?: boo
             tone="warning"
           >
             {desktopMode
-              ? "Откройте настройки уведомлений Windows или macOS и разрешите уведомления Ovoshi Help. Затем нажмите «Проверить снова»."
+              ? "Откройте настройки уведомлений Windows или macOS и разрешите уведомления fresh-supply. Затем нажмите «Проверить снова»."
               : "Откройте настройки этого сайта в браузере и разрешите уведомления. Затем нажмите «Проверить снова»."}
           </AppAlert>
         ) : status === "error" ? (

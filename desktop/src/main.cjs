@@ -15,7 +15,8 @@ const { createUpdateManager } = require("./updates.cjs");
 const { isLocalUrl, allowPopup } = require("./navigation.cjs");
 const { createDataImporter } = require("./data-import.cjs");
 
-app.setName("Ovoshi Help");
+app.setName("fresh-supply");
+// Keep the pre-rename location so updates retain the existing database and lock.
 const dataDirectory = process.env.OVOSHI_DESKTOP_USER_DATA
   ? path.resolve(process.env.OVOSHI_DESKTOP_USER_DATA)
   : path.join(app.getPath("appData"), "Ovoshi Help");
@@ -66,7 +67,7 @@ else {
         busy = false;
         await dialog.showMessageBox({
           type: "error",
-          title: "Ovoshi Help",
+          title: "fresh-supply",
           message: "Не удалось завершить локальные компоненты.",
           detail:
             "Закрытие отменено. Проверьте журналы в папке данных приложения и повторите попытку.",
@@ -135,7 +136,7 @@ async function initialize() {
     await runtime.stop().catch(() => {});
     await dialog.showMessageBox(window, {
       type: "error",
-      title: "Ovoshi Help",
+      title: "fresh-supply",
       message: "Локальный компонент остановился. Перезапустите приложение.",
       detail: `Журнал: ${path.join(runtime.logsDir, name + ".log")}`,
       buttons: ["OK"],
@@ -149,7 +150,7 @@ async function initialize() {
     minHeight: 650,
     backgroundColor: "#f7f6f4",
     show: false,
-    title: "Ovoshi Help",
+    title: "fresh-supply",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       nodeIntegration: false,
@@ -217,7 +218,7 @@ async function initialize() {
         return callback(false);
       const result = await dialog.showMessageBox(window, {
         type: "question",
-        title: "Ovoshi Help",
+        title: "fresh-supply",
         message:
           permission === "media"
             ? "Разрешить доступ к камере и микрофону?"
@@ -435,7 +436,7 @@ async function prepareUpdate() {
     const backup = await runtime.backup("before-install");
     await dialog.showMessageBox(window, {
       type: "info",
-      title: "Ovoshi Help",
+      title: "fresh-supply",
       message: "Резервная копия готова. Приложение закроется для обновления.",
       detail: backup,
       buttons: ["OK"],
@@ -489,7 +490,7 @@ async function manualBackup() {
 async function manualRestore() {
   if (busy || !runtime.started) return;
   const selected = await dialog.showOpenDialog(window, {
-    title: "Выберите резервную копию Ovoshi Help",
+    title: "Выберите резервную копию fresh-supply",
     defaultPath: runtime.backupsDir,
     properties: ["openDirectory"],
   });
@@ -614,7 +615,7 @@ async function showFailure(error) {
   const logPath = runtime?.logsDir || app.getPath("userData");
   const options = {
     type: "error",
-    title: "Ovoshi Help",
+    title: "fresh-supply",
     message: "Не удалось запустить приложение.",
     detail: `${String(error.message).slice(0, 1400)}\n\nЖурналы: ${logPath}`,
     buttons: ["Закрыть"],

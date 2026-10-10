@@ -1,0 +1,93 @@
+.product-price-calculator {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.product-price-calculator .app-modal__header {
+  display: grid;
+  gap: 8px;
+}
+
+.product-price-calculator .app-modal-description {
+  margin-top: 0;
+}
+
+.product-price-calculator__body {
+  display: grid;
+  min-width: 0;
+  gap: 20px;
+}
+
+.product-price-calculator__preview {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 4px 16px;
+  border: 1px solid var(--line, #d8dee8);
+  border-radius: var(--r-s, 12px);
+  background: var(--surface, #fff);
+}
+
+.product-price-calculator__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  font-size: 14px;
+}
+
+.product-price-calculator__row + .product-price-calculator__row {
+  border-top: 1px solid var(--line, #d8dee8);
+}
+
+.product-price-calculator__row dt {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-width: 0;
+  color: var(--text, #171717);
+}
+
+.product-price-calculator__row small {
+  color: var(--muted, #64748b);
+  font-size: 12px;
+}
+
+.product-price-calculator__row dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.product-price-calculator__actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 480px) {
+  .product-price-calculator__preview {
+    padding-inline: 12px;
+  }
+
+  .product-price-calculator__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .product-price-calculator__row dd {
+    text-align: left;
+  }
+
+  .product-price-calculator__actions {
+    flex-direction: column-reverse;
+  }
+
+  .product-price-calculator__actions .app-button {
+    width: 100%;
+  }
+}

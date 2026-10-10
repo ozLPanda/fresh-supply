@@ -25,6 +25,52 @@
   flex-direction: column;
 }
 
+.order-product-picker__toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.order-product-picker__inventory-search-row.has-create {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.order-product-picker__inventory-search-row.has-create .app-input {
+  height: 42px;
+  min-height: 42px;
+}
+
+.order-product-picker__create.app-button {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.order-product-picker .app-data-table__scroll,
+.order-product-picker__order-list,
+.order-product-picker__mobile-list {
+  overflow-anchor: none;
+}
+
+@media (max-width: 640px) {
+  .order-product-picker__toolbar,
+  .order-product-picker__inventory-search-row.has-create {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .order-product-picker__inventory-search-row.has-create {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .order-product-picker__inventory-search-row.has-create .order-product-picker__create {
+    grid-column: 1 / -1;
+  }
+
+  .order-product-picker__create.app-button {
+    width: 100%;
+  }
+}
+
 .order-product-picker__table .app-data-table__toolbar,
 .order-product-picker__table .app-data-table__footer {
   flex-shrink: 0;
