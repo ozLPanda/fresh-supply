@@ -106,7 +106,10 @@ async function prepareWindowsUpdate({
     throw updateFailure("Не найден системный PowerShell Windows.");
   }
   const powershell = path.win32.join(systemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
+  const commandPrompt = path.win32.join(systemRoot, "System32", "cmd.exe");
   const directory = await fs.mkdtemp(path.join(cache, "windows-install-"));
+  const launcherPath = path.join(directory, "launcher.cmd");
+  const helperPath = path.join(directory, "helper.ps1");
   const configPath = path.join(directory, "config.json");
   const readyPath = path.join(directory, "ready");
   const commitPath = path.join(directory, "commit");
@@ -129,6 +132,8 @@ async function prepareWindowsUpdate({
   let terminalError;
   let cleanupPending;
   try {
+    await fs.copyFile(path.join(__dirname, "windows-update-launcher.cmd"), launcherPath);
+    await fs.copyFile(path.join(__dirname, "windows-update-helper.ps1"), helperPath);
     await fs.writeFile(configPath, JSON.stringify(config), { flag: "wx", mode: 0o600 });
   } catch (error) {
     await fs.rm(directory, { recursive: true, force: true });
@@ -169,16 +174,24 @@ async function prepareWindowsUpdate({
     pending = (async () => {
       if (disposed) throw updateFailure("Установка обновления отменена.");
       try {
-        const script = await fs.readFile(path.join(__dirname, "windows-update-helper.ps1"), "utf8");
+        // Keep CMD's command and environment values below its 8191-character
+        // limit. The short static bootstrap reads our copied application code.
+        const script = "& ([scriptblock]::Create([System.IO.File]::ReadAllText($env:FRESH_SUPPLY_UPDATE_HELPER)))";
         if (disposed) throw updateFailure("Установка обновления отменена.");
         // Only static application code enters the command. Paths are JSON data read
         // via an environment variable, never interpolated into PowerShell source.
         const hostLog = await fs.open(path.join(logDirectory, "windows-update-host.log"), "a", 0o600);
         try {
           if (disposed) throw updateFailure("Установка обновления отменена.");
-          child = spawn(powershell, ["-NoLogo", "-NoProfile", "-NonInteractive", "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")], {
+          // PowerShell 5.1 silently exits under DETACHED_PROCESS. A detached
+          // cmd launcher uses START to provide its own console and survives quit.
+          child = spawn(commandPrompt, ["/d", "/v:off", "/s", "/c", '""%FRESH_SUPPLY_UPDATE_LAUNCHER%""'], {
             detached: true, windowsHide: true, stdio: ["ignore", hostLog.fd, hostLog.fd], shell: false,
-            cwd: directory, env: { ...env, FRESH_SUPPLY_UPDATE_CONFIG: configPath },
+            windowsVerbatimArguments: true, cwd: directory,
+            env: { ...env, FRESH_SUPPLY_UPDATE_CONFIG: configPath,
+              FRESH_SUPPLY_POWERSHELL: powershell, FRESH_SUPPLY_UPDATE_LAUNCHER: launcherPath,
+              FRESH_SUPPLY_UPDATE_HELPER: helperPath,
+              FRESH_SUPPLY_UPDATE_SCRIPT: Buffer.from(script, "utf16le").toString("base64") },
           });
           child.on("error", (error) => {
             terminalError = error;

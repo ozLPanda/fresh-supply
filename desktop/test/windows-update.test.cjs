@@ -22,7 +22,7 @@ function pe(machine = 0x14c) {
 async function fixture(t, options = {}) {
   const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "fresh-supply-windows-update-")));
   t.after(async () => { await fs.rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
-  const userData = path.join(root, "Ovoshi Help");
+  const userData = path.join(root, "Ovoshi Help & ! %literal%");
   const installDirectory = path.join(root, "fresh supply;$ harmless ' characters");
   const downloadDirectory = path.join(userData, "updates", "download-abc123");
   await fs.mkdir(downloadDirectory, { recursive: true });
@@ -78,12 +78,18 @@ test("Windows stages safely and confirms helper readiness before authorizing shu
   assert.equal(config.installedExecutable, fixtureData.execPath);
   assert.equal(await present(config.commitPath), false);
   const launch = fake.calls[0];
-  assert.equal(launch.file, "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
+  assert.equal(launch.file, "C:\\Windows\\System32\\cmd.exe");
+  assert.deepEqual(launch.args, ["/d", "/v:off", "/s", "/c", '""%FRESH_SUPPLY_UPDATE_LAUNCHER%""']);
   assert.equal(launch.options.shell, false);
+  assert.equal(launch.options.windowsVerbatimArguments, true);
   assert.equal(launch.options.detached, true);
   assert.equal(launch.options.windowsHide, true);
-  const script = Buffer.from(launch.args.at(-1), "base64").toString("utf16le");
-  assert.equal(script, await fs.readFile(path.join(__dirname, "../src/windows-update-helper.ps1"), "utf8"));
+  assert.equal(launch.options.env.FRESH_SUPPLY_POWERSHELL, "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
+  assert.equal(launch.options.env.FRESH_SUPPLY_UPDATE_LAUNCHER, path.join(path.dirname(config.readyPath), "launcher.cmd"));
+  const script = Buffer.from(launch.options.env.FRESH_SUPPLY_UPDATE_SCRIPT, "base64").toString("utf16le");
+  assert.equal(script, "& ([scriptblock]::Create([System.IO.File]::ReadAllText($env:FRESH_SUPPLY_UPDATE_HELPER)))");
+  assert.ok(launch.options.env.FRESH_SUPPLY_UPDATE_SCRIPT.length < 1000);
+  assert.equal(await fs.readFile(launch.options.env.FRESH_SUPPLY_UPDATE_HELPER, "utf8"), await fs.readFile(path.join(__dirname, "../src/windows-update-helper.ps1"), "utf8"));
   assert.equal(script.includes(fixtureData.installDirectory), false);
   assert.equal(launch.args.includes("-ExecutionPolicy"), false);
   await fs.writeFile(config.readyPath, "1");
@@ -193,55 +199,7 @@ test("Windows reports helper validation failure without committing installation"
   await prepared.dispose();
 });
 
-test("Windows native PowerShell host diagnostic matrix", { skip: process.platform !== "win32", timeout: 200_000 }, async (t) => {
-  const directory = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "fresh-supply-powershell-probe-")));
-  t.after(() => fs.rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
-  const powershell = path.win32.join(process.env.SystemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
-  const actualHelper = await fs.readFile(path.join(__dirname, "../src/windows-update-helper.ps1"), "utf8");
-  const tiny = "[System.IO.File]::WriteAllText($env:FRESH_SUPPLY_TEST_PROBE, 'ready'); exit 0";
-  // Keep the same UTF-16/base64 command size as the real helper, with harmless
-  // comments instead of executable application update logic.
-  const large = tiny + "\r\n#" + "x".repeat(Math.max(0, actualHelper.length - tiny.length - 3));
-  let number = 0;
-  const leadingComment = "#" + "x".repeat(Math.max(0, actualHelper.length - tiny.length - 3)) + "\r\n" + tiny;
-  const helperBody = tiny + "\r\n" + actualHelper; // exit precedes unreachable helper logic
-  for (const [size, script] of [["tiny", tiny], ["helper-size", large], ["leading-comment", leadingComment], ["helper-body", helperBody]]) {
-    for (const detached of [false, true]) {
-      for (const transport of ["pipe", "file"]) {
-        const marker = path.join(directory, `marker-${number}`);
-        const hostOutput = path.join(directory, `host-${number++}.log`);
-        const encoded = Buffer.from(script, "utf16le").toString("base64");
-        const file = transport === "file" ? await fs.open(hostOutput, "w", 0o600) : null;
-        let stdout = "";
-        let stderr = "";
-        let spawnError;
-        let timedOut = false;
-        const child = spawn(powershell, ["-NoLogo", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded], {
-          detached, windowsHide: true, shell: false, cwd: directory,
-          stdio: file ? ["ignore", file.fd, file.fd] : ["ignore", "pipe", "pipe"],
-          env: { ...process.env, FRESH_SUPPLY_TEST_PROBE: marker },
-        });
-        child.stdout?.on("data", (bytes) => { stdout = (stdout + bytes.toString()).slice(-4000); });
-        child.stderr?.on("data", (bytes) => { stderr = (stderr + bytes.toString()).slice(-4000); });
-        child.once("error", (error) => { spawnError = error.message; });
-        const completed = new Promise((resolve) => child.once("close", (code, signal) => resolve({ code, signal })));
-        const timeout = setTimeout(() => { timedOut = true; child.kill(); }, 10_000);
-        // Register handlers before awaiting close of our parent copy of the FD.
-        await file?.close();
-        const result = await completed;
-        clearTimeout(timeout);
-        if (transport === "file") stdout = await fs.readFile(hostOutput, "utf8").catch(() => "");
-        t.diagnostic(JSON.stringify({
-          probe: "PowerShell encoded host", size, detached, transport,
-          encodedLength: encoded.length, marker: await present(marker), ...result,
-          timedOut, spawnError, stdout, stderr,
-        }));
-      }
-    }
-  }
-});
-
-test("Windows native helper waits for parent exit and passes literal NSIS arguments", { skip: process.platform !== "win32", timeout: 60_000 }, async (t) => {
+async function nativeInstallerFixture(t) {
   const f = await fixture(t, { env: process.env, timeoutMs: 30_000 });
   const powershell = path.win32.join(process.env.SystemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
   const recordPath = path.join(f.root, "installer-command.txt");
@@ -264,6 +222,73 @@ test("Windows native helper waits for parent exit and passes literal NSIS argume
   await fs.copyFile(process.execPath, f.execPath);
   f.settings.sha256 = crypto.createHash("sha256").update(await fs.readFile(f.archivePath)).digest("hex");
   f.settings.env = { ...process.env, FRESH_SUPPLY_TEST_COMMAND: recordPath };
+  return { f, recordPath };
+}
+
+test("Windows native installer survives the real helper creator exiting", { skip: process.platform !== "win32", timeout: 60_000 }, async (t) => {
+  const { f, recordPath } = await nativeInstallerFixture(t);
+  const acceptedPath = path.join(f.root, "application-update-accepted");
+  const starterEnv = {
+    ...f.settings.env,
+    FRESH_SUPPLY_TEST_MODULE: path.join(__dirname, "../src/windows-update.cjs"),
+    FRESH_SUPPLY_TEST_ACCEPTED: acceptedPath,
+    FRESH_SUPPLY_TEST_SETTINGS: JSON.stringify({
+      userData: f.userData, archivePath: f.archivePath, version: f.settings.version,
+      sha256: f.settings.sha256, execPath: f.execPath,
+    }),
+  };
+  delete starterEnv.NODE_TEST_CONTEXT;
+  // This disposable app process creates the real detached helper and then exits,
+  // just as Electron will after its successful backup and install handoff.
+  const source = `
+    const fs = require("node:fs");
+    const { prepareWindowsUpdate } = require(process.env.FRESH_SUPPLY_TEST_MODULE);
+    (async () => {
+      const settings = JSON.parse(process.env.FRESH_SUPPLY_TEST_SETTINGS);
+      const prepared = await prepareWindowsUpdate({
+        ...settings, app: { isPackaged: true, getPath: () => settings.userData },
+        timeoutMs: 30000,
+      });
+      await prepared.install();
+      if (fs.existsSync(process.env.FRESH_SUPPLY_TEST_COMMAND)) throw new Error("Installer started before the application exited.");
+      fs.writeFileSync(process.env.FRESH_SUPPLY_TEST_ACCEPTED, "accepted");
+      process.exit(0);
+    })().catch((error) => { console.error(error); process.exit(1); });
+  `;
+  const starter = spawn(process.execPath, ["-e", source], {
+    env: starterEnv, windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
+  });
+  let output = "";
+  starter.stdout.on("data", (bytes) => { output = (output + bytes.toString()).slice(-8000); });
+  starter.stderr.on("data", (bytes) => { output = (output + bytes.toString()).slice(-8000); });
+  const completion = new Promise((resolve, reject) => {
+    starter.once("error", reject);
+    starter.once("close", (code, signal) => resolve({ code, signal }));
+  });
+  const timeout = setTimeout(() => starter.kill(), 45_000);
+  t.after(() => { clearTimeout(timeout); starter.kill(); });
+  try {
+    const result = await completion;
+    clearTimeout(timeout);
+    assert.deepEqual(result, { code: 0, signal: null }, output);
+    assert.equal(await present(acceptedPath), true, "application confirmed handoff before exiting");
+    await waitFor(() => present(recordPath), 10_000);
+    assert.equal(starter.exitCode, 0, "creator has exited while the independent helper continues");
+    const command = await fs.readFile(recordPath, "utf8");
+    assert.equal(command.endsWith(`/S --updated --force-run /D=${f.installDirectory}`), true);
+    await waitFor(async () => !(await present(f.downloadDirectory)), 10_000);
+  } catch (error) {
+    t.diagnostic(`Updater creator: pid=${starter.pid}, exitCode=${starter.exitCode}, signalCode=${starter.signalCode}, output=${output}`);
+    for (const name of ["windows-update.log", "windows-update-host.log"]) {
+      const log = await fs.readFile(path.join(f.userData, "logs", name), "utf8").catch(() => "No log was created.");
+      t.diagnostic(`${name}:\n${log}`);
+    }
+    throw error;
+  }
+});
+
+test("Windows native helper waits for parent exit and passes literal NSIS arguments", { skip: process.platform !== "win32", timeout: 60_000 }, async (t) => {
+  const { f, recordPath } = await nativeInstallerFixture(t);
   const parentReadyPath = path.join(f.root, "parent-ready");
   const parentEnv = { ...process.env, FRESH_SUPPLY_TEST_PARENT_READY: parentReadyPath };
   // The dummy application is an ordinary Node process, not another test worker.
