@@ -198,7 +198,16 @@ test("Windows native helper waits for parent exit and passes literal NSIS argume
   const recordPath = path.join(f.root, "installer-command.txt");
   // Disposable compiled EXE records its command line. No installer or user app runs.
   const source = 'using System; using System.IO; public class UpdateStub { public static void Main() { File.WriteAllText(Environment.GetEnvironmentVariable("FRESH_SUPPLY_TEST_COMMAND"), Environment.CommandLine); } }';
-  const compile = 'Add-Type -TypeDefinition $env:FRESH_SUPPLY_TEST_SOURCE -OutputAssembly $env:FRESH_SUPPLY_TEST_EXE -OutputType ConsoleApplication -CompilerOptions "/platform:x64"';
+  // The system powershell.exe is Windows PowerShell 5.1: compiler options are
+  // supplied through CompilerParameters, rather than PowerShell 7's parameter.
+  const compile = [
+    '$parameters = New-Object System.CodeDom.Compiler.CompilerParameters',
+    '$parameters.CompilerOptions = "/platform:x64"',
+    '$parameters.GenerateExecutable = $true',
+    '$parameters.GenerateInMemory = $false',
+    '$parameters.OutputAssembly = $env:FRESH_SUPPLY_TEST_EXE',
+    'Add-Type -TypeDefinition $env:FRESH_SUPPLY_TEST_SOURCE -CompilerParameters $parameters -OutputAssembly $env:FRESH_SUPPLY_TEST_EXE -OutputType ConsoleApplication -ErrorAction Stop',
+  ].join('; ');
   await fs.rm(f.archivePath);
   await promisify(execFile)(powershell, ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", compile], {
     env: { ...process.env, FRESH_SUPPLY_TEST_SOURCE: source, FRESH_SUPPLY_TEST_EXE: f.archivePath }, windowsHide: true,
