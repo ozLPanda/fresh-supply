@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld("ovoshiDesktop", {
   importFromSite: (credentials) =>
     ipcRenderer.invoke("desktop:import", credentials),
   cancelImport: () => ipcRenderer.invoke("desktop:import-cancel"),
+  cancelUpdate: () => ipcRenderer.invoke("desktop:update-cancel"),
   onStatus: (callback) => {
     const handler = (_event, payload) => callback(payload);
     ipcRenderer.on("desktop:status", handler);

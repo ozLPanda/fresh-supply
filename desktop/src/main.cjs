@@ -14,6 +14,8 @@ const { LocalRuntime } = require("./runtime.cjs");
 const { createUpdateManager } = require("./updates.cjs");
 const { isLocalUrl, allowPopup } = require("./navigation.cjs");
 const { createDataImporter } = require("./data-import.cjs");
+const { prepareMacUpdate, confirmMacUpdateStarted } = require("./mac-update.cjs");
+const { prepareWindowsUpdate } = require("./windows-update.cjs");
 
 app.setName("fresh-supply");
 // Keep the pre-rename location so updates retain the existing database and lock.
@@ -33,6 +35,10 @@ let dataImporter;
 let importFormActive = false;
 let importInProgress = false;
 let quitWhileImportMessage = false;
+let updateInProgress = false;
+let updateQuitAuthorized = false;
+let updateReturnUrl;
+let updateProgressKey;
 const startupFile = path.join(__dirname, "../ui/startup.html");
 const startupUrl = pathToFileURL(startupFile).href;
 
@@ -48,6 +54,11 @@ else {
   app.whenReady().then(initialize).catch(showFailure);
   app.on("window-all-closed", () => app.quit());
   app.on("before-quit", (event) => {
+    if (updateInProgress && !updateQuitAuthorized) {
+      event.preventDefault();
+      updates?.cancelDownload();
+      return;
+    }
     if (importInProgress) {
       event.preventDefault();
       showImportWait();
@@ -55,6 +66,7 @@ else {
     }
     if (quitting || !runtime) return;
     event.preventDefault();
+    updates?.cancelCheck();
     busy = true;
     runtime
       .stop()
@@ -161,7 +173,13 @@ async function initialize() {
     },
   });
   window.once("ready-to-show", () => window.show());
+  window.on("closed", () => updates?.dispose());
   window.on("close", (event) => {
+    if (updateInProgress && !updateQuitAuthorized) {
+      event.preventDefault();
+      updates?.cancelDownload();
+      return;
+    }
     if (importInProgress) {
       event.preventDefault();
       showImportWait();
@@ -243,8 +261,20 @@ async function initialize() {
     app,
     dialog,
     shell,
-    prepareUpdate: prepareUpdate,
-    allowAutomaticUpdates: false,
+    prepareUpdate,
+    prepareInstaller: process.platform === "darwin"
+      ? (options) => prepareMacUpdate({ app, ...options })
+      : process.platform === "win32"
+        ? (options) => prepareWindowsUpdate({ app, ...options })
+        : undefined,
+    beginUpdate,
+    endUpdate,
+    onProgress: updateProgress,
+    onStateChange: installMenu,
+    quitForUpdate: () => {
+      updateQuitAuthorized = true;
+      app.quit();
+    },
     logger: { warn: () => {} },
   });
   installMenu();
@@ -255,6 +285,62 @@ async function initialize() {
   await startRuntime(credentials, { initializeImport: firstRun });
   credentials = undefined;
   if (firstRun) await openDataImport();
+  checkStartupUpdates();
+}
+
+function checkStartupUpdates() {
+  if (!busy && runtime?.started && !importFormActive)
+    void updates.checkAtStartup().catch(() => {});
+}
+
+async function beginUpdate() {
+  if (busy || !runtime.started || importFormActive || importInProgress || !window || window.isDestroyed())
+    throw new Error("Приложение ещё не готово к обновлению");
+  updateReturnUrl = window.webContents.getURL();
+  updateInProgress = true;
+  busy = true;
+  installMenu();
+  await window.loadFile(startupFile);
+  updateProgress({ phase: "downloading", percent: 0 });
+}
+
+function updateProgress({ phase, percent }) {
+  if (!window || window.isDestroyed()) return;
+  const downloading = phase === "downloading";
+  const progress = Number.isFinite(percent) ? Math.max(0, Math.min(100, percent)) : null;
+  const key = `${phase}:${progress === null ? "" : Math.floor(progress)}`;
+  if (key === updateProgressKey) return;
+  updateProgressKey = key;
+  window.setProgressBar(downloading && progress !== null ? progress / 100 : 2);
+  window.webContents.send("desktop:status", {
+    update: true,
+    cancellable: ["downloading", "staging"].includes(phase),
+    percent: downloading ? progress : null,
+    message: downloading
+      ? `Скачиваем обновление${progress === null ? "…" : `: ${Math.floor(progress)}%`}`
+      : phase === "staging" ? "Проверяем и готовим установку…"
+        : "Создаём резервную копию перед установкой…",
+  });
+}
+
+async function endUpdate() {
+  if (!updateInProgress) return;
+  try {
+    if (quitting || !window || window.isDestroyed()) return;
+    if (!runtime.started) await runtime.start();
+    await window.loadURL(isLocal(updateReturnUrl) ? updateReturnUrl : `${runtime.url}/admin/login`);
+  } catch (error) {
+    updateInProgress = false;
+    await showFailure(error);
+  } finally {
+    updateInProgress = false;
+    updateQuitAuthorized = false;
+    updateReturnUrl = undefined;
+    updateProgressKey = undefined;
+    busy = false;
+    if (window && !window.isDestroyed()) window.setProgressBar(-1);
+    installMenu();
+  }
 }
 
 function getBootstrapCredentials() {
@@ -311,6 +397,9 @@ async function startRuntime(credentials, { initializeImport = false } = {}) {
       storages: ["serviceworkers", "cachestorage"],
     });
     await window.loadURL(`${url}/admin/login`);
+    if (process.platform === "darwin" && app.isPackaged)
+      // Cleanup of the previous bundle must not prevent a healthy app starting.
+      await confirmMacUpdateStarted({ app }).catch(() => {});
   } finally {
     busy = false;
     installMenu();
@@ -411,6 +500,7 @@ ipcMain.handle("desktop:import", async (event, payload) => {
   } finally {
     importInProgress = false;
     installMenu();
+    checkStartupUpdates();
   }
 });
 
@@ -421,35 +511,23 @@ ipcMain.handle("desktop:import-cancel", async (event) => {
   busy = false;
   await window.loadURL(`${runtime.url}/admin/login`);
   installMenu();
+  checkStartupUpdates();
   return { ok: true };
 });
 
+ipcMain.handle("desktop:update-cancel", (event) => {
+  if (!trustedStartup(event) || !updateInProgress)
+    return { error: "Обновление сейчас не загружается." };
+  return { cancelled: updates.cancelDownload() };
+});
+
 async function prepareUpdate() {
-  if (busy || !runtime.started)
+  if ((busy && !updateInProgress) || !runtime.started)
     throw new Error("Приложение ещё не готово к обновлению");
   busy = true;
   installMenu();
-  const wasUrl = window.webContents.getURL();
-  await window.loadFile(startupFile);
-  status("Создаём резервную копию перед обновлением…");
-  try {
-    const backup = await runtime.backup("before-install");
-    await dialog.showMessageBox(window, {
-      type: "info",
-      title: "fresh-supply",
-      message: "Резервная копия готова. Приложение закроется для обновления.",
-      detail: backup,
-      buttons: ["OK"],
-    });
-  } catch (error) {
-    await runtime.start();
-    await window.loadURL(
-      isLocal(wasUrl) ? wasUrl : `${runtime.url}/admin/login`,
-    );
-    busy = false;
-    installMenu();
-    throw error;
-  }
+  updateProgress({ phase: "preparing" });
+  await runtime.backup("before-install");
 }
 
 async function manualBackup() {
@@ -523,7 +601,7 @@ async function manualRestore() {
 }
 
 function installMenu() {
-  const ready = !busy && Boolean(runtime?.started);
+  const ready = !busy && !updates?.getState().busy && Boolean(runtime?.started);
   const template = [
     ...(process.platform === "darwin"
       ? [

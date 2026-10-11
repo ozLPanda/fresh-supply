@@ -4,6 +4,9 @@ const status = document.getElementById("status");
 const error = document.getElementById("error");
 const importForm = document.getElementById("import");
 const importError = document.getElementById("import-error");
+const updatePanel = document.getElementById("update");
+const updateProgress = document.getElementById("update-progress");
+const updateCancel = document.getElementById("update-cancel");
 
 // Same phone format as AppPhoneInput on the website login page.
 function formatPhone(value) {
@@ -31,6 +34,17 @@ for (const id of ["phone", "source-phone"]) {
 }
 
 window.ovoshiDesktop.onStatus((payload) => {
+  updatePanel.hidden = !payload.update;
+  if (payload.update) {
+    title.textContent = "Обновление приложения";
+    status.textContent = payload.message;
+    form.hidden = true;
+    importForm.hidden = true;
+    updateCancel.disabled = !payload.cancellable;
+    if (Number.isFinite(payload.percent)) updateProgress.value = payload.percent;
+    else updateProgress.removeAttribute("value");
+    return;
+  }
   if (payload.setup) {
     title.textContent = "Первый запуск";
     status.textContent = "Настройте доступ к локальной базе.";
@@ -53,6 +67,11 @@ window.ovoshiDesktop.onStatus((payload) => {
     form.hidden = true;
     importForm.hidden = true;
   }
+});
+updateCancel.addEventListener("click", async () => {
+  updateCancel.disabled = true;
+  status.textContent = "Отменяем обновление…";
+  await window.ovoshiDesktop.cancelUpdate();
 });
 importForm.addEventListener("submit", async (event) => {
   event.preventDefault();

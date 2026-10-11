@@ -96,7 +96,7 @@ jobs:
           retention-days: 14
 
   # Draft releases deliberately require review before being offered as stable.
-  # Signing/notarization must be configured before enabling automatic install.
+  # The updater verifies release hashes; OS signing/notarization is a separate step.
   draft-release:
     if: startsWith(github.ref, 'refs/tags/desktop-v')
     needs: build

@@ -1,337 +1,175 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { EventEmitter } = require("node:events");
-const { createUpdateManager, isNewerVersion } = require("../src/updates.cjs");
-
+const { createUpdateManager, isNewerVersion, selectAsset } = require("../src/updates.cjs");
+const digest = "sha256:" + "a".repeat(64);
+const release = (name = "fresh-supply-0.2.0-win-x64.exe") => ({
+  tag_name: "desktop-v0.2.0", body: "Исправления ошибок.",
+  assets: [{ name, size: 1024, digest, browser_download_url: "https://evil.invalid/installer" }],
+  html_url: "https://evil.invalid/release",
+});
 function fixture(options = {}) {
   const calls = [];
   const dialogs = [];
-  const answers = [...(options.answers || [])];
-  const updater = new EventEmitter();
-  updater.checkForUpdates = async () => {
-    calls.push("check");
-    return { updateInfo: { version: "0.2.0", releaseNotes: "New release" } };
-  };
-  updater.downloadUpdate = async () => {
-    calls.push("download");
-    updater.emit("update-downloaded", { version: "0.2.0" });
-    return ["installer.exe"];
-  };
-  updater.quitAndInstall = () => calls.push("install");
-  const app = {
-    isPackaged: true,
-    getVersion: () => "0.1.0",
-    quit: () => calls.push("quit"),
-  };
+  const answers = [...(options.answers || [1])];
   const settings = {
-    app,
-    dialog: {
-      showMessageBox: async (details) => {
-        dialogs.push(details);
-        return { response: answers.shift() ?? details.cancelId ?? 0 };
-      },
-    },
+    app: { isPackaged: true, getVersion: () => "0.1.0", getPath: () => "/private/data", quit: () => calls.push("quit") },
+    dialog: { showMessageBox: async (details) => { dialogs.push(details); return { response: answers.shift() ?? details.cancelId ?? 0 }; } },
     shell: { openExternal: async (url) => calls.push(["external", url]) },
-    autoUpdater: updater,
+    platform: "win32", arch: "x64", logger: { warn() {} },
+    fetch: async (url, settings) => { calls.push(["fetch", url, settings]); return { ok: true, json: async () => release() }; },
+    download: async (options) => { calls.push(["download", options]); options.onProgress({ percent: 50 }); return "/private/data/updates/download-random/installer.exe"; },
+    prepareInstaller: async (options) => { calls.push(["stage", options]); return { install: async () => calls.push("install"), dispose: async () => calls.push("dispose") }; },
     prepareUpdate: async () => calls.push("backup"),
-    logger: { warn() {} },
-    allowAutomaticUpdates: true,
-    platform: "win32",
-    arch: "x64",
-    fetch: async (url, settings) => {
-      calls.push(["fetch", url, settings]);
-      return {
-        ok: true,
-        json: async () => ({
-          tag_name: "desktop-v0.2.0",
-          body: "New release",
-          assets: [{ name: "OvoshiHelp-0.2.0-win-x64.exe" }],
-          html_url: "https://evil.invalid/download",
-        }),
-      };
-    },
+    beginUpdate: async () => calls.push("begin"), endUpdate: async () => calls.push("recover"),
+    cleanupDownload: async () => calls.push("cleanup"),
+    onProgress: (value) => calls.push(["progress", value]),
     ...options.settings,
   };
   const manager = createUpdateManager(settings);
-  return { manager, updater, calls, dialogs, app };
+  return { manager, calls, dialogs, settings };
 }
+const actions = (calls) => calls.map((value) => Array.isArray(value) ? value[0] : value).filter((value) => value !== "progress");
 
-test("numeric stable version comparison excludes prereleases and downgrades", () => {
+test("stable numeric comparison excludes prereleases and downgrades", () => {
   assert.equal(isNewerVersion("desktop-v0.10.0", "0.9.0"), true);
-  assert.equal(isNewerVersion("1.0.0-beta", "0.9.0"), false);
-  assert.equal(isNewerVersion("v0.1.0", "0.2.0"), false);
-  assert.equal(isNewerVersion("1.0.0", "1.0.0"), false);
+  for (const version of ["1.0.0-beta", "v0.0.1", "0.1.0", "invalid"]) assert.equal(isNewerVersion(version, "0.1.0"), false);
 });
-
-test("does not check at startup, download automatically, or install on quit", () => {
-  const { manager, updater, calls } = fixture();
-  assert.deepEqual(calls, []);
-  assert.equal(updater.autoDownload, false);
-  assert.equal(updater.autoInstallOnAppQuit, false);
-  assert.equal(updater.allowPrerelease, false);
-  assert.equal(updater.allowDowngrade, false);
-  manager.dispose();
+test("factory does not check or install until startup is ready or user asks", () => {
+  const { manager, calls } = fixture(); assert.deepEqual(calls, []); manager.dispose();
 });
-
-test("explicit consent and successful backup precede installation even for cached event", async () => {
-  const { manager, calls } = fixture({ answers: [0, 0] });
+test("startup checks once and offers Update/Later for a newer stable version", async () => {
+  const { manager, calls, dialogs } = fixture();
+  assert.deepEqual(await manager.checkAtStartup(), { status: "cancelled" });
+  assert.deepEqual(dialogs[0].buttons, ["Обновить", "Позже"]);
+  assert.deepEqual(await manager.checkAtStartup(), { status: "skipped" });
+  assert.deepEqual(actions(calls), ["fetch"]);
+  assert.equal(calls[0][2].headers.Authorization, undefined);
+});
+test("startup current and offline checks do not show dialogs or stop components", async () => {
+  for (const fetch of [async () => { throw new Error("Offline"); }, async () => ({ ok: true, json: async () => ({ ...release(), tag_name: "desktop-v0.1.0" }) })]) {
+    const { manager, calls, dialogs } = fixture({ settings: { fetch } });
+    await manager.checkAtStartup(); assert.deepEqual(calls, []); assert.deepEqual(dialogs, []);
+  }
+});
+test("development builds do not check on startup", async () => {
+  const { manager, calls } = fixture({ settings: { app: { isPackaged: false } } });
+  assert.deepEqual(await manager.checkAtStartup(), { status: "skipped" }); assert.deepEqual(calls, []);
+});
+test("one confirmation downloads verified package, stages, backs up, installs and quits", async () => {
+  const { manager, calls, dialogs } = fixture({ answers: [0] });
   assert.deepEqual(await manager.checkForUpdates(), { status: "installing" });
-  assert.deepEqual(calls, ["check", "download", "backup", "install"]);
+  assert.deepEqual(actions(calls), ["fetch", "begin", "download", "stage", "backup", "install", "quit"]);
+  assert.equal(dialogs.length, 1);
+  assert.equal(calls.find((call) => call[0] === "download")[1].repository, "ozLPanda/fresh-supply");
+  assert.equal(calls.find((call) => call[0] === "stage")[1].sha256, "a".repeat(64));
   assert.equal(manager.getState().busy, false);
-  manager.dispose();
 });
-
-test("declining download does not create backup or install", async () => {
+test("Later leaves current application and database running", async () => {
   const { manager, calls } = fixture({ answers: [1] });
   assert.deepEqual(await manager.checkForUpdates(), { status: "cancelled" });
-  assert.deepEqual(calls, ["check"]);
-  manager.dispose();
+  assert.deepEqual(actions(calls), ["fetch"]);
 });
-
-test("declining install leaves downloaded update without backup or quit", async () => {
-  const { manager, calls, updater } = fixture({ answers: [0, 1] });
-  assert.deepEqual(await manager.checkForUpdates(), { status: "downloaded" });
-  assert.deepEqual(calls, ["check", "download"]);
-  assert.equal(updater.autoInstallOnAppQuit, false);
-  manager.dispose();
+test("manual current check explicitly reports installed version", async () => {
+  const { manager, dialogs } = fixture({ settings: { fetch: async () => ({ ok: true, json: async () => ({ ...release(), tag_name: "desktop-v0.1.0" }) }) } });
+  assert.deepEqual(await manager.checkForUpdates(), { status: "current" }); assert.match(dialogs[0].message, /не требуется/);
 });
-
-test("backup failure never invokes installer or quits the application", async () => {
-  const { manager, calls, dialogs } = fixture({
-    answers: [0, 0, 0],
-    settings: {
-      prepareUpdate: async () => {
-        throw new Error("Backup failed");
-      },
-    },
-  });
-  assert.deepEqual(await manager.checkForUpdates(), {
-    status: "error",
-    phase: "preparation",
-  });
-  assert.deepEqual(calls, ["check", "download"]);
-  assert.match(dialogs.at(-1).message, /отменена/);
-  manager.dispose();
+test("manual offline check gives recoverable message without backup or quit", async () => {
+  const { manager, calls, dialogs } = fixture({ answers: [0], settings: { fetch: async () => { throw new Error("Offline"); } } });
+  assert.deepEqual(await manager.checkForUpdates(), { status: "error", phase: "network" }); assert.deepEqual(calls, []); assert.equal(dialogs.length, 1);
 });
-
-test("missing preparation callback fails closed", async () => {
-  const { manager, calls } = fixture({
-    answers: [0, 0, 0],
-    settings: { prepareUpdate: undefined },
-  });
+test("checksum/download failure restores view and cannot stop runtime or install", async () => {
+  const { manager, calls } = fixture({ answers: [0], settings: { download: async () => { throw new Error("Checksum mismatch"); } } });
+  assert.equal((await manager.checkForUpdates()).status, "error");
+  assert.deepEqual(actions(calls), ["fetch", "begin", "recover"]);
+});
+test("staging failure cleans downloaded archive and restores view before data backup", async () => {
+  const { manager, calls, dialogs } = fixture({ answers: [0], settings: { prepareInstaller: async () => { throw Object.assign(new Error("Read-only"), { userMessage: "Переместите приложение в папку Программы." }); } } });
   assert.equal((await manager.checkForUpdates()).phase, "preparation");
-  assert.deepEqual(calls, ["check", "download"]);
-  manager.dispose();
+  assert.deepEqual(actions(calls), ["fetch", "begin", "download", "cleanup", "recover"]);
+  assert.equal(dialogs.at(-1).detail, "Переместите приложение в папку Программы.");
 });
-
-test("offline updater errors remain handled without changing local installation", async () => {
-  const { manager, updater, calls } = fixture({ answers: [0] });
-  updater.checkForUpdates = async () => {
-    updater.emit("error", new Error("Offline"));
-    throw new Error("Offline");
-  };
-  assert.equal((await manager.checkForUpdates()).status, "error");
-  assert.deepEqual(calls, []);
-  manager.dispose();
-});
-
-test("download failure never prepares data or installs", async () => {
-  const { manager, updater, calls } = fixture({ answers: [0, 0] });
-  updater.downloadUpdate = async () => {
-    throw new Error("Interrupted");
-  };
-  assert.equal((await manager.checkForUpdates()).status, "error");
-  assert.deepEqual(calls, ["check"]);
-  manager.dispose();
-});
-
-test("unsigned distribution uses public API and trusted Releases page, then backup and quit", async () => {
-  const { manager, calls } = fixture({
-    answers: [0, 0],
-    settings: { allowAutomaticUpdates: false },
-  });
-  assert.equal((await manager.checkForUpdates()).status, "installing");
-  assert.deepEqual(
-    calls.map((call) => (Array.isArray(call) ? call[0] : call)),
-    ["fetch", "external", "backup", "quit"],
-  );
-  assert.equal(
-    calls[0][1],
-    "https://api.github.com/repos/ozLPanda/fresh-supply/releases/latest",
-  );
-  assert.equal(calls[0][2].headers.Authorization, undefined);
-  assert.equal(
-    calls[1][1],
-    "https://github.com/ozLPanda/fresh-supply/releases/tag/desktop-v0.2.0",
-  );
-  manager.dispose();
-});
-
-test("development builds stay manual even if automatic mode requested", async () => {
-  const { manager, app, calls } = fixture({
-    answers: [1],
-    settings: {
-      app: { isPackaged: false, getVersion: () => "0.1.0" },
-    },
-  });
-  await manager.checkForUpdates();
-  assert.equal(calls[0][0], "fetch");
-  assert.equal(manager.getState().automatic, false);
-  manager.dispose();
-});
-
-test("manual download does not prepare or quit until user is ready", async () => {
-  const { manager, calls } = fixture({
-    answers: [0, 1],
-    settings: { allowAutomaticUpdates: false },
-  });
-  assert.equal(
-    (await manager.checkForUpdates()).status,
-    "download-page-opened",
-  );
-  assert.deepEqual(
-    calls.map((call) => call[0]),
-    ["fetch", "external"],
-  );
-  manager.dispose();
-});
-
-test("manual backup failure never quits", async () => {
-  const { manager, calls } = fixture({
-    answers: [0, 0, 0],
-    settings: {
-      allowAutomaticUpdates: false,
-      prepareUpdate: async () => {
-        throw new Error("Backup failed");
-      },
-    },
-  });
-  assert.equal((await manager.checkForUpdates()).phase, "preparation");
-  assert.equal(calls.includes("quit"), false);
-  manager.dispose();
-});
-
-test("offline unsigned build keeps current installation and does not stop local components", async () => {
-  const { manager, calls } = fixture({
-    answers: [0],
-    settings: {
-      allowAutomaticUpdates: false,
-      fetch: async () => {
-        throw new Error("Offline");
-      },
-    },
-  });
-  assert.equal((await manager.checkForUpdates()).status, "error");
-  assert.deepEqual(calls, []);
-  manager.dispose();
-});
-
-test("unsigned Mac accepts a universal desktop installer without invoking updater", async () => {
-  const { manager, calls } = fixture({
-    answers: [1],
-    settings: {
-      allowAutomaticUpdates: false,
-      platform: "darwin",
-      arch: "arm64",
-      fetch: async () => ({
-        ok: true,
-        json: async () => ({
-          tag_name: "desktop-v0.2.0",
-          assets: [{ name: "OvoshiHelp-0.2.0-mac-universal.dmg" }],
-        }),
-      }),
-    },
-  });
-  assert.deepEqual(await manager.checkForUpdates(), { status: "cancelled" });
-  assert.deepEqual(calls, []);
-  manager.dispose();
-});
-
-test("manual update accepts renamed installers on Windows and Mac", async () => {
-  for (const [platform, arch, name] of [
-    ["win32", "x64", "fresh-supply-0.2.0-win-x64.exe"],
-    ["darwin", "arm64", "fresh-supply-0.2.0-mac-arm64.dmg"],
-    ["darwin", "arm64", "fresh-supply-0.2.0-mac-universal.dmg"],
-  ]) {
-    const { manager } = fixture({
-      answers: [1],
-      settings: {
-        allowAutomaticUpdates: false,
-        platform,
-        arch,
-        fetch: async () => ({
-          ok: true,
-          json: async () => ({
-            tag_name: "desktop-v0.2.0",
-            assets: [{ name }],
-          }),
-        }),
-      },
-    });
-    assert.deepEqual(await manager.checkForUpdates(), { status: "cancelled" });
-    manager.dispose();
+test("backup failure or missing preparation callback never installs and restores runtime", async () => {
+  for (const prepareUpdate of [undefined, async () => { throw new Error("Backup failed"); }]) {
+    const { manager, calls } = fixture({ answers: [0], settings: { prepareUpdate } });
+    assert.equal((await manager.checkForUpdates()).phase, "preparation");
+    assert.deepEqual(actions(calls), ["fetch", "begin", "download", "stage", "dispose", "cleanup", "recover"]);
   }
 });
-
-test("manual check excludes unrelated releases, prereleases and incompatible installers", async () => {
-  for (const release of [
-    { tag_name: "v0.2.0", assets: [{ name: "OvoshiHelp-0.2.0-win-x64.exe" }] },
-    { tag_name: "desktop-v0.2.0", prerelease: true },
-    { tag_name: "desktop-v0.2.0", draft: true },
-    {
-      tag_name: "desktop-v0.2.0",
-      assets: [{ name: "OvoshiHelp-0.2.0-mac-arm64.dmg" }],
-    },
-  ]) {
-    const { manager, calls } = fixture({
-      answers: [0],
-      settings: {
-        allowAutomaticUpdates: false,
-        fetch: async () => ({ ok: true, json: async () => release }),
-      },
-    });
-    assert.equal((await manager.checkForUpdates()).status, "error");
-    assert.deepEqual(calls, []);
-    manager.dispose();
-  }
+test("installer launch failure after backup restores runtime and retains current process", async () => {
+  const { manager, calls } = fixture({ answers: [0], settings: { prepareInstaller: async () => ({ install: async () => { throw new Error("Launch failed"); }, dispose: async () => calls.push("dispose") }) } });
+  assert.equal((await manager.checkForUpdates()).phase, "preparation");
+  assert.deepEqual(actions(calls), ["fetch", "begin", "download", "backup", "dispose", "cleanup", "recover"]);
 });
-
-test("concurrent checks share one workflow; dispose during preparation prevents install", async () => {
-  let releaseBackup;
-  let notifyBackup;
-  const backupStarted = new Promise((resolve) => {
-    notifyBackup = resolve;
-  });
-  const { manager, calls } = fixture({
-    answers: [0, 0],
-    settings: {
-      prepareUpdate: () => {
-        notifyBackup();
-        return new Promise((resolve) => {
-          releaseBackup = resolve;
-        });
-      },
-    },
-  });
-  const first = manager.checkForUpdates();
-  assert.equal(first, manager.checkForUpdates());
-  await backupStarted;
-  manager.dispose();
-  releaseBackup();
+test("partially failed UI hook is restored", async () => {
+  const { manager, calls } = fixture({ answers: [0], settings: { beginUpdate: async () => { throw new Error("Load failed"); } } });
+  await manager.checkForUpdates(); assert.deepEqual(actions(calls), ["fetch", "recover"]);
+});
+test("download can be cancelled with no backup/install or error popup", async () => {
+  let started;
+  const downloading = new Promise((resolve) => { started = resolve; });
+  const { manager, calls, dialogs } = fixture({ answers: [0], settings: { download: async ({ signal }) => {
+    started(); await new Promise((_, reject) => signal.addEventListener("abort", () => reject(signal.reason), { once: true }));
+  } } });
+  const task = manager.checkAtStartup(); await downloading;
+  assert.equal(manager.cancelDownload(), true);
+  assert.deepEqual(await task, { status: "cancelled" });
+  assert.deepEqual(actions(calls), ["fetch", "begin", "recover"]); assert.equal(dialogs.length, 1);
+});
+test("cancellation during staging disposes stage after finishing and never starts backup", async () => {
+  let started; let finish;
+  const staging = new Promise((resolve) => { started = resolve; });
+  const { manager, calls } = fixture({ answers: [0], settings: { prepareInstaller: () => { started(); return new Promise((resolve) => { finish = () => resolve({ install: () => calls.push("install"), dispose: async () => calls.push("dispose") }); }); } } });
+  const task = manager.checkForUpdates(); await staging; manager.cancelDownload(); finish();
+  assert.equal((await task).status, "cancelled");
+  assert.deepEqual(actions(calls), ["fetch", "begin", "download", "dispose", "cleanup", "recover"]);
+});
+test("concurrent startup/manual checks share workflow and cannot install twice", async () => {
+  const { manager, calls } = fixture({ answers: [0] });
+  const first = manager.checkAtStartup(); assert.equal(first, manager.checkForUpdates());
+  await first; assert.equal(actions(calls).filter((item) => item === "install").length, 1);
+});
+test("dispose during backup prevents installer and quit; ordinary quit never applies update", async () => {
+  let start; let finish;
+  const preparing = new Promise((resolve) => { start = resolve; });
+  const { manager, calls } = fixture({ answers: [0], settings: { prepareUpdate: () => { start(); return new Promise((resolve) => { finish = resolve; }); } } });
+  const first = manager.checkForUpdates(); await preparing;
+  assert.equal(manager.cancelDownload(), false); manager.dispose(); finish();
   assert.deepEqual(await first, { status: "disposed" });
-  assert.deepEqual(calls, ["check", "download"]);
+  assert.deepEqual(actions(calls), ["fetch", "begin", "download", "stage", "dispose", "cleanup"]);
+});
+test("Mac chooses ZIP for automatic replacement, exact architecture first then universal", async () => {
+  for (const name of ["fresh-supply-0.2.0-mac-arm64.zip", "fresh-supply-0.2.0-mac-universal.zip", "OvoshiHelp-0.2.0-mac-arm64.zip"]) {
+    const { manager, dialogs } = fixture({ settings: { platform: "darwin", arch: "arm64", fetch: async () => ({ ok: true, json: async () => release(name) }) } });
+    assert.equal((await manager.checkForUpdates()).status, "cancelled"); assert.deepEqual(dialogs[0].buttons, ["Обновить", "Позже"]);
+  }
+  assert.equal(selectAsset({ ...release("fresh-supply-0.2.0-mac-universal.zip"), assets: [release("fresh-supply-0.2.0-mac-universal.zip").assets[0], release("fresh-supply-0.2.0-mac-arm64.zip").assets[0]] }, "darwin", "arm64").name, "fresh-supply-0.2.0-mac-arm64.zip");
+});
+test("rejects draft/prerelease/unrelated/incompatible/unsigned metadata before download", async () => {
+  for (const metadata of [
+    { ...release(), draft: true }, { ...release(), prerelease: true }, { ...release(), tag_name: "v0.2.0" },
+    release("fresh-supply-0.2.0-mac-arm64.dmg"), { ...release(), assets: [{ name: release().assets[0].name, size: 1024 }] },
+    { ...release(), assets: [{ ...release().assets[0], size: -1 }] },
+  ]) {
+    const { manager, calls } = fixture({ answers: [0], settings: { fetch: async () => ({ ok: true, json: async () => metadata }) } });
+    assert.equal((await manager.checkForUpdates()).status, "error"); assert.deepEqual(calls, []);
+  }
+});
+test("development manual check opens trusted Releases only, never installs", async () => {
+  const { manager, calls } = fixture({ answers: [0], settings: { app: { isPackaged: false, getVersion: () => "0.1.0" } } });
+  assert.equal((await manager.checkForUpdates()).status, "download-page-opened");
+  assert.deepEqual(actions(calls), ["fetch", "external"]);
+  assert.equal(calls[1][1], "https://github.com/ozLPanda/fresh-supply/releases/tag/desktop-v0.2.0");
+});
+test("rejects untrusted release sources, credentials, queries, hash and HTTP", () => {
+  for (const releaseUrl of ["http://github.com/a/b/releases", "https://user:secret@github.com/a/b/releases", "https://evil.invalid/a/b/releases", "https://github.com/a/b/releases?secret=token", "https://github.com/a/b/releases#fragment"]) assert.throws(() => fixture({ settings: { releaseUrl } }), /HTTPS GitHub Releases/);
 });
 
-test("rejects non-GitHub sources and URL credentials", () => {
-  for (const releaseUrl of [
-    "http://github.com/a/b/releases",
-    "https://user:secret@github.com/a/b/releases",
-    "https://evil.invalid/a/b/releases",
-    "https://github.com/a/b/releases?secret=token",
-  ]) {
-    assert.throws(
-      () => fixture({ settings: { releaseUrl } }),
-      /HTTPS GitHub Releases/,
-    );
-  }
+test("normal quit cancels a queued check immediately; failed quit can check again", async () => {
+  const { manager, calls } = fixture();
+  const queued = manager.checkForUpdates();
+  manager.cancelCheck();
+  assert.deepEqual(await queued, { status: "cancelled" });
+  assert.deepEqual(calls, []);
+  assert.deepEqual(await manager.checkForUpdates(), { status: "cancelled" });
+  assert.deepEqual(actions(calls), ["fetch"]);
 });
