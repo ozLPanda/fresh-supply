@@ -258,6 +258,8 @@ test("Windows native helper waits for parent exit and passes literal NSIS argume
     if (parentStderr) t.diagnostic(`Dummy application stderr: ${parentStderr}`);
     const log = await fs.readFile(path.join(f.userData, "logs", "windows-update.log"), "utf8").catch(() => "No helper log was created.");
     t.diagnostic(`Windows updater helper log:\n${log}`);
+    const hostLog = await fs.readFile(path.join(f.userData, "logs", "windows-update-host.log"), "utf8").catch(() => "No PowerShell host log was created.");
+    t.diagnostic(`PowerShell host output:\n${hostLog}`);
     throw error;
   } finally {
     await prepared?.dispose();

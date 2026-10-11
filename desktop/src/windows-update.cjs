@@ -171,20 +171,23 @@ async function prepareWindowsUpdate({
       try {
         const script = await fs.readFile(path.join(__dirname, "windows-update-helper.ps1"), "utf8");
         if (disposed) throw updateFailure("Установка обновления отменена.");
-        if (disposed) throw updateFailure("Установка обновления отменена.");
         // Only static application code enters the command. Paths are JSON data read
         // via an environment variable, never interpolated into PowerShell source.
-        child = spawn(powershell, ["-NoLogo", "-NoProfile", "-NonInteractive", "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")], {
-          detached: true, windowsHide: true, stdio: "ignore", shell: false,
-          cwd: directory, env: { ...env, FRESH_SUPPLY_UPDATE_CONFIG: configPath },
-        });
-        child.on("error", (error) => {
-          terminalError = error;
-          terminalError.userMessage = "Не удалось запустить помощник обновления Windows. Приложение продолжит работу.";
-        });
-        child.on("exit", (code) => {
-          if (!committed) terminalError = updateFailure(`Помощник обновления завершился до установки (${code ?? "сигнал"}).`);
-        });
+        const hostLog = await fs.open(path.join(logDirectory, "windows-update-host.log"), "a", 0o600);
+        try {
+          if (disposed) throw updateFailure("Установка обновления отменена.");
+          child = spawn(powershell, ["-NoLogo", "-NoProfile", "-NonInteractive", "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")], {
+            detached: true, windowsHide: true, stdio: ["ignore", hostLog.fd, hostLog.fd], shell: false,
+            cwd: directory, env: { ...env, FRESH_SUPPLY_UPDATE_CONFIG: configPath },
+          });
+          child.on("error", (error) => {
+            terminalError = error;
+            terminalError.userMessage = "Не удалось запустить помощник обновления Windows. Приложение продолжит работу.";
+          });
+          child.on("exit", (code) => {
+            if (!committed) terminalError = updateFailure(`Помощник обновления завершился до установки (${code ?? "сигнал"}).`);
+          });
+        } finally { await hostLog.close(); }
         await waitSignal(readyPath);
         await atomicSignal(commitPath);
         await waitSignal(acceptedPath);
