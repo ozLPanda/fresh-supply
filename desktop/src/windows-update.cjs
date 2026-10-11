@@ -127,6 +127,7 @@ async function prepareWindowsUpdate({
   let committed = false;
   let disposed = false;
   let terminalError;
+  let cleanupPending;
   try {
     await fs.writeFile(configPath, JSON.stringify(config), { flag: "wx", mode: 0o600 });
   } catch (error) {
@@ -134,10 +135,17 @@ async function prepareWindowsUpdate({
     throw error;
   }
 
-  async function stopUncommitted() {
-    await fs.writeFile(cancelPath, "1", { mode: 0o600 }).catch(() => {});
-    if (child && !committed) child.kill();
-    if (!committed) await fs.rm(directory, { recursive: true, force: true });
+  function stopUncommitted() {
+    // dispose() and the rejected install promise can reach this together. One
+    // cleanup owns the cancellation marker and directory, avoiding Windows locks.
+    if (!cleanupPending) cleanupPending = (async () => {
+      await fs.writeFile(cancelPath, "1", { mode: 0o600 }).catch(() => {});
+      if (child && !committed) child.kill();
+      if (!committed) await fs.rm(directory, {
+        recursive: true, force: true, maxRetries: 8, retryDelay: 100,
+      });
+    })();
+    return cleanupPending;
   }
 
   async function waitSignal(file) {
@@ -162,6 +170,7 @@ async function prepareWindowsUpdate({
       if (disposed) throw updateFailure("Установка обновления отменена.");
       try {
         const script = await fs.readFile(path.join(__dirname, "windows-update-helper.ps1"), "utf8");
+        if (disposed) throw updateFailure("Установка обновления отменена.");
         if (disposed) throw updateFailure("Установка обновления отменена.");
         // Only static application code enters the command. Paths are JSON data read
         // via an environment variable, never interpolated into PowerShell source.

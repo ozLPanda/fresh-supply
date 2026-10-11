@@ -139,6 +139,7 @@ test("Windows cancellation while waiting for helper cancels and removes staged f
   await rejection;
   assert.equal(await present(path.dirname(config.readyPath)), false);
   assert.equal(fake.calls.includes("kill"), true);
+  assert.equal(fake.calls.filter((call) => call === "kill").length, 1);
   assert.equal(fake.calls.includes("unref"), false);
 });
 
@@ -206,7 +207,7 @@ test("Windows native helper waits for parent exit and passes literal NSIS argume
     '$parameters.GenerateExecutable = $true',
     '$parameters.GenerateInMemory = $false',
     '$parameters.OutputAssembly = $env:FRESH_SUPPLY_TEST_EXE',
-    'Add-Type -TypeDefinition $env:FRESH_SUPPLY_TEST_SOURCE -CompilerParameters $parameters -OutputAssembly $env:FRESH_SUPPLY_TEST_EXE -OutputType ConsoleApplication -ErrorAction Stop',
+    'Add-Type -TypeDefinition $env:FRESH_SUPPLY_TEST_SOURCE -CompilerParameters $parameters -ErrorAction Stop',
   ].join('; ');
   await fs.rm(f.archivePath);
   await promisify(execFile)(powershell, ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", compile], {
