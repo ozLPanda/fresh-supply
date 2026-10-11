@@ -4,6 +4,7 @@ const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const { createHash } = require("node:crypto");
+const { spawn } = require("node:child_process");
 const { prepareMacUpdate, confirmMacUpdateStarted, extractBundle, validateBundle, bundleFromExecutable } = require("../src/mac-update.cjs");
 
 function crc32(data) {
@@ -153,13 +154,24 @@ async function waitFor(check) {
   }
   throw new Error("Timed out waiting for helper");
 }
+async function runningApplication(t) {
+  const env = { ...process.env };
+  delete env.NODE_TEST_CONTEXT;
+  const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { env, stdio: "ignore" });
+  t.after(() => child.kill());
+  await new Promise((resolve, reject) => { child.once("spawn", resolve); child.once("error", reject); });
+  return child;
+}
 test("native helper replaces disposable bundle and handles quoted Unicode paths without shell evaluation", { skip: process.platform !== "darwin" }, async (t) => {
   const { root, archive, app, target, sha256 } = await nativeFixture(t);
   const launcher = path.join(root, "fake-open.sh");
   await fs.writeFile(launcher, '#!/bin/sh\nprintf "%s\\n" "$2" > "$2/Contents/launched"\n', { mode: 0o755 });
-  const prepared = await prepareMacUpdate({ app, archivePath: archive, sha256, version: "0.2.0", pid: 2147483647, openCommand: launcher });
+  const application = await runningApplication(t);
+  const prepared = await prepareMacUpdate({ app, archivePath: archive, sha256, version: "0.2.0", pid: application.pid, openCommand: launcher });
   assert.equal(await fs.readFile(path.join(target, "Contents/marker"), "utf8"), "old");
   await prepared.install();
+  assert.equal(await fs.readFile(path.join(target, "Contents/marker"), "utf8"), "old");
+  application.kill();
   await waitFor(async () => fs.access(path.join(target, "Contents/launched")).then(() => true, () => false));
   assert.equal(await fs.readFile(path.join(target, "Contents/marker"), "utf8"), "new");
   assert.equal((await fs.readFile(path.join(target, "Contents/launched"), "utf8")).trim(), target);
@@ -171,8 +183,11 @@ test("native helper restores prior bundle when OS launcher rejects new applicati
   const { root, archive, app, target, sha256 } = await nativeFixture(t);
   const launcher = path.join(root, "fake-open.sh");
   await fs.writeFile(launcher, '#!/bin/sh\nif [ "$(cat "$2/Contents/marker")" = new ]; then exit 1; fi\nprintf restored > "$2/Contents/launched"\n', { mode: 0o755 });
-  const prepared = await prepareMacUpdate({ app, archivePath: archive, sha256, version: "0.2.0", pid: 2147483647, openCommand: launcher });
+  const application = await runningApplication(t);
+  const prepared = await prepareMacUpdate({ app, archivePath: archive, sha256, version: "0.2.0", pid: application.pid, openCommand: launcher });
   await prepared.install();
+  assert.equal(await fs.readFile(path.join(target, "Contents/marker"), "utf8"), "old");
+  application.kill();
   await waitFor(async () => fs.access(path.join(target, "Contents/launched")).then(() => true, () => false));
   assert.equal(await fs.readFile(path.join(target, "Contents/marker"), "utf8"), "old");
 });
@@ -227,8 +242,10 @@ test("keeps previous bundle until healthy runtime confirmation and cleans only p
   await fs.writeFile(userRecord, "untouched");
   const launcher = path.join(root, "fake-open.sh");
   await fs.writeFile(launcher, '#!/bin/sh\nexit 0\n', { mode: 0o755 });
-  const prepared = await prepareMacUpdate({ app, archivePath: downloadedArchive, sha256, version: "0.2.0", pid: 2147483647, openCommand: launcher, startupWaitSeconds: 1 });
+  const application = await runningApplication(t);
+  const prepared = await prepareMacUpdate({ app, archivePath: downloadedArchive, sha256, version: "0.2.0", pid: application.pid, openCommand: launcher, startupWaitSeconds: 1 });
   await prepared.install();
+  application.kill();
   await waitFor(async () => fs.readFile(path.join(app.getPath("userData"), "logs/mac-update.log"), "utf8").then((log) => log.includes("readiness not confirmed"), () => false));
   const journal = JSON.parse(await fs.readFile(path.join(updates, "mac-update-pending.json"), "utf8"));
   assert.equal(await fs.readFile(path.join(journal.task, "previous.app/Contents/marker"), "utf8"), "old");
