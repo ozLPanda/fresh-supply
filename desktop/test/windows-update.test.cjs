@@ -21,7 +21,7 @@ function pe(machine = 0x14c) {
 
 async function fixture(t, options = {}) {
   const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "fresh-supply-windows-update-")));
-  t.after(async () => { await fs.rm(root, { recursive: true, force: true }); });
+  t.after(async () => { await fs.rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
   const userData = path.join(root, "Ovoshi Help");
   const installDirectory = path.join(root, "fresh supply;$ harmless ' characters");
   const downloadDirectory = path.join(userData, "updates", "download-abc123");
@@ -216,20 +216,52 @@ test("Windows native helper waits for parent exit and passes literal NSIS argume
   await fs.copyFile(process.execPath, f.execPath);
   f.settings.sha256 = crypto.createHash("sha256").update(await fs.readFile(f.archivePath)).digest("hex");
   f.settings.env = { ...process.env, FRESH_SUPPLY_TEST_COMMAND: recordPath };
-  const parent = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { windowsHide: true, stdio: "ignore" });
+  const parentReadyPath = path.join(f.root, "parent-ready");
+  const parentEnv = { ...process.env, FRESH_SUPPLY_TEST_PARENT_READY: parentReadyPath };
+  // The dummy application is an ordinary Node process, not another test worker.
+  delete parentEnv.NODE_TEST_CONTEXT;
+  const parent = spawn(process.execPath, ["-e", 'require("node:fs").writeFileSync(process.env.FRESH_SUPPLY_TEST_PARENT_READY, "ready"); setInterval(() => {}, 1000)'], {
+    env: parentEnv, windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
+  });
+  let parentError;
+  let parentStdout = "";
+  let parentStderr = "";
+  parent.on("error", (error) => { parentError = error; });
+  parent.stdout.on("data", (bytes) => { parentStdout = (parentStdout + bytes.toString()).slice(-4000); });
+  parent.stderr.on("data", (bytes) => { parentStderr = (parentStderr + bytes.toString()).slice(-4000); });
   t.after(() => { parent.kill(); });
   f.settings.parentPid = parent.pid;
-  const prepared = await prepareWindowsUpdate(f.settings);
-  await prepared.install();
-  assert.equal(await present(recordPath), false);
-  await delay(100);
-  assert.equal(await present(recordPath), false);
-  parent.kill();
-  await waitFor(() => present(recordPath), 10_000);
-  const command = await fs.readFile(recordPath, "utf8");
-  assert.equal(command.endsWith(`/S --updated --force-run /D=${f.installDirectory}`), true);
-  await waitFor(async () => !(await present(f.downloadDirectory)), 10_000);
-  await prepared.dispose();
+  let prepared;
+  try {
+    await waitFor(async () => {
+      if (parentError) throw parentError;
+      if (parent.exitCode !== null || parent.signalCode !== null) throw new Error("The dummy application exited before becoming ready.");
+      return present(parentReadyPath);
+    }, 10_000);
+    await delay(100);
+    assert.equal(parent.exitCode, null, "dummy application must be alive before staging");
+    assert.equal(parent.signalCode, null);
+    prepared = await prepareWindowsUpdate(f.settings);
+    assert.equal(parent.exitCode, null, "dummy application must be alive before helper handoff");
+    await prepared.install();
+    assert.equal(await present(recordPath), false);
+    await delay(100);
+    assert.equal(await present(recordPath), false);
+    parent.kill();
+    await waitFor(() => present(recordPath), 10_000);
+    const command = await fs.readFile(recordPath, "utf8");
+    assert.equal(command.endsWith(`/S --updated --force-run /D=${f.installDirectory}`), true);
+    await waitFor(async () => !(await present(f.downloadDirectory)), 10_000);
+  } catch (error) {
+    t.diagnostic(`Dummy application: pid=${parent.pid}, exitCode=${parent.exitCode}, signalCode=${parent.signalCode}, killed=${parent.killed}, error=${parentError?.message || "none"}`);
+    if (parentStdout) t.diagnostic(`Dummy application stdout: ${parentStdout}`);
+    if (parentStderr) t.diagnostic(`Dummy application stderr: ${parentStderr}`);
+    const log = await fs.readFile(path.join(f.userData, "logs", "windows-update.log"), "utf8").catch(() => "No helper log was created.");
+    t.diagnostic(`Windows updater helper log:\n${log}`);
+    throw error;
+  } finally {
+    await prepared?.dispose();
+  }
 });
 
 test("Windows native helper PowerShell source parses without syntax errors", { skip: process.platform !== "win32" }, async () => {

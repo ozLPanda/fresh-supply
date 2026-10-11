@@ -20,6 +20,7 @@ function Write-UpdateLog([string] $Message) {
 
 try {
     $configuration = [System.IO.File]::ReadAllText($env:FRESH_SUPPLY_UPDATE_CONFIG) | ConvertFrom-Json
+    Write-UpdateLog ('Helper started; helper PID ' + $PID + ', application PID ' + $configuration.parentPid)
     if ($configuration.schema -ne 1 -or $configuration.parentPid -le 0 -or $configuration.parentPid -eq $PID) {
         throw 'Invalid updater configuration.'
     }
@@ -35,23 +36,43 @@ try {
     $parent = [System.Diagnostics.Process]::GetProcessById([int] $configuration.parentPid)
     # Opening the process handle now also prevents confusing a subsequently reused PID.
     $null = $parent.Handle
+    Write-UpdateLog ('Application handle opened; exited=' + $parent.HasExited)
     Write-UpdateSignal $configuration.readyPath
+    Write-UpdateLog 'Helper ready; waiting for application confirmation.'
     $deadline = [DateTime]::UtcNow.AddSeconds(120)
     while (-not [System.IO.File]::Exists($configuration.commitPath)) {
-        if ([System.IO.File]::Exists($configuration.cancelPath) -or $parent.HasExited) { exit 0 }
+        if ([System.IO.File]::Exists($configuration.cancelPath)) {
+            Write-UpdateLog 'Cancelled before application confirmation.'
+            exit 0
+        }
+        if ($parent.HasExited) {
+            Write-UpdateLog 'Application exited before confirmation; no installation attempted.'
+            exit 0
+        }
         if ([DateTime]::UtcNow -gt $deadline) { throw 'The application did not confirm installation.' }
         Start-Sleep -Milliseconds 100
     }
-    if ([System.IO.File]::Exists($configuration.cancelPath)) { exit 0 }
+    if ([System.IO.File]::Exists($configuration.cancelPath)) {
+        Write-UpdateLog 'Cancelled after confirmation, before accepting handoff.'
+        exit 0
+    }
     Write-UpdateSignal $configuration.acceptedPath
+    Write-UpdateLog 'Installation handoff accepted; waiting for application exit.'
     $deadline = [DateTime]::UtcNow.AddMilliseconds([int] $configuration.parentExitTimeoutMs)
     while (-not $parent.HasExited) {
-        if ([System.IO.File]::Exists($configuration.cancelPath)) { exit 0 }
+        if ([System.IO.File]::Exists($configuration.cancelPath)) {
+            Write-UpdateLog 'Cancelled while waiting for application exit.'
+            exit 0
+        }
         if ([DateTime]::UtcNow -gt $deadline) { throw 'The application did not exit; no installation was attempted.' }
         Start-Sleep -Milliseconds 100
     }
     $parentExited = $true
-    if ([System.IO.File]::Exists($configuration.cancelPath)) { exit 0 }
+    Write-UpdateLog 'Application exited; verifying update before installation.'
+    if ([System.IO.File]::Exists($configuration.cancelPath)) {
+        Write-UpdateLog 'Cancelled after application exit.'
+        exit 0
+    }
     $actualHash = (Get-FileHash -LiteralPath $configuration.installer -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($actualHash -ne $configuration.sha256) { throw 'The update checksum changed; no installation was attempted.' }
     $start = New-Object System.Diagnostics.ProcessStartInfo
