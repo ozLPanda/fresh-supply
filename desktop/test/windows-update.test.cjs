@@ -193,6 +193,54 @@ test("Windows reports helper validation failure without committing installation"
   await prepared.dispose();
 });
 
+test("Windows native PowerShell host diagnostic matrix", { skip: process.platform !== "win32", timeout: 200_000 }, async (t) => {
+  const directory = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "fresh-supply-powershell-probe-")));
+  t.after(() => fs.rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  const powershell = path.win32.join(process.env.SystemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
+  const actualHelper = await fs.readFile(path.join(__dirname, "../src/windows-update-helper.ps1"), "utf8");
+  const tiny = "[System.IO.File]::WriteAllText($env:FRESH_SUPPLY_TEST_PROBE, 'ready'); exit 0";
+  // Keep the same UTF-16/base64 command size as the real helper, with harmless
+  // comments instead of executable application update logic.
+  const large = tiny + "\r\n#" + "x".repeat(Math.max(0, actualHelper.length - tiny.length - 3));
+  let number = 0;
+  const leadingComment = "#" + "x".repeat(Math.max(0, actualHelper.length - tiny.length - 3)) + "\r\n" + tiny;
+  const helperBody = tiny + "\r\n" + actualHelper; // exit precedes unreachable helper logic
+  for (const [size, script] of [["tiny", tiny], ["helper-size", large], ["leading-comment", leadingComment], ["helper-body", helperBody]]) {
+    for (const detached of [false, true]) {
+      for (const transport of ["pipe", "file"]) {
+        const marker = path.join(directory, `marker-${number}`);
+        const hostOutput = path.join(directory, `host-${number++}.log`);
+        const encoded = Buffer.from(script, "utf16le").toString("base64");
+        const file = transport === "file" ? await fs.open(hostOutput, "w", 0o600) : null;
+        let stdout = "";
+        let stderr = "";
+        let spawnError;
+        let timedOut = false;
+        const child = spawn(powershell, ["-NoLogo", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded], {
+          detached, windowsHide: true, shell: false, cwd: directory,
+          stdio: file ? ["ignore", file.fd, file.fd] : ["ignore", "pipe", "pipe"],
+          env: { ...process.env, FRESH_SUPPLY_TEST_PROBE: marker },
+        });
+        child.stdout?.on("data", (bytes) => { stdout = (stdout + bytes.toString()).slice(-4000); });
+        child.stderr?.on("data", (bytes) => { stderr = (stderr + bytes.toString()).slice(-4000); });
+        child.once("error", (error) => { spawnError = error.message; });
+        const completed = new Promise((resolve) => child.once("close", (code, signal) => resolve({ code, signal })));
+        const timeout = setTimeout(() => { timedOut = true; child.kill(); }, 10_000);
+        // Register handlers before awaiting close of our parent copy of the FD.
+        await file?.close();
+        const result = await completed;
+        clearTimeout(timeout);
+        if (transport === "file") stdout = await fs.readFile(hostOutput, "utf8").catch(() => "");
+        t.diagnostic(JSON.stringify({
+          probe: "PowerShell encoded host", size, detached, transport,
+          encodedLength: encoded.length, marker: await present(marker), ...result,
+          timedOut, spawnError, stdout, stderr,
+        }));
+      }
+    }
+  }
+});
+
 test("Windows native helper waits for parent exit and passes literal NSIS arguments", { skip: process.platform !== "win32", timeout: 60_000 }, async (t) => {
   const f = await fixture(t, { env: process.env, timeoutMs: 30_000 });
   const powershell = path.win32.join(process.env.SystemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
