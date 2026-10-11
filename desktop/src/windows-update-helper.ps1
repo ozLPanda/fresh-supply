@@ -73,7 +73,15 @@ try {
         Write-UpdateLog 'Cancelled after application exit.'
         exit 0
     }
-    $actualHash = (Get-FileHash -LiteralPath $configuration.installer -Algorithm SHA256).Hash.ToLowerInvariant()
+    # Avoid module auto-loading: PSModulePath may have been inherited from PS7.
+    $hashAlgorithm = [System.Security.Cryptography.SHA256]::Create()
+    $hashStream = [System.IO.File]::OpenRead($configuration.installer)
+    try {
+        $actualHash = [System.BitConverter]::ToString($hashAlgorithm.ComputeHash($hashStream)).Replace('-', '').ToLowerInvariant()
+    } finally {
+        $hashStream.Dispose()
+        $hashAlgorithm.Dispose()
+    }
     if ($actualHash -ne $configuration.sha256) { throw 'The update checksum changed; no installation was attempted.' }
     $start = New-Object System.Diagnostics.ProcessStartInfo
     $start.FileName = $configuration.installer
