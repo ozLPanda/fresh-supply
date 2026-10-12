@@ -2,7 +2,6 @@ package kz.company.shop.orders.service;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
@@ -15,6 +14,7 @@ import java.util.Locale;
 import java.util.Map;
 import kz.company.shop.carts.dto.TemporaryInvoiceDto;
 import kz.company.shop.carts.dto.TemporaryInvoiceItemDto;
+import kz.company.shop.common.pdf.PdfFonts;
 import kz.company.shop.orders.dto.OrderDto;
 import kz.company.shop.orders.dto.OrderItemDto;
 import kz.company.shop.orders.dto.OrderReturnSummaryDto;
@@ -23,7 +23,6 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
-import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.springframework.stereotype.Service;
 
 /** Creates a self-contained, printable delivery note for an order. */
@@ -41,17 +40,6 @@ public class OrderInvoicePdfService {
     private static final float TABLE_WIDTH = PAGE_WIDTH - 2 * MARGIN;
     // Keep numeric fields compact and reserve the widest column for product names.
     private static final float[] COLUMN_WIDTHS = {24, 301, 38, 26, 58, 68};
-    private static final List<FontFiles> FONT_FILES =
-            List.of(
-                    new FontFiles(
-                            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
-                    new FontFiles(
-                            "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
-                            "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf"),
-                    new FontFiles(
-                            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-                            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"));
 
     public byte[] generate(OrderDto order) {
         return generate(order, true);
@@ -1096,15 +1084,8 @@ public class OrderInvoicePdfService {
     }
 
     private InvoiceFonts loadUnicodeFonts(PDDocument document) throws IOException {
-        for (FontFiles files : FONT_FILES) {
-            File regular = new File(files.regular());
-            File bold = new File(files.bold());
-            if (regular.isFile() && bold.isFile()) {
-                return new InvoiceFonts(
-                        PDType0Font.load(document, regular), PDType0Font.load(document, bold));
-            }
-        }
-        throw new IOException("Для накладной требуется шрифт с поддержкой кириллицы");
+        PdfFonts.Fonts fonts = PdfFonts.load(document);
+        return new InvoiceFonts(fonts.regular(), fonts.bold());
     }
 
     private void text(
@@ -1163,8 +1144,6 @@ public class OrderInvoicePdfService {
             content.close();
         }
     }
-
-    private record FontFiles(String regular, String bold) {}
 
     private record InvoiceFonts(PDFont regular, PDFont bold) {}
 

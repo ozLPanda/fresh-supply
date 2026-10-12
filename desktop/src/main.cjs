@@ -14,7 +14,10 @@ const { LocalRuntime } = require("./runtime.cjs");
 const { createUpdateManager } = require("./updates.cjs");
 const { isLocalUrl, allowPopup } = require("./navigation.cjs");
 const { createDataImporter } = require("./data-import.cjs");
-const { prepareMacUpdate, confirmMacUpdateStarted } = require("./mac-update.cjs");
+const {
+  prepareMacUpdate,
+  confirmMacUpdateStarted,
+} = require("./mac-update.cjs");
 const { prepareWindowsUpdate } = require("./windows-update.cjs");
 
 app.setName("fresh-supply");
@@ -33,6 +36,8 @@ let busy = false;
 let setupPending;
 let dataImporter;
 let importFormActive = false;
+let importMode = "initial";
+let importReturnUrl;
 let importInProgress = false;
 let quitWhileImportMessage = false;
 let updateInProgress = false;
@@ -91,7 +96,10 @@ else {
 
 function status(message) {
   if (window && !window.isDestroyed())
-    window.webContents.send("desktop:status", { message });
+    window.webContents.send("desktop:status", {
+      message,
+      ...(importInProgress ? { dataTransfer: true, importMode } : {}),
+    });
 }
 
 function showImportWait() {
@@ -262,11 +270,12 @@ async function initialize() {
     dialog,
     shell,
     prepareUpdate,
-    prepareInstaller: process.platform === "darwin"
-      ? (options) => prepareMacUpdate({ app, ...options })
-      : process.platform === "win32"
-        ? (options) => prepareWindowsUpdate({ app, ...options })
-        : undefined,
+    prepareInstaller:
+      process.platform === "darwin"
+        ? (options) => prepareMacUpdate({ app, ...options })
+        : process.platform === "win32"
+          ? (options) => prepareWindowsUpdate({ app, ...options })
+          : undefined,
     beginUpdate,
     endUpdate,
     onProgress: updateProgress,
@@ -294,7 +303,14 @@ function checkStartupUpdates() {
 }
 
 async function beginUpdate() {
-  if (busy || !runtime.started || importFormActive || importInProgress || !window || window.isDestroyed())
+  if (
+    busy ||
+    !runtime.started ||
+    importFormActive ||
+    importInProgress ||
+    !window ||
+    window.isDestroyed()
+  )
     throw new Error("Приложение ещё не готово к обновлению");
   updateReturnUrl = window.webContents.getURL();
   updateInProgress = true;
@@ -307,7 +323,9 @@ async function beginUpdate() {
 function updateProgress({ phase, percent }) {
   if (!window || window.isDestroyed()) return;
   const downloading = phase === "downloading";
-  const progress = Number.isFinite(percent) ? Math.max(0, Math.min(100, percent)) : null;
+  const progress = Number.isFinite(percent)
+    ? Math.max(0, Math.min(100, percent))
+    : null;
   const key = `${phase}:${progress === null ? "" : Math.floor(progress)}`;
   if (key === updateProgressKey) return;
   updateProgressKey = key;
@@ -318,7 +336,8 @@ function updateProgress({ phase, percent }) {
     percent: downloading ? progress : null,
     message: downloading
       ? `Скачиваем обновление${progress === null ? "…" : `: ${Math.floor(progress)}%`}`
-      : phase === "staging" ? "Проверяем и готовим установку…"
+      : phase === "staging"
+        ? "Проверяем и готовим установку…"
         : "Создаём резервную копию перед установкой…",
   });
 }
@@ -328,7 +347,9 @@ async function endUpdate() {
   try {
     if (quitting || !window || window.isDestroyed()) return;
     if (!runtime.started) await runtime.start();
-    await window.loadURL(isLocal(updateReturnUrl) ? updateReturnUrl : `${runtime.url}/admin/login`);
+    await window.loadURL(
+      isLocal(updateReturnUrl) ? updateReturnUrl : `${runtime.url}/admin/login`,
+    );
   } catch (error) {
     updateInProgress = false;
     await showFailure(error);
@@ -413,29 +434,64 @@ function trustedStartup(event) {
   );
 }
 
-async function openDataImport() {
+function showImportForm(error) {
+  window.webContents.send("desktop:status", {
+    import: true,
+    importMode,
+    ...(error ? { error } : {}),
+  });
+}
+
+async function openDataImport(mode = "initial") {
   if (busy || !runtime.started) return;
   busy = true;
   installMenu();
   try {
-    const eligibility = await dataImporter.inspectEligibility();
+    const eligibility =
+      mode === "initial"
+        ? await dataImporter.inspectEligibility()
+        : { eligible: true };
     if (!eligibility.eligible) {
       await dialog.showMessageBox(window, {
         type: "info",
         title: "Перенос данных",
         message: "Загрузка доступна только в пустую локальную базу.",
         detail:
-          eligibility.reason ||
-          "В базе уже есть данные или настройки изменены.",
+          (eligibility.reason ||
+            "В базе уже есть данные или настройки изменены.") +
+          "\n\nДля замены локальной копии используйте «Файл → Обновить данные с сайта». Перед заменой сохраните изменения в открытых формах.",
         buttons: ["OK"],
       });
       busy = false;
       installMenu();
       return;
     }
+    if (mode === "replace") {
+      const choice = await dialog.showMessageBox(window, {
+        type: "warning",
+        title: "Обновить данные с сайта",
+        message: "Перед обновлением сохраните изменения в открытых формах.",
+        detail:
+          "Программа откроет форму загрузки с сайта. Несохранённый ввод в текущем окне не попадёт в резервную копию.\n\n" +
+          "После скачивания и проверки копии отдельно попросим подтвердить замену локальных данных.",
+        buttons: ["Продолжить", "Отмена"],
+        defaultId: 1,
+        cancelId: 1,
+        noLink: true,
+      });
+      if (choice.response !== 0) {
+        busy = false;
+        installMenu();
+        return;
+      }
+    }
+    importReturnUrl = isLocal(window.webContents.getURL())
+      ? window.webContents.getURL()
+      : `${runtime.url}/admin/login`;
+    importMode = mode;
     await window.loadFile(startupFile);
     importFormActive = true;
-    window.webContents.send("desktop:status", { import: true });
+    showImportForm();
   } catch {
     busy = false;
     installMenu();
@@ -467,23 +523,56 @@ ipcMain.handle("desktop:import", async (event, payload) => {
   busy = true;
   installMenu();
   try {
-    await dataImporter.importFromSource({
+    const result = await dataImporter.importFromSource({
       url: payload.url,
       phone: payload.phone,
       password: payload.password,
       onProgress: status,
+      mode: importMode,
+      ...(importMode === "replace"
+        ? {
+            confirmReplacement: async ({ sourceUrl, rows, files }) => {
+              const choice = await dialog.showMessageBox(window, {
+                type: "warning",
+                title: "Обновить данные с сайта",
+                message: "Заменить локальные данные свежей копией сайта?",
+                detail:
+                  `Источник: ${sourceUrl}\nЗаписей: ${rows}. Файлов: ${files}.\n\n` +
+                  "Все данные и файлы локальной базы будут заменены. Изменения, сделанные только в приложении, останутся в резервной копии.\n\n" +
+                  "Перед заменой автоматически сохраним текущую базу и файлы. При ошибке восстановим их. Данные сайта не изменятся.",
+                buttons: ["Заменить данные", "Отмена"],
+                defaultId: 1,
+                cancelId: 1,
+                noLink: true,
+              });
+              return choice.response === 0;
+            },
+          }
+        : {}),
     });
     payload.password = "";
+    if (result.cancelled) {
+      showImportForm();
+      return { cancelled: true };
+    }
+    const replaced = importMode === "replace";
     importFormActive = false;
+    importMode = "initial";
+    importReturnUrl = undefined;
     await session.defaultSession.clearStorageData({
       storages: ["cookies", "serviceworkers", "cachestorage"],
     });
     await dialog.showMessageBox(window, {
       type: "info",
       title: "Перенос данных",
-      message: "Данные сайта загружены.",
+      message: replaced
+        ? "Локальные данные обновлены из сайта."
+        : "Данные сайта загружены.",
       detail:
-        "Теперь войдите с телефоном и паролем своей учётной записи на сайте. Дальнейшие изменения сохраняются в локальной копии.",
+        "Теперь войдите с телефоном и паролем своей учётной записи на сайте. Дальнейшие изменения сохраняются в локальной копии." +
+        (replaced
+          ? `\n\nРезервная копия прежних данных: ${result.backup}`
+          : ""),
       buttons: ["OK"],
     });
     await window.loadURL(`${runtime.url}/admin/login`);
@@ -491,7 +580,7 @@ ipcMain.handle("desktop:import", async (event, payload) => {
     return { ok: true };
   } catch (error) {
     payload.password = "";
-    window.webContents.send("desktop:status", { import: true });
+    showImportForm();
     return {
       error:
         error.userMessage ||
@@ -509,7 +598,13 @@ ipcMain.handle("desktop:import-cancel", async (event) => {
     return { error: "Дождитесь завершения переноса." };
   importFormActive = false;
   busy = false;
-  await window.loadURL(`${runtime.url}/admin/login`);
+  const returnUrl =
+    importMode === "replace" && isLocal(importReturnUrl)
+      ? importReturnUrl
+      : `${runtime.url}/admin/login`;
+  importMode = "initial";
+  importReturnUrl = undefined;
+  await window.loadURL(returnUrl);
   installMenu();
   checkStartupUpdates();
   return { ok: true };
@@ -626,6 +721,11 @@ function installMenu() {
           label: "Загрузить данные с сайта…",
           enabled: ready,
           click: () => void openDataImport(),
+        },
+        {
+          label: "Обновить данные с сайта…",
+          enabled: ready,
+          click: () => void openDataImport("replace"),
         },
         {
           label: "Создать резервную копию…",

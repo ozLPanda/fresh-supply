@@ -787,12 +787,7 @@ public class ProductService {
 
     private Expression<String> normalizedSearchExpression(
             CriteriaBuilder cb, Expression<String> value) {
-        return cb.function(
-                "translate",
-                String.class,
-                cb.lower(value),
-                cb.literal(ProductSearchTextNormalizer.CYRILLIC_HOMOGLYPHS),
-                cb.literal(ProductSearchTextNormalizer.LATIN_HOMOGLYPHS));
+        return ProductSearchTextNormalizer.normalizedExpression(cb, value);
     }
 
     private List<String> searchVariants(String value) {

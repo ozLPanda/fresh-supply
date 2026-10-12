@@ -2,7 +2,6 @@ package kz.company.shop.warehouse.service;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
@@ -10,6 +9,7 @@ import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import kz.company.shop.common.pdf.PdfFonts;
 import kz.company.shop.products.service.ProductSearchTextNormalizer;
 import kz.company.shop.warehouse.dto.WarehouseDto;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -17,7 +17,6 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
-import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.springframework.stereotype.Service;
 
 /** Printable stock balances, including a blank column for manual inventory counts. */
@@ -30,17 +29,6 @@ public class WarehouseBalancesPdfService {
     private static final float FONT_SIZE = 8.5f;
     private static final float LINE_HEIGHT = 11;
     private static final float PADDING = 5;
-    private static final List<FontFiles> FONT_FILES =
-            List.of(
-                    new FontFiles(
-                            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
-                    new FontFiles(
-                            "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
-                            "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf"),
-                    new FontFiles(
-                            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-                            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"));
 
     private final WarehouseService warehouseService;
 
@@ -242,14 +230,8 @@ public class WarehouseBalancesPdfService {
     }
 
     private Fonts loadFonts(PDDocument document) throws IOException {
-        for (FontFiles files : FONT_FILES) {
-            File regular = new File(files.regular());
-            File bold = new File(files.bold());
-            if (regular.isFile() && bold.isFile()) {
-                return new Fonts(PDType0Font.load(document, regular), PDType0Font.load(document, bold));
-            }
-        }
-        throw new IOException("Для PDF требуется шрифт с поддержкой кириллицы");
+        PdfFonts.Fonts fonts = PdfFonts.load(document);
+        return new Fonts(fonts.regular(), fonts.bold());
     }
 
     private String quantity(BigDecimal value) {
@@ -335,7 +317,6 @@ public class WarehouseBalancesPdfService {
 
     private record Fonts(PDFont regular, PDFont bold) {}
 
-    private record FontFiles(String regular, String bold) {}
 
     private enum Alignment {
         LEFT,

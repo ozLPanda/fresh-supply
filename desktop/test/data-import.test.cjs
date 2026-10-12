@@ -544,7 +544,9 @@ function fakeDatabaseRuntime(dir) {
     items: ["id", "name"],
     users: ["id", "phone", "active", "deleted_at", "password_hash"],
   };
-  let rollback;
+  let rollback,
+    backupCount = 0;
+  const events = [];
   const clientFactory = () => ({
     connect: async () => {},
     end: async () => {},
@@ -595,10 +597,12 @@ function fakeDatabaseRuntime(dir) {
       }
       if (q === "BEGIN") rollback = data;
       if (q.startsWith("TRUNCATE")) {
+        events.push("truncate");
         for (const name of Object.keys(data)) data[name] = [];
         await fs.writeFile(database, JSON.stringify(data));
       }
       if (q.startsWith("INSERT")) {
+        if (clientFactory.failInsert) throw Error("injected restore failure");
         const name = q.match(/"public"\."(\w+)"/)[1],
           length = columns[name].length;
         for (let i = 0; i < values.length; i += length)
@@ -618,20 +622,26 @@ function fakeDatabaseRuntime(dir) {
     config: {},
     started: true,
     pauseBackend: async () => {
+      events.push("pause");
       runtime.started = false;
     },
     stop: async () => {
       runtime.started = false;
     },
     resumeDatabase: async () => {},
-    backup: async () => {
+    backup: async (reason = "manual") => {
+      events.push(`backup:${reason}`);
       await runtime.stop();
-      const destination = path.join(runtime.backupsDir, "before-import");
+      const destination = path.join(
+        runtime.backupsDir,
+        `${++backupCount}-${reason}`,
+      );
       await fs.mkdir(destination, { recursive: true });
       await fs.cp(dataDir, path.join(destination, "data"), { recursive: true });
       return destination;
     },
     restoreBackup: async (source) => {
+      events.push("restore-backup");
       await fs.rm(dataDir, { recursive: true, force: true });
       await fs.cp(path.join(source, "data"), dataDir, { recursive: true });
     },
@@ -645,9 +655,9 @@ function fakeDatabaseRuntime(dir) {
       return "http://127.0.0.1:1";
     },
   };
-  return { runtime, clientFactory, database, columns };
+  return { runtime, clientFactory, database, columns, events };
 }
-async function setupFakeImport(dir) {
+async function setupFakeImport(dir, { mutateFixture, corruptArchive } = {}) {
   const fake = fakeDatabaseRuntime(dir);
   await fs.mkdir(path.join(fake.runtime.dataDir, "files"), { recursive: true });
   await fs.writeFile(
@@ -677,8 +687,9 @@ async function setupFakeImport(dir) {
     sha256: hash(userRows),
   });
   f.files.push({ name: "tables/1.jsonl", data: userRows });
+  mutateFixture?.(f);
   f.files[0].data = JSON.stringify(f.manifest);
-  const bytes = zip(f.files),
+  const bytes = corruptArchive ? Buffer.from("not a zip") : zip(f.files),
     calls = [];
   const fetchImpl = async (u, o) => {
     calls.push(u);
@@ -857,4 +868,371 @@ test("native object MIME header must be valid Java modified UTF even with correc
       stageArchive(path.join(dir, "bad.zip"), dir),
       /метаданные/,
     );
+  }));
+
+const sourceCredentials = {
+  url: "https://source.invalid/shop",
+  phone: "+70000000000",
+  password: "password",
+};
+
+test("locked Windows staging cache cannot block pending replacement recovery", async (context) =>
+  temporary(async (dir) => {
+    const f = await setupFakeImport(dir);
+    await populateExistingLocal(f);
+    const before = await localSnapshot(f);
+    const backup = await f.runtime.backup("before-data-refresh");
+    const workspace = path.join(dir, "data-transfer-locked");
+    await fs.mkdir(workspace);
+    const journal = path.join(dir, "data-import-pending.json");
+    await fs.writeFile(
+      journal,
+      JSON.stringify({ schemaVersion: 1, backup, workspace }),
+    );
+    await fs.writeFile(f.database, '{"items":[],"users":[]}');
+    Object.assign(f.runtime, {
+      recoverInterruptedRestore: async () => {},
+      loadManifest: async () => {},
+      ensureDatabaseStopped: async () => {},
+    });
+    const originalRm = fs.rm.bind(fs);
+    context.mock.method(fs, "rm", async (target, ...args) => {
+      if (target === workspace)
+        throw Object.assign(new Error("locked staging cache"), {
+          code: "EPERM",
+        });
+      return originalRm(target, ...args);
+    });
+    assert.equal(await f.importer.recoverPendingImport(), true);
+    assert.deepEqual(await localSnapshot(f), before);
+    await assert.rejects(fs.access(journal));
+    assert.equal(f.events.includes("restore-backup"), true);
+  }));
+
+async function populateExistingLocal(f) {
+  await fs.writeFile(
+    f.database,
+    JSON.stringify({
+      items: [["2", "local-only product"]],
+      users: [["1", "+70000000001", "t", null, "old-local-hash"]],
+    }),
+  );
+  await fs.writeFile(
+    path.join(f.runtime.dataDir, "files", "local-only.object"),
+    "local file",
+  );
+  await fs.writeFile(
+    path.join(f.runtime.dataDir, "integrations.json"),
+    '{"local":"settings"}',
+  );
+  await fs.writeFile(
+    path.join(f.runtime.dataDir, "data-import-baseline.json"),
+    JSON.stringify({ formatVersion: 1, pristine: false }),
+  );
+  await fs.writeFile(
+    path.join(f.runtime.dataDir, "app-state.json"),
+    JSON.stringify({
+      setupCompleted: true,
+      importedData: true,
+      version: "0.1.1",
+    }),
+  );
+}
+async function localSnapshot(f, directory = f.runtime.dataDir) {
+  const read = async (name) => fs.readFile(path.join(directory, name), "utf8");
+  const names = (await fs.readdir(path.join(directory, "files"))).sort();
+  return {
+    database: await read("fake-database.json"),
+    baseline: await read("data-import-baseline.json"),
+    state: await read("app-state.json"),
+    integrations: await read("integrations.json"),
+    files: await Promise.all(
+      names.map(async (name) => [name, await read(`files/${name}`)]),
+    ),
+  };
+}
+
+test("replacement requires explicit confirmation callback before network or mutation", async () =>
+  temporary(async (dir) => {
+    const f = await setupFakeImport(dir);
+    await populateExistingLocal(f);
+    const before = await localSnapshot(f);
+    for (const options of [
+      { mode: "replace" },
+      { mode: "replace", confirmReplacement: true },
+      { mode: "unknown" },
+    ])
+      await assert.rejects(
+        f.importer.importFromSource({ ...sourceCredentials, ...options }),
+      );
+    assert.equal(f.calls.length, 0);
+    assert.deepEqual(f.events, []);
+    assert.deepEqual(await localSnapshot(f), before);
+  }));
+
+for (const [label, confirm] of [
+  ["decline", async () => false],
+  ["non-boolean consent", async () => "yes"],
+  [
+    "dialog failure",
+    async () => {
+      throw Error("dialog failed");
+    },
+  ],
+])
+  test(`replacement ${label} leaves the running populated app unchanged after validation`, async () =>
+    temporary(async (dir) => {
+      const f = await setupFakeImport(dir);
+      await populateExistingLocal(f);
+      const before = await localSnapshot(f);
+      let summary;
+      const operation = f.importer.importFromSource({
+        ...sourceCredentials,
+        mode: "replace",
+        confirmReplacement: async (value) => {
+          summary = value;
+          // Confirmation is presented only after files and schema have been prepared.
+          assert.equal(f.calls.length, 3);
+          assert.deepEqual(f.events, []);
+          const workspaces = (await fs.readdir(dir)).filter((name) =>
+            name.startsWith("data-transfer-"),
+          );
+          assert.equal(workspaces.length, 1);
+          assert.equal(
+            (await fs.readdir(path.join(dir, workspaces[0], "files"))).length,
+            1,
+          );
+          return confirm();
+        },
+      });
+      if (label === "dialog failure")
+        await assert.rejects(operation, /dialog failed/);
+      else
+        assert.deepEqual(await operation, { cancelled: true, mode: "replace" });
+      assert.deepEqual(summary, {
+        sourceUrl: "https://source.invalid/shop/",
+        tables: 2,
+        rows: 2,
+        files: 1,
+        createdAt: summary.createdAt,
+        schemaVersion: "134",
+      });
+      assert.deepEqual(await localSnapshot(f), before);
+      assert.deepEqual(f.events, []);
+      assert.equal(f.runtime.started, true);
+      assert.equal(
+        (await fs.readdir(dir)).some((name) =>
+          name.startsWith("data-transfer-"),
+        ),
+        false,
+      );
+      await assert.rejects(
+        fs.access(path.join(dir, "data-import-pending.json")),
+      );
+    }));
+
+for (const [label, options] of [
+  ["corrupt archive", { corruptArchive: true }],
+  [
+    "newer source schema",
+    {
+      mutateFixture: (f) => {
+        f.manifest.schemaVersion = "135";
+      },
+    },
+  ],
+  [
+    "missing table",
+    {
+      mutateFixture: (f) => {
+        f.manifest.tables.pop();
+        f.files.pop();
+      },
+    },
+  ],
+  [
+    "missing active source account",
+    {
+      mutateFixture: (f) => {
+        const rows = Buffer.from(
+          '["5","+70000000000","f",null,"source-hash"]\n',
+        );
+        f.files.at(-1).data = rows;
+        f.manifest.tables.at(-1).size = rows.length;
+        f.manifest.tables.at(-1).sha256 = hash(rows);
+      },
+    },
+  ],
+])
+  test(`invalid replacement ${label} never prompts, pauses or backs up`, async () =>
+    temporary(async (dir) => {
+      const f = await setupFakeImport(dir, options);
+      await populateExistingLocal(f);
+      const before = await localSnapshot(f);
+      let confirmations = 0;
+      await assert.rejects(
+        f.importer.importFromSource({
+          ...sourceCredentials,
+          mode: "replace",
+          confirmReplacement: async () => {
+            confirmations++;
+            return true;
+          },
+        }),
+      );
+      assert.equal(confirmations, 0);
+      assert.deepEqual(f.events, []);
+      assert.deepEqual(await localSnapshot(f), before);
+      assert.equal(f.runtime.started, true);
+    }));
+
+test("confirmed refresh saves populated database, files and settings before replacement and can repeat", async () =>
+  temporary(async (dir) => {
+    const f = await setupFakeImport(dir);
+    await populateExistingLocal(f);
+    const before = await localSnapshot(f);
+    f.events.push("download-prepared");
+    const result = await f.importer.importFromSource({
+      ...sourceCredentials,
+      mode: "replace",
+      confirmReplacement: async () => {
+        f.events.push("confirmed");
+        return true;
+      },
+    });
+    assert.deepEqual(f.events, [
+      "download-prepared",
+      "confirmed",
+      "pause",
+      "backup:before-data-refresh",
+      "truncate",
+    ]);
+    assert.equal(result.imported, true);
+    assert.equal(result.mode, "replace");
+    assert.equal(result.sourceUrl, "https://source.invalid/shop/");
+    assert.equal(result.rows, 2);
+    assert.deepEqual(
+      await localSnapshot(f, path.join(result.backup, "data")),
+      before,
+    );
+    const data = JSON.parse(await fs.readFile(f.database, "utf8"));
+    assert.equal(data.items[0][0], "9007199254740993");
+    assert.equal(data.users[0][1], "+70000000000");
+    assert.equal(
+      (await fs.readdir(path.join(f.runtime.dataDir, "files"))).length,
+      1,
+    );
+    assert.equal((await f.importer.inspectEligibility()).eligible, false);
+    await assert.rejects(
+      f.importer.importFromSource(sourceCredentials),
+      /новую/,
+    );
+    const second = await f.importer.importFromSource({
+      ...sourceCredentials,
+      mode: "replace",
+      confirmReplacement: async () => true,
+    });
+    assert.equal(second.imported, true);
+    assert.notEqual(second.backup, result.backup);
+    assert.deepEqual(
+      await localSnapshot(f, path.join(result.backup, "data")),
+      before,
+    );
+  }));
+
+for (const failure of ["database restore", "backend readiness", "backup"])
+  test(`refresh ${failure} failure preserves existing local data`, async () =>
+    temporary(async (dir) => {
+      const f = await setupFakeImport(dir);
+      await populateExistingLocal(f);
+      const before = await localSnapshot(f);
+      if (failure === "database restore") f.clientFactory.failInsert = true;
+      if (failure === "backend readiness") {
+        const start = f.runtime.start;
+        let attempt = 0;
+        f.runtime.start = async () => {
+          if (++attempt === 1)
+            throw Error("injected backend readiness failure");
+          return start();
+        };
+      }
+      if (failure === "backup")
+        f.runtime.backup = async () => {
+          await f.runtime.stop();
+          throw Error("injected disk full");
+        };
+      await assert.rejects(
+        f.importer.importFromSource({
+          ...sourceCredentials,
+          mode: "replace",
+          confirmReplacement: async () => true,
+        }),
+        failure === "backup" ? /disk full/ : /восстановлены/,
+      );
+      assert.deepEqual(await localSnapshot(f), before);
+      assert.equal(f.runtime.started, true);
+      await assert.rejects(
+        fs.access(path.join(dir, "data-import-pending.json")),
+      );
+      if (failure === "backup")
+        assert.equal(f.events.includes("truncate"), false);
+      else assert.equal(f.events.includes("restore-backup"), true);
+    }));
+
+test("refresh interrupted during rollback keeps journal and can recover populated data on next launch", async () =>
+  temporary(async (dir) => {
+    const f = await setupFakeImport(dir);
+    await populateExistingLocal(f);
+    const before = await localSnapshot(f),
+      restoreBackup = f.runtime.restoreBackup;
+    f.clientFactory.failInsert = true;
+    f.runtime.restoreBackup = async () => {
+      throw Error("injected interrupted rollback");
+    };
+    await assert.rejects(
+      f.importer.importFromSource({
+        ...sourceCredentials,
+        mode: "replace",
+        confirmReplacement: async () => true,
+      }),
+      /требуется восстановить/,
+    );
+    assert.equal(f.runtime.started, false);
+    const journal = JSON.parse(
+      await fs.readFile(path.join(dir, "data-import-pending.json"), "utf8"),
+    );
+    assert.deepEqual(
+      await localSnapshot(f, path.join(journal.backup, "data")),
+      before,
+    );
+    f.runtime.restoreBackup = restoreBackup;
+    f.runtime.recoverInterruptedRestore = async () => {};
+    f.runtime.loadManifest = async () => {};
+    f.runtime.ensureDatabaseStopped = async () => {};
+    assert.equal(await f.importer.recoverPendingImport(), true);
+    assert.deepEqual(await localSnapshot(f), before);
+    await assert.rejects(fs.access(path.join(dir, "data-import-pending.json")));
+  }));
+
+test("current local origin and loopback aliases cannot be used as a source", async () =>
+  temporary(async (dir) => {
+    const f = await setupFakeImport(dir);
+    f.runtime.url = "http://127.0.0.1:9099";
+    for (const url of [
+      "http://127.0.0.1:9099",
+      "http://localhost:9099/base",
+      "http://[::1]:9099",
+    ])
+      for (const mode of ["initial", "replace"])
+        await assert.rejects(
+          f.importer.importFromSource({
+            ...sourceCredentials,
+            url,
+            mode,
+            confirmReplacement: async () => true,
+          }),
+          /текущего локального/,
+        );
+    assert.equal(f.calls.length, 0);
+    assert.deepEqual(f.events, []);
   }));

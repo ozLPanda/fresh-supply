@@ -2,7 +2,6 @@ package kz.company.shop.warehouse.service;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
@@ -12,6 +11,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import kz.company.shop.common.exception.AppExceptions;
+import kz.company.shop.common.pdf.PdfFonts;
 import kz.company.shop.warehouse.dto.WarehouseDto;
 import kz.company.shop.warehouse.entity.StockDocumentType;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -19,7 +19,6 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
-import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.springframework.stereotype.Service;
 
 /** A printable product list for supplier orders and receipts. Prices are intentionally omitted. */
@@ -31,24 +30,6 @@ public class WarehouseDocumentPdfService {
     private static final float LINE_HEIGHT = 13;
     private static final float PADDING = 6;
     private static final float[] WIDTHS = {125, 300, 90};
-    private static final List<String[]> FONT_FILES =
-            List.of(
-                    new String[] {
-                        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-                    },
-                    new String[] {
-                        "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
-                        "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf"
-                    },
-                    new String[] {
-                        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-                        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
-                    },
-                    new String[] {
-                        "/System/Library/Fonts/Supplemental/Arial.ttf",
-                        "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
-                    });
 
     private final WarehouseService warehouseService;
 
@@ -197,14 +178,8 @@ public class WarehouseDocumentPdfService {
     }
 
     private Fonts loadFonts(PDDocument pdf) throws IOException {
-        for (String[] names : FONT_FILES) {
-            File regular = new File(names[0]);
-            File bold = new File(names[1]);
-            if (regular.isFile() && bold.isFile()) {
-                return new Fonts(PDType0Font.load(pdf, regular), PDType0Font.load(pdf, bold));
-            }
-        }
-        throw new IOException("Для PDF требуется шрифт с поддержкой кириллицы");
+        PdfFonts.Fonts fonts = PdfFonts.load(pdf);
+        return new Fonts(fonts.regular(), fonts.bold());
     }
 
     private String quantity(BigDecimal value) {

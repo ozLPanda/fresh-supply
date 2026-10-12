@@ -2,7 +2,6 @@ package kz.company.shop.orders.service;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -13,6 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import kz.company.shop.common.exception.AppExceptions;
+import kz.company.shop.common.pdf.PdfFonts;
 import kz.company.shop.orders.entity.Order;
 import kz.company.shop.orders.entity.OrderItem;
 import kz.company.shop.orders.repository.OrderRepository;
@@ -21,7 +21,6 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
-import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.springframework.stereotype.Service;
 
 /** Produces the internal comparison table with order sale prices and cost snapshots. */
@@ -39,17 +38,6 @@ public class OrderComparisonPdfService {
     private static final float FONT_SIZE = 9;
     private static final float LINE_HEIGHT = 12;
     private static final float CELL_PADDING = 5;
-    private static final List<FontFiles> FONT_FILES =
-            List.of(
-                    new FontFiles(
-                            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
-                    new FontFiles(
-                            "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
-                            "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf"),
-                    new FontFiles(
-                            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-                            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"));
 
     private final OrderRepository orders;
 
@@ -309,14 +297,8 @@ public class OrderComparisonPdfService {
     }
 
     private Fonts loadFonts(PDDocument document) throws IOException {
-        for (FontFiles files : FONT_FILES) {
-            File regular = new File(files.regular());
-            File bold = new File(files.bold());
-            if (regular.isFile() && bold.isFile()) {
-                return new Fonts(PDType0Font.load(document, regular), PDType0Font.load(document, bold));
-            }
-        }
-        throw new IOException("Для PDF требуется шрифт с поддержкой кириллицы");
+        PdfFonts.Fonts fonts = PdfFonts.load(document);
+        return new Fonts(fonts.regular(), fonts.bold());
     }
 
     private void text(PageState page, String value, float x, float y, Fonts fonts, float size, boolean bold)
@@ -353,7 +335,6 @@ public class OrderComparisonPdfService {
 
     private record Fonts(PDFont regular, PDFont bold) {}
 
-    private record FontFiles(String regular, String bold) {}
 
     private enum CellAlignment {
         LEFT,

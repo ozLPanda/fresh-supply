@@ -19,8 +19,14 @@
         Первый запуск может занять немного времени.
       </p>
       <div id="update" hidden>
-        <progress id="update-progress" max="100" aria-label="Загрузка обновления"></progress>
-        <button id="update-cancel" class="secondary" type="button">Отменить обновление</button>
+        <progress
+          id="update-progress"
+          max="100"
+          aria-label="Загрузка обновления"
+        ></progress>
+        <button id="update-cancel" class="secondary" type="button">
+          Отменить обновление
+        </button>
       </div>
       <form id="setup" hidden>
         <p>
@@ -59,7 +65,7 @@
         <button type="submit">Начать работу</button>
       </form>
       <form id="import" hidden>
-        <p>
+        <p id="import-description">
           Загрузите данные из веб-приложения. После переноса вход выполняется с
           учётной записью сайта.
         </p>

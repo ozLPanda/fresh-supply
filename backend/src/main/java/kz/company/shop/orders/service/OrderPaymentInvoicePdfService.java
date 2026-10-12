@@ -1,7 +1,6 @@
 package kz.company.shop.orders.service;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
@@ -13,6 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
+import kz.company.shop.common.pdf.PdfFonts;
 import kz.company.shop.orders.dto.OrderDto;
 import kz.company.shop.orders.dto.OrderItemDto;
 import kz.company.shop.orders.dto.OrderReturnSummaryDto;
@@ -23,7 +23,6 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
-import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.springframework.stereotype.Service;
 
 /** Payment invoice matching the supplier's approved bank and payment form. */
@@ -38,20 +37,6 @@ public class OrderPaymentInvoicePdfService {
     private static final String[] HEADERS = {
         "№", "Код", "Наименование", "Кол-во", "Ед.", "Цена", "Сумма"
     };
-    private static final List<String[]> FONT_FILES =
-            List.of(
-                    new String[] {
-                        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-                    },
-                    new String[] {
-                        "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
-                        "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf"
-                    },
-                    new String[] {
-                        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-                        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
-                    });
 
     public byte[] generate(
             OrderDto order, OrderReturnSummaryDto returnSummary, String buyerDetails, PaymentInvoiceSettingsDto settings) {
@@ -353,11 +338,8 @@ public class OrderPaymentInvoicePdfService {
     }
 
     private static Fonts loadFonts(PDDocument document) throws IOException {
-        for (String[] pair : FONT_FILES) {
-            if (new File(pair[0]).isFile() && new File(pair[1]).isFile())
-                return new Fonts(PDType0Font.load(document, new File(pair[0])), PDType0Font.load(document, new File(pair[1])));
-        }
-        throw new IOException("Для счёта на оплату требуется шрифт с поддержкой кириллицы");
+        PdfFonts.Fonts fonts = PdfFonts.load(document);
+        return new Fonts(fonts.regular(), fonts.bold());
     }
 
     private static void addPageNumbers(PDDocument document, Fonts fonts) throws IOException {

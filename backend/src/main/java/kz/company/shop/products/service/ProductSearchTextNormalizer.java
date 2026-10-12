@@ -1,5 +1,7 @@
 package kz.company.shop.products.service;
 
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Expression;
 import java.util.Locale;
 import java.util.List;
 
@@ -7,8 +9,33 @@ import java.util.List;
 public final class ProductSearchTextNormalizer {
     static final String CYRILLIC_HOMOGLYPHS = "авсеёнкмортухіј";
     static final String LATIN_HOMOGLYPHS = "abceehkmoptyxij";
+    private static final String CYRILLIC_UPPERCASE =
+            "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯӘҒҚҢӨҰҮҺІЈ";
+    private static final String CYRILLIC_LOWERCASE =
+            CYRILLIC_UPPERCASE.toLowerCase(Locale.ROOT);
 
     private ProductSearchTextNormalizer() {}
+
+    /** PostgreSQL's C locale does not lowercase Cyrillic, including in existing desktop databases. */
+    public static Expression<String> lowercaseExpression(
+            CriteriaBuilder builder, Expression<String> value) {
+        return builder.function(
+                "translate",
+                String.class,
+                builder.lower(value),
+                builder.literal(CYRILLIC_UPPERCASE),
+                builder.literal(CYRILLIC_LOWERCASE));
+    }
+
+    public static Expression<String> normalizedExpression(
+            CriteriaBuilder builder, Expression<String> value) {
+        return builder.function(
+                "translate",
+                String.class,
+                lowercaseExpression(builder, value),
+                builder.literal(CYRILLIC_HOMOGLYPHS),
+                builder.literal(LATIN_HOMOGLYPHS));
+    }
 
     public static String normalize(String value) {
         if (value == null) return null;

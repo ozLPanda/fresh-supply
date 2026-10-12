@@ -939,11 +939,18 @@ function createDataImporter({
     phone,
     password,
     onProgress = () => {},
+    mode = "initial",
+    confirmReplacement,
   }) {
+    if (!["initial", "replace"].includes(mode))
+      fail("Некорректный режим переноса данных");
+    if (mode === "replace" && typeof confirmReplacement !== "function")
+      fail("Замена локальных данных требует подтверждения");
     if (busy) fail("Перенос уже выполняется");
     busy = true;
     let directory,
       backup,
+      backendPaused = false,
       modified = false;
     const progressCallback = onProgress;
     const notify = (message) => {
@@ -955,7 +962,20 @@ function createDataImporter({
     };
     onProgress = notify;
     try {
-      validateSourceUrl(url);
+      const sourceUrl = validateSourceUrl(url);
+      if (runtime.url) {
+        const localUrl = new URL(runtime.url);
+        const loopback = (hostname) =>
+          ["localhost", "127.0.0.1", "[::1]"].includes(hostname);
+        if (
+          sourceUrl.origin === localUrl.origin ||
+          (sourceUrl.protocol === localUrl.protocol &&
+            sourceUrl.port === localUrl.port &&
+            loopback(sourceUrl.hostname) &&
+            loopback(localUrl.hostname))
+        )
+          fail("Укажите адрес сайта, а не текущего локального приложения");
+      }
       if (
         typeof phone !== "string" ||
         typeof password !== "string" ||
@@ -964,8 +984,10 @@ function createDataImporter({
         password.length > 100
       )
         fail("Введите телефон и пароль сайта");
-      const eligibility = await inspectEligibility();
-      if (!eligibility.eligible) fail(eligibility.reason);
+      if (mode === "initial") {
+        const eligibility = await inspectEligibility();
+        if (!eligibility.eligible) fail(eligibility.reason);
+      }
       directory = await fs.mkdtemp(
         path.join(runtime.userData, "data-transfer-"),
       );
@@ -994,11 +1016,42 @@ function createDataImporter({
       } finally {
         await client.end();
       }
+      // Finish preparing every object before asking to replace working data.
+      // Failure (including no disk space) at this stage leaves the live app intact.
+      const files = path.join(directory, "files");
+      await fs.mkdir(files);
+      for (const item of archive.manifest.files)
+        await fs.copyFile(
+          archive.staged.get(item.entry),
+          path.join(files, sha(item.key) + ".object"),
+        );
+      const summary = {
+        sourceUrl: sourceUrl.href,
+        tables: archive.manifest.tables.length,
+        rows: archive.manifest.tables.reduce(
+          (total, table) => total + table.rowCount,
+          0,
+        ),
+        files: archive.manifest.files.length,
+        createdAt: archive.manifest.createdAt,
+        schemaVersion: archive.manifest.schemaVersion,
+      };
+      if (mode === "replace" && (await confirmReplacement(summary)) !== true)
+        return { cancelled: true, mode };
+      backendPaused = true;
       await runtime.pauseBackend();
-      const pausedEligibility = await inspectEligibility();
-      if (!pausedEligibility.eligible) fail(pausedEligibility.reason);
-      onProgress("Сохраняем резервную копию новой локальной базы…");
-      backup = await runtime.backup("before-data-import");
+      if (mode === "initial") {
+        const pausedEligibility = await inspectEligibility();
+        if (!pausedEligibility.eligible) fail(pausedEligibility.reason);
+      }
+      onProgress(
+        mode === "replace"
+          ? "Сохраняем резервную копию текущих локальных данных…"
+          : "Сохраняем резервную копию новой локальной базы…",
+      );
+      backup = await runtime.backup(
+        mode === "replace" ? "before-data-refresh" : "before-data-import",
+      );
       await writeJson(path.join(runtime.userData, "data-import-pending.json"), {
         schemaVersion: 1,
         backup,
@@ -1030,13 +1083,6 @@ function createDataImporter({
         await client.end();
       }
       await runtime.stop();
-      const files = path.join(directory, "files");
-      await fs.mkdir(files);
-      for (const item of archive.manifest.files)
-        await fs.copyFile(
-          archive.staged.get(item.entry),
-          path.join(files, sha(item.key) + ".object"),
-        );
       const previousFiles = path.join(runtime.dataDir, "files-before-import");
       await fs.rename(path.join(runtime.dataDir, "files"), previousFiles);
       await fs.rename(files, path.join(runtime.dataDir, "files"));
@@ -1045,6 +1091,8 @@ function createDataImporter({
         formatVersion: 1,
         pristine: false,
         importedAt: new Date().toISOString(),
+        sourceUrl: summary.sourceUrl,
+        mode,
       });
       const appState = await readJson(
         path.join(runtime.dataDir, "app-state.json"),
@@ -1053,6 +1101,7 @@ function createDataImporter({
       await writeJson(path.join(runtime.dataDir, "app-state.json"), {
         ...appState,
         importedData: true,
+        dataSourceUrl: summary.sourceUrl,
       });
       onProgress("Запускаем приложение с перенесёнными данными…");
       await runtime.start();
@@ -1061,18 +1110,14 @@ function createDataImporter({
       });
       return {
         imported: true,
-        tables: archive.manifest.tables.length,
-        files: archive.manifest.files.length,
+        mode,
+        ...summary,
         backup,
       };
     } catch (error) {
       if (backup && modified) {
-        await runtime.stop();
-        if (directory) {
-          await fs.rm(directory, { recursive: true, force: true });
-          directory = null;
-        }
         try {
+          await runtime.stop();
           await runtime.restoreBackup(backup);
           await runtime.start();
           await fs.rm(path.join(runtime.userData, "data-import-pending.json"), {
@@ -1087,11 +1132,16 @@ function createDataImporter({
           "Перенос не завершён. Локальные данные восстановлены из резервной копии",
         );
       }
-      if (!runtime.started) await runtime.start().catch(() => {});
+      if (backendPaused && !runtime.started)
+        await runtime.start().catch(() => {});
       throw error;
     } finally {
       password = undefined;
-      if (directory) await fs.rm(directory, { recursive: true, force: true });
+      // Cache cleanup must not prevent restoring working data or hide its error.
+      if (directory)
+        await fs
+          .rm(directory, { recursive: true, force: true })
+          .catch(() => {});
       busy = false;
     }
   }
@@ -1113,15 +1163,18 @@ function createDataImporter({
     await runtime.loadManifest();
     await runtime.ensureDatabaseStopped();
     await runtime.stop();
+    await runtime.restoreBackup(journal.backup);
+    await fs.rm(journalFile, { force: true });
+    // A locked staging file on Windows must not prevent recovering working data.
     if (
       typeof journal.workspace === "string" &&
       path.dirname(path.resolve(journal.workspace)) ===
         path.resolve(runtime.userData) &&
       path.basename(journal.workspace).startsWith("data-transfer-")
     )
-      await fs.rm(journal.workspace, { recursive: true, force: true });
-    await runtime.restoreBackup(journal.backup);
-    await fs.rm(journalFile, { force: true });
+      await fs
+        .rm(journal.workspace, { recursive: true, force: true })
+        .catch(() => {});
     return true;
   }
   return {

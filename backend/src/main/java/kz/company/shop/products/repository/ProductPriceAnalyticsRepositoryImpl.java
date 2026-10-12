@@ -97,11 +97,22 @@ class ProductPriceAnalyticsRepositoryImpl implements ProductPriceAnalyticsReposi
                 String pattern = "%" + variant + "%";
                 matches.add(
                         builder.or(
-                                builder.like(builder.lower(product.get("sku")), pattern),
-                                builder.like(builder.lower(product.get("nameRu")), pattern),
-                                builder.like(builder.lower(product.get("nameKk")), pattern),
                                 builder.like(
-                                        builder.lower(builder.coalesce(category.get("nameRu"), "")),
+                                        ProductSearchTextNormalizer.lowercaseExpression(
+                                                builder, product.get("sku")),
+                                        pattern),
+                                builder.like(
+                                        ProductSearchTextNormalizer.lowercaseExpression(
+                                                builder, product.get("nameRu")),
+                                        pattern),
+                                builder.like(
+                                        ProductSearchTextNormalizer.lowercaseExpression(
+                                                builder, product.get("nameKk")),
+                                        pattern),
+                                builder.like(
+                                        ProductSearchTextNormalizer.lowercaseExpression(
+                                                builder,
+                                                builder.coalesce(category.get("nameRu"), "")),
                                         pattern)));
             }
             result.add(builder.or(matches.toArray(Predicate[]::new)));

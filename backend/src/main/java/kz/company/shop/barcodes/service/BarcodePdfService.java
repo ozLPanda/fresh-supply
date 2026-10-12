@@ -6,7 +6,6 @@ import com.google.zxing.common.BitMatrix;
 import com.google.zxing.oned.Code128Writer;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,12 +14,12 @@ import kz.company.shop.barcodes.dto.BarcodeItemRequest;
 import kz.company.shop.barcodes.dto.BarcodePdfMode;
 import kz.company.shop.barcodes.dto.BarcodePdfRequest;
 import kz.company.shop.common.exception.AppExceptions;
+import kz.company.shop.common.pdf.PdfFonts;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
-import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.springframework.stereotype.Service;
@@ -63,8 +62,6 @@ public class BarcodePdfService {
     private static final float WITH_NAME_VALUE_BASELINE = 3.5f * MM;
     private static final float NAME_FONT_SIZE = 7.5f;
     private static final float NAME_LINE_HEIGHT = 3.4f * MM;
-    private static final String LINUX_FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
-    private static final String WINDOWS_FONT = "C:/Windows/Fonts/arial.ttf";
     static final Map<EncodeHintType, Object> BARCODE_HINTS = Map.of(EncodeHintType.MARGIN, 20);
 
     private final Code128Writer barcodeWriter = new Code128Writer();
@@ -331,13 +328,7 @@ public class BarcodePdfService {
     }
 
     private PDFont loadUnicodeFont(PDDocument document) throws IOException {
-        for (String path : List.of(LINUX_FONT, WINDOWS_FONT)) {
-            File file = new File(path);
-            if (file.isFile()) {
-                return PDType0Font.load(document, file);
-            }
-        }
-        throw new IOException("A Unicode font is required for barcode labels with product names");
+        return PdfFonts.loadRegular(document);
     }
 
     private static float horizontalMargin(int columns, float width, float gap) {

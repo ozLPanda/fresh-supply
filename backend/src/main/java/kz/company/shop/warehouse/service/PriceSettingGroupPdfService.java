@@ -2,7 +2,6 @@ package kz.company.shop.warehouse.service;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -20,6 +19,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import kz.company.shop.common.exception.AppExceptions;
+import kz.company.shop.common.pdf.PdfFonts;
 import kz.company.shop.products.entity.Product;
 import kz.company.shop.products.repository.ProductRepository;
 import kz.company.shop.warehouse.entity.PriceSettingGroup;
@@ -36,7 +36,6 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
-import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,14 +51,6 @@ public class PriceSettingGroupPdfService {
     private static final float MARGIN = 28;
     private static final Color NEW_PRICE_COLOR = new Color(222, 244, 232);
     private static final Color OLD_PRICE_COLOR = new Color(255, 232, 218);
-    private static final List<FontFiles> FONT_FILES =
-            List.of(
-                    new FontFiles(
-                            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
-                    new FontFiles(
-                            "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
-                            "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf"));
 
     private final PriceSettingGroupRepository groups;
     private final StockDocumentRepository documents;
@@ -350,14 +341,8 @@ public class PriceSettingGroupPdfService {
     }
 
     private Fonts loadFonts(PDDocument document) throws IOException {
-        for (FontFiles candidate : FONT_FILES) {
-            if (new File(candidate.regular).isFile() && new File(candidate.bold).isFile()) {
-                return new Fonts(
-                        PDType0Font.load(document, new File(candidate.regular)),
-                        PDType0Font.load(document, new File(candidate.bold)));
-            }
-        }
-        throw new IOException("Не найден шрифт с поддержкой кириллицы для PDF");
+        PdfFonts.Fonts fonts = PdfFonts.load(document);
+        return new Fonts(fonts.regular(), fonts.bold());
     }
 
     private static void text(PDPageContentStream content, PDFont font, float size, float x, float y, String value, Color color) throws IOException {
@@ -463,7 +448,6 @@ public class PriceSettingGroupPdfService {
         return document.postedAt == null ? document.createdAt : document.postedAt;
     }
 
-    private record FontFiles(String regular, String bold) {}
     private record Fonts(PDFont regular, PDFont bold) {}
     private record TableLayout(float skuWidth, float nameWidth, float priceWidth) {
         static TableLayout forTypes(int count) {
