@@ -204,11 +204,19 @@ async function main() {
         FRESH_SUPPLY_TEST_SCOPE: scope,
       },
     );
+  const canonical = async (value) => (await fs.realpath(value)).toLowerCase();
+  const normalizeLinks = async (links) => {
+    for (const key of ["desktop", "menu", "registered"])
+      links[key] = await canonical(links[key]);
+    return links;
+  };
   const shortcut = async () =>
-    JSON.parse(
-      await ps(
-        `$ErrorActionPreference='Stop';$s=New-Object -ComObject WScript.Shell;$d=Join-Path $s.SpecialFolders.Item('Desktop') 'fresh-supply.lnk';$m=Join-Path $s.SpecialFolders.Item('Programs') 'fresh-supply.lnk';@{desktop=$s.CreateShortcut($d).TargetPath;menu=$s.CreateShortcut($m).TargetPath;registered=(Get-ItemProperty ('HKCU:\\Software\\'+$env:FRESH_SUPPLY_TEST_GUID)).InstallLocation}|ConvertTo-Json -Compress`,
-        env,
+    normalizeLinks(
+      JSON.parse(
+        await ps(
+          `$ErrorActionPreference='Stop';$s=New-Object -ComObject WScript.Shell;$d=Join-Path $s.SpecialFolders.Item('Desktop') 'fresh-supply.lnk';$m=Join-Path $s.SpecialFolders.Item('Programs') 'fresh-supply.lnk';@{desktop=$s.CreateShortcut($d).TargetPath;menu=$s.CreateShortcut($m).TargetPath;registered=(Get-ItemProperty ('HKCU:\\Software\\'+$env:FRESH_SUPPLY_TEST_GUID)).InstallLocation}|ConvertTo-Json -Compress`,
+          env,
+        ),
       ),
     );
   const startup = async (appVersion = version) => {
@@ -299,9 +307,12 @@ async function main() {
     registered = true;
     await verify(directory, oldVersion, { legacy: true });
     const links = await shortcut();
-    assert.equal(links.desktop, path.join(directory, "fresh-supply.exe"));
+    assert.equal(
+      links.desktop,
+      await canonical(path.join(directory, "fresh-supply.exe")),
+    );
     assert.equal(links.menu, links.desktop);
-    assert.equal(links.registered, directory);
+    assert.equal(links.registered, await canonical(directory));
     // Prove the installed Electron entry binary runs, independently of source
     // node_modules or the unpacked build. No GUI or normal app-data is opened.
     const electron = await run(
@@ -542,10 +553,12 @@ async function main() {
           .at(-1),
       );
     const machineLinks = async () =>
-      JSON.parse(
-        await ps(
-          `$ErrorActionPreference='Stop';$s=New-Object -ComObject WScript.Shell;$d=Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'fresh-supply.lnk';$m=Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'fresh-supply.lnk';@{desktop=$s.CreateShortcut($d).TargetPath;menu=$s.CreateShortcut($m).TargetPath;registered=(Get-ItemProperty ('HKLM:\\Software\\'+$env:FRESH_SUPPLY_TEST_GUID)).InstallLocation;hasUserRegistration=(Test-Path ('HKCU:\\Software\\'+$env:FRESH_SUPPLY_TEST_GUID))}|ConvertTo-Json -Compress`,
-          machineEnvironment,
+      normalizeLinks(
+        JSON.parse(
+          await ps(
+            `$ErrorActionPreference='Stop';$s=New-Object -ComObject WScript.Shell;$d=Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'fresh-supply.lnk';$m=Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'fresh-supply.lnk';@{desktop=$s.CreateShortcut($d).TargetPath;menu=$s.CreateShortcut($m).TargetPath;registered=(Get-ItemProperty ('HKLM:\\Software\\'+$env:FRESH_SUPPLY_TEST_GUID)).InstallLocation;hasUserRegistration=(Test-Path ('HKCU:\\Software\\'+$env:FRESH_SUPPLY_TEST_GUID))}|ConvertTo-Json -Compress`,
+            machineEnvironment,
+          ),
         ),
       );
     assert.equal(await machineInstall(), 0, "Actual all-users NSIS install");
@@ -554,10 +567,10 @@ async function main() {
     const allLinks = await machineLinks();
     assert.equal(
       allLinks.desktop,
-      path.join(machineDirectory, "fresh-supply.exe"),
+      await canonical(path.join(machineDirectory, "fresh-supply.exe")),
     );
     assert.equal(allLinks.menu, allLinks.desktop);
-    assert.equal(allLinks.registered, machineDirectory);
+    assert.equal(allLinks.registered, await canonical(machineDirectory));
     assert.equal(allLinks.hasUserRegistration, false);
     await fs.rm(
       path.join(machineDirectory, "resources/runtime/python/python.exe"),
