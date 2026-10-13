@@ -58,6 +58,9 @@ jobs:
       - name: Prepare complete offline runtime
         working-directory: desktop
         run: node scripts/prepare-runtime.cjs
+      - name: Verify native data change tracking and aggregate ownership
+        working-directory: desktop
+        run: node scripts/verify-data-tracking.cjs
       - name: Test frontend notifications
         working-directory: frontend
         run: node --test src/features/notifications/desktopNotifications.test.mjs src/features/notifications/pushSubscription.test.mjs src/features/notifications/pushPromptSession.test.mjs
@@ -76,6 +79,9 @@ jobs:
       - name: Verify complete website export and desktop import
         working-directory: desktop
         run: node scripts/smoke-data-transfer.cjs
+      - name: Verify one-way data merge and financial reconciliation
+        working-directory: desktop
+        run: node scripts/smoke-data-merge.cjs
       - name: Build installer
         working-directory: desktop
         env:

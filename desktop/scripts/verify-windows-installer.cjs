@@ -540,6 +540,16 @@ async function main() {
     );
     assert.equal(native.code, 0, native.stderr || native.stdout);
     console.log(native.stdout);
+    const merged = await run(
+      process.execPath,
+      [
+        path.join(desktop, "scripts/smoke-data-merge.cjs"),
+        path.join(directory, "resources/runtime"),
+      ],
+      { timeout: 1800000 },
+    );
+    assert.equal(merged.code, 0, merged.stderr || merged.stdout);
+    console.log(merged.stdout);
     // GitHub's administrator runner verifies true per-machine NSIS registry
     // and shortcut behavior. Interactive UAC consent remains a separate manual
     // test; this test neither bypasses nor automates the Windows secure desktop.
