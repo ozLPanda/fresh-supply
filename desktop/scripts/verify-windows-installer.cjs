@@ -349,12 +349,33 @@ async function main() {
     );
     // Expected rejection deliberately preserves a stage for diagnostics, but
     // this successful assertion no longer needs another full runtime on disk.
-    const rejectionLog=await fs.readFile(path.join(process.env.LOCALAPPDATA,'fresh-supply-desktop-updater/installation.log'),'utf8');
-    const rejectedStage=[...rejectionLog.matchAll(/Preserved failed stage for diagnostics: (.+)/g)].at(-1)?.[1].trim();
-    if(rejectedStage) {
-      const relative=path.relative(temporary,rejectedStage);
-      assert.ok(relative && !relative.startsWith('..') && !path.isAbsolute(relative) && /^ns[a-z0-9]+\.tmp$/i.test(path.basename(rejectedStage)),'Rejected stage belongs to the disposable installer test');
-      await fs.rm(rejectedStage,{recursive:true,force:true,maxRetries:8,retryDelay:250});
+    const rejectionLog = await fs.readFile(
+      path.join(
+        process.env.LOCALAPPDATA,
+        "fresh-supply-desktop-updater/installation.log",
+      ),
+      "utf8",
+    );
+    const rejectedStage = [
+      ...rejectionLog.matchAll(/Preserved failed stage for diagnostics: (.+)/g),
+    ]
+      .at(-1)?.[1]
+      .trim();
+    if (rejectedStage) {
+      const relative = path.relative(temporary, rejectedStage);
+      assert.ok(
+        relative &&
+          !relative.startsWith("..") &&
+          !path.isAbsolute(relative) &&
+          /^ns[a-z0-9]+\.tmp$/i.test(path.basename(rejectedStage)),
+        "Rejected stage belongs to the disposable installer test",
+      );
+      await fs.rm(rejectedStage, {
+        recursive: true,
+        force: true,
+        maxRetries: 8,
+        retryDelay: 250,
+      });
     }
     assert.deepEqual(
       await snapshot(directory),
@@ -363,9 +384,12 @@ async function main() {
     );
     assert.deepEqual(await shortcut(), links);
     assert.equal(await fs.readFile(sentinel, "utf8"), "preserve-user-data");
-    // A locked old executable must abort before replacement, preserving the
-    // old entire payload, registration, shortcuts and existing local data.
+    // Lock the directory itself without FILE_SHARE_DELETE: an open child file
+    // does not reliably prevent a parent-directory rename on Windows.
+    // This tests the installer's failed-rename recovery without replacing the
+    // production application's separate running-process check.
     const lockReady = path.join(temporary, "lock-ready");
+    let lockError = "";
     lock = spawn(
       powershell,
       [
@@ -374,25 +398,50 @@ async function main() {
         "-NonInteractive",
         "-EncodedCommand",
         Buffer.from(
-          "$ErrorActionPreference='Stop';$f=[System.IO.File]::Open($env:FRESH_SUPPLY_LOCK_FILE,[System.IO.FileMode]::Open,[System.IO.FileAccess]::Read,[System.IO.FileShare]::None);try{[System.IO.File]::WriteAllText($env:FRESH_SUPPLY_LOCK_READY,'ready');while($true){Start-Sleep -Milliseconds 200}}finally{$f.Dispose()}",
+          [
+            "$ErrorActionPreference='Stop'",
+            "$source=@'",
+            "using System;",
+            "using System.Runtime.InteropServices;",
+            "public static class FreshSupplyDirectoryLock {",
+            ' [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]',
+            " public static extern IntPtr CreateFileW(string name, uint access, uint share, IntPtr security, uint disposition, uint flags, IntPtr template);",
+            ' [DllImport("kernel32.dll", SetLastError=true)]',
+            " public static extern bool CloseHandle(IntPtr handle);",
+            "}",
+            "'@",
+            "Add-Type -TypeDefinition $source",
+            "$handle=[FreshSupplyDirectoryLock]::CreateFileW($env:FRESH_SUPPLY_LOCK_DIRECTORY,0,0,[IntPtr]::Zero,3,0x02000000,[IntPtr]::Zero)",
+            "if($handle.ToInt64() -eq -1){throw ('Cannot lock installation directory: '+[Runtime.InteropServices.Marshal]::GetLastWin32Error())}",
+            "try{[System.IO.File]::WriteAllText($env:FRESH_SUPPLY_LOCK_READY,'ready');while($true){Start-Sleep -Milliseconds 200}}finally{[void][FreshSupplyDirectoryLock]::CloseHandle($handle)}",
+          ].join("\n"),
           "utf16le",
         ).toString("base64"),
       ],
       {
-        stdio: "ignore",
+        stdio: ["ignore", "ignore", "pipe"],
         windowsHide: true,
         env: {
           ...process.env,
-          FRESH_SUPPLY_LOCK_FILE: path.join(directory, "fresh-supply.exe"),
+          FRESH_SUPPLY_LOCK_DIRECTORY: directory,
           FRESH_SUPPLY_LOCK_READY: lockReady,
         },
       },
     );
+    lock.stderr.on("data", (chunk) => {
+      lockError += chunk.toString();
+    });
+    lock.on("error", (error) => {
+      lockError += error.message;
+    });
     for (let i = 0; i < 100; i++) {
       if (await fs.stat(lockReady).catch(() => null)) break;
       await new Promise((r) => setTimeout(r, 100));
     }
-    assert.ok(await fs.stat(lockReady));
+    assert.ok(
+      await fs.stat(lockReady).catch(() => null),
+      "Native directory lock was not acquired: " + lockError,
+    );
     const rejected = await install(true);
     assert.notEqual(
       rejected,
