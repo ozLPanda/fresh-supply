@@ -301,7 +301,7 @@ test("downloader never follows export redirects and revokes its created session"
         return new Response(
           JSON.stringify({ success: true, data: { token: "session-token" } }),
         );
-      if (u.endsWith("/export"))
+      if (new URL(u).pathname.endsWith("/export"))
         return new Response("", {
           status: 302,
           headers: { location: "https://attacker.invalid" },
@@ -333,7 +333,7 @@ test("oversized transfer still revokes session and never creates archive", async
         ? new Response(
             JSON.stringify({ success: true, data: { token: "token" } }),
           )
-        : u.endsWith("/export")
+        : new URL(u).pathname.endsWith("/export")
           ? new Response("zip", { headers: { "content-length": "100" } })
           : new Response("{}");
     };
@@ -700,7 +700,7 @@ async function setupFakeImport(dir, { mutateFixture, corruptArchive } = {}) {
             data: { token: "private-session", user: { phone: "+70000000000" } },
           }),
         )
-      : u.endsWith("/export")
+      : new URL(u).pathname.endsWith("/export")
         ? new Response(bytes)
         : new Response("{}");
   };

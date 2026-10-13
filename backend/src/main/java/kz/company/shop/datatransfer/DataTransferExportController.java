@@ -7,6 +7,7 @@ import kz.company.shop.common.security.AuthContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 public class DataTransferExportController {
@@ -19,10 +20,10 @@ public class DataTransferExportController {
     }
 
     @GetMapping("/api/data-transfer/export")
-    public void export(HttpServletResponse response) throws IOException {
+    public void export(HttpServletResponse response, @RequestParam(defaultValue = "1") int format) throws IOException {
         auth.require("data.export");
         // Build and verify the complete archive before setting any successful download headers.
-        try (var archive = service.export()) {
+        try (var archive = format == 1 ? service.export() : service.export(format)) {
             response.setContentType("application/zip");
             response.setContentLengthLong(archive.size());
             response.setHeader(

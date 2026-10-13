@@ -6,6 +6,7 @@ const importForm = document.getElementById("import");
 const importError = document.getElementById("import-error");
 const importDescription = document.getElementById("import-description");
 let replacingData = false;
+let mergingData = false;
 const updatePanel = document.getElementById("update");
 const updateProgress = document.getElementById("update-progress");
 const updateCancel = document.getElementById("update-cancel");
@@ -56,20 +57,30 @@ window.ovoshiDesktop.onStatus((payload) => {
     document.getElementById("phone").focus();
   } else if (payload.import) {
     replacingData = payload.importMode === "replace";
-    title.textContent = replacingData
-      ? "Обновить данные с сайта"
-      : "Загрузить данные с сайта";
-    status.textContent = replacingData
-      ? "Сначала скачаем и проверим свежую копию, затем попросим подтвердить замену."
-      : "Импорт доступен только для пустой локальной базы. После загрузки программа работает с собственной копией данных.";
-    importDescription.textContent = replacingData
-      ? "Все локальные данные и файлы будут заменены данными сайта. Изменения, сделанные только в приложении, останутся в резервной копии. После обновления войдите с учётной записью сайта."
-      : "Загрузите данные из веб-приложения. После переноса вход выполняется с учётной записью сайта.";
-    importForm.querySelector('button[type="submit"]').textContent =
-      replacingData ? "Скачать свежую копию" : "Загрузить данные";
-    document.getElementById("import-cancel").textContent = replacingData
-      ? "Вернуться в приложение"
-      : "Продолжить без импорта";
+    mergingData = payload.importMode === "merge";
+    title.textContent =
+      replacingData || mergingData
+        ? "Обновить данные с сайта"
+        : "Загрузить данные с сайта";
+    status.textContent = mergingData
+      ? "Скачиваем изменения сайта и объединяем с локальными данными."
+      : replacingData
+        ? "Сначала скачаем и проверим свежую копию, затем попросим подтвердить замену."
+        : "Импорт доступен только для пустой локальной базы. После загрузки программа работает с собственной копией данных.";
+    importDescription.textContent = mergingData
+      ? "Локальные заказы и другие записи сохранятся. При совпадении применяется более позднее изменение. Неоднозначные конфликты сохранят локальную версию и появятся в отчёте. Перед обновлением автоматически создаётся резервная копия."
+      : replacingData
+        ? "Все локальные данные и файлы будут заменены данными сайта. Изменения, сделанные только в приложении, останутся в резервной копии. После обновления войдите с учётной записью сайта."
+        : "Загрузите данные из веб-приложения. После переноса вход выполняется с учётной записью сайта.";
+    importForm.querySelector('button[type="submit"]').textContent = mergingData
+      ? "Обновить данные"
+      : replacingData
+        ? "Скачать свежую копию"
+        : "Загрузить данные";
+    document.getElementById("import-cancel").textContent =
+      replacingData || mergingData
+        ? "Вернуться в приложение"
+        : "Продолжить без импорта";
     form.hidden = true;
     importForm.hidden = false;
     importError.textContent = payload.error || "";
@@ -78,7 +89,7 @@ window.ovoshiDesktop.onStatus((payload) => {
     document.getElementById("source-url").focus();
   } else {
     title.textContent = payload.dataTransfer
-      ? payload.importMode === "replace"
+      ? ["merge", "replace"].includes(payload.importMode)
         ? "Обновляем данные"
         : "Загружаем данные"
       : "Готовим приложение";
@@ -108,9 +119,10 @@ importForm.addEventListener("submit", async (event) => {
     const result = await window.ovoshiDesktop.importFromSite(credentials);
     credentials.password = "";
     if (result?.error || result?.cancelled) {
-      title.textContent = replacingData
-        ? "Обновить данные с сайта"
-        : "Загрузить данные с сайта";
+      title.textContent =
+        replacingData || mergingData
+          ? "Обновить данные с сайта"
+          : "Загрузить данные с сайта";
       form.hidden = true;
       importForm.hidden = false;
       importError.textContent = result.error || "";

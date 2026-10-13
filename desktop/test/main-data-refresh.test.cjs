@@ -198,14 +198,14 @@ test("filled local database retains initial-import guard but can open explicit d
   await result.click("Загрузить данные с сайта…");
   assert.match(result.dialogs.at(-1).message, /пустую/);
   assert.equal(result.window.url.includes("/admin/products"), true);
-  await result.click("Обновить данные с сайта…");
+  await result.click("Заменить все данные копией сайта…");
   assert.equal(result.calls.filter((item) => item === "eligibility").length, 1);
   assert.equal(result.calls.at(-1)[1].importMode, "replace");
 });
 
 test("refresh confirmation defaults to cancellation and keeps local session and return route", async () => {
   const result = await launch();
-  await result.click("Обновить данные с сайта…");
+  await result.click("Заменить все данные копией сайта…");
   const clearedBefore = result.calls.filter(
     (item) => item[0] === "clear-storage",
   ).length;
@@ -246,7 +246,7 @@ test("refresh confirmation defaults to cancellation and keeps local session and 
 
 test("confirmed refresh clears old authentication and shows backup location before website login", async () => {
   const result = await launch({ confirmation: 0 });
-  await result.click("Обновить данные с сайта…");
+  await result.click("Заменить все данные копией сайта…");
   assert.equal((await result.submit()).ok, true);
   assert.equal(result.calls.includes("replace-data"), true);
   assert.equal(
@@ -266,7 +266,7 @@ test("confirmed refresh clears old authentication and shows backup location befo
 test("cancelling refresh entry preserves the current edit page before replacing its document", async () => {
   const result = await launch({ entryConfirmation: 1 });
   const before = result.window.url;
-  await result.click("Обновить данные с сайта…");
+  await result.click("Заменить все данные копией сайта…");
   assert.equal(result.window.url, before);
   assert.equal(result.dialogs.at(-1).defaultId, 1);
   assert.match(result.dialogs.at(-1).detail, /Несохранённый ввод/);
@@ -306,7 +306,7 @@ test("renderer cannot upgrade initial import into replacement or call import fro
 
 test("invalid source keeps refresh mode for retry and allows returning without deleting data", async () => {
   const result = await launch({ importFailure: true });
-  await result.click("Обновить данные с сайта…");
+  await result.click("Заменить все данные копией сайта…");
   assert.match((await result.submit()).error, /проверки/);
   assert.equal(result.calls.at(-1)[1].importMode, "replace");
   assert.equal(result.calls.includes("replace-data"), false);
@@ -322,7 +322,7 @@ test("in-progress refresh rejects duplicate submits and cancellation and blocks 
     finish = resolve;
   });
   const result = await launch({ importGate });
-  await result.click("Обновить данные с сайта…");
+  await result.click("Заменить все данные копией сайта…");
   const operation = result.submit();
   await tick();
   assert.ok((await result.submit()).error);
@@ -347,5 +347,47 @@ test("in-progress refresh rejects duplicate submits and cancellation and blocks 
   assert.equal(
     (await result.handlers.get("desktop:import-cancel")(result.event())).ok,
     true,
+  );
+});
+
+test("default refresh merges without erasing login or contextual list state", async () => {
+  const result = await launch();
+  const before = result.window.url;
+  const clearedBefore = result.calls.filter(
+    (item) => item[0] === "clear-storage",
+  ).length;
+  await result.click("Обновить данные с сайта…");
+  assert.equal(result.calls.at(-1)[1].importMode, "merge");
+  assert.equal(
+    (await result.submit({ mode: "replace", confirmed: true })).ok,
+    true,
+  );
+  assert.ok(
+    result.calls.some((item) => item[0] === "import" && item[1] === "merge"),
+  );
+  assert.equal(
+    result.calls.filter((item) => item[0] === "clear-storage").length,
+    clearedBefore,
+  );
+  assert.equal(
+    result.dialogs.some((item) => item.buttons[0] === "Заменить данные"),
+    false,
+  );
+  assert.match(result.dialogs.at(-1).message, /объединены/);
+  assert.equal(result.window.url, before);
+});
+
+test("cancelled merge returns to the same filtered list without importing", async () => {
+  const result = await launch();
+  const before = result.window.url;
+  await result.click("Обновить данные с сайта…");
+  assert.equal(
+    (await result.handlers.get("desktop:import-cancel")(result.event())).ok,
+    true,
+  );
+  assert.equal(result.window.url, before);
+  assert.equal(
+    result.calls.some((item) => item[0] === "import"),
+    false,
   );
 });

@@ -3,13 +3,17 @@ const fs = require("node:fs/promises");
 const { createReadStream, createWriteStream } = require("node:fs");
 const path = require("node:path");
 const net = require("node:net");
-const { createHash, randomBytes } = require("node:crypto");
+const { createHash, randomBytes, randomUUID } = require("node:crypto");
 const { Readable, Transform, PassThrough } = require("node:stream");
 const { pipeline } = require("node:stream/promises");
 const { Client } = require("pg");
 const { readJson, writeJson } = require("./runtime.cjs");
 
-const EXCLUDED = new Set([
+const EXCLUDED = new (class extends Set {
+  has(name) {
+    return super.has(name) || String(name).startsWith("sync_");
+  }
+})([
   "flyway_schema_history",
   "auth_sessions",
   "web_push_subscriptions",
@@ -17,11 +21,11 @@ const EXCLUDED = new Set([
   "external_api_credential_permissions",
   "external_api_request_logs",
 ]);
-const EPHEMERAL = new Set([
-  "flyway_schema_history",
-  "auth_sessions",
-  "web_push_subscriptions",
-]);
+const EPHEMERAL = new (class extends Set {
+  has(name) {
+    return super.has(name) || String(name).startsWith("sync_");
+  }
+})(["flyway_schema_history", "auth_sessions", "web_push_subscriptions"]);
 const LIMITS = Object.freeze({
   maxArchive: 4 * 1024 ** 3,
   maxExpanded: 10 * 1024 ** 3,
@@ -126,7 +130,7 @@ function validateManifest(manifest, entries, limits = LIMITS) {
   if (
     !manifest ||
     manifest.format !== "ovoshi-help-data-transfer" ||
-    manifest.formatVersion !== 1 ||
+    ![1, 2].includes(manifest.formatVersion) ||
     !Array.isArray(manifest.tables) ||
     !Array.isArray(manifest.files) ||
     (manifest.sequences !== undefined && !Array.isArray(manifest.sequences))
@@ -192,6 +196,20 @@ function validateManifest(manifest, entries, limits = LIMITS) {
     declare(file);
   }
   const sequences = new Set();
+  if (manifest.formatVersion === 2) {
+    const sync = manifest.sync;
+    if (
+      !sync ||
+      !/^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i.test(
+        sync.instanceId || "",
+      ) ||
+      sync.entry !== "sync/rows.jsonl"
+    )
+      fail("Некорректные метаданные объединения");
+    boundedInteger(sync.rowCount, limits.maxRows, "sync");
+    declare(sync);
+  } else if (manifest.sync != null)
+    fail("Некорректная версия метаданных объединения");
   for (const sequence of manifest.sequences || []) {
     if (
       !sequence ||
@@ -309,7 +327,7 @@ async function streamText(stream, maximum) {
   return Buffer.concat(chunks).toString("utf8");
 }
 function validateModifiedUtf(bytes) {
-  for (let index = 0; index < bytes.length; ) {
+  for (let index = 0; index < bytes.length;) {
     const first = bytes[index++];
     if (first <= 0x7f) continue;
     const count =
@@ -417,6 +435,7 @@ async function downloadSource({
   fetchImpl = fetch,
   limits = LIMITS,
   onProgress = () => {},
+  format = 1,
 }) {
   const base = validateSourceUrl(url);
   let token, actorPhone;
@@ -450,7 +469,9 @@ async function downloadSource({
       fail("Сайт не предоставил сессию для переноса");
     actorPhone = payload.data?.user?.phone;
     onProgress("Скачиваем согласованную копию данных…");
-    const response = await fetchImpl(endpoint("api/data-transfer/export"), {
+    const exportUrl = new URL(endpoint("api/data-transfer/export"));
+    if (format === 2) exportUrl.searchParams.set("format", "2");
+    const response = await fetchImpl(exportUrl.href, {
       redirect: "manual",
       headers: { Authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(15 * 60000),
@@ -767,11 +788,24 @@ async function restoreDatabase(
 ) {
   compatibleSchema(archive.manifest, metadata);
   const tables = metadata.tables.filter(
-    (t) => t.name !== "flyway_schema_history",
+    (t) => t.name !== "flyway_schema_history" && !t.name.startsWith("sync_"),
   );
   await client.query("BEGIN");
   try {
     await client.query("SET LOCAL TIME ZONE 'UTC'");
+    const hasSync = (
+      await client.query("SELECT to_regclass('public.sync_rows') AS table_name")
+    ).rows[0]?.table_name;
+    if (hasSync) {
+      await client.query("SET LOCAL ovoshi.sync_tracking='off'");
+      await client.query("TRUNCATE public.sync_rows");
+      const hasAliases = (
+        await client.query(
+          "SELECT to_regclass('public.sync_import_aliases') AS table_name",
+        )
+      ).rows[0]?.table_name;
+      if (hasAliases) await client.query("TRUNCATE public.sync_import_aliases");
+    }
     for (const constraint of metadata.constraints)
       await client.query(
         `ALTER TABLE ${tableSql(constraint.table_name)} ALTER CONSTRAINT ${quote(constraint.name)} DEFERRABLE INITIALLY DEFERRED`,
@@ -843,6 +877,31 @@ async function restoreDatabase(
           sequence.isCalled,
         ],
       );
+    if (hasSync) {
+      const merge = require("./data-merge.cjs");
+      if (archive.manifest.formatVersion === 2) {
+        for (const record of await merge.readSyncRows(archive))
+          await client.query(
+            "SELECT public.sync_seed($1,$2::uuid,$3::jsonb,$4,$5,$6::bigint,$7,$8::jsonb,$9)",
+            [
+              record.table,
+              record.uid,
+              merge.canonicalKey(record.key),
+              record.modifiedAt,
+              record.deleted,
+              String(record.generation),
+              record.aggregate?.table || null,
+              record.aggregate
+                ? merge.canonicalKey(record.aggregate.key)
+                : null,
+              record.observedAt || null,
+            ],
+          );
+      } else {
+        // Legacy snapshots cannot invent a new modification time.
+        await client.query("SELECT public.sync_install_tracking()");
+      }
+    }
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
@@ -942,7 +1001,7 @@ function createDataImporter({
     mode = "initial",
     confirmReplacement,
   }) {
-    if (!["initial", "replace"].includes(mode))
+    if (!["initial", "replace", "merge"].includes(mode))
       fail("Некорректный режим переноса данных");
     if (mode === "replace" && typeof confirmReplacement !== "function")
       fail("Замена локальных данных требует подтверждения");
@@ -951,7 +1010,10 @@ function createDataImporter({
     let directory,
       backup,
       backendPaused = false,
-      modified = false;
+      modified = false,
+      mergeResult,
+      reconciliation,
+      fileKeys;
     const progressCallback = onProgress;
     const notify = (message) => {
       try {
@@ -1000,6 +1062,7 @@ function createDataImporter({
         fetchImpl,
         limits,
         onProgress,
+        format: 2,
       });
       password = undefined;
       const archive = await stageArchive(
@@ -1010,9 +1073,20 @@ function createDataImporter({
       if (typeof downloaded.actorPhone !== "string" || !downloaded.actorPhone)
         fail("Сайт не предоставил данные учётной записи для проверки копии");
       await validateRowsAndFiles(archive, downloaded.actorPhone, limits);
+      if (mode === "merge")
+        await require("./data-merge.cjs").readSyncRows(archive);
       let client = await connection();
       try {
         compatibleSchema(archive.manifest, await databaseMetadata(client));
+        if (mode === "merge")
+          reconciliation =
+            await require("./data-merge.cjs").prepareFinancialMerge({
+              client,
+              archive,
+              runtime,
+              rowsFromFile,
+              limits,
+            });
       } finally {
         await client.end();
       }
@@ -1020,7 +1094,7 @@ function createDataImporter({
       // Failure (including no disk space) at this stage leaves the live app intact.
       const files = path.join(directory, "files");
       await fs.mkdir(files);
-      for (const item of archive.manifest.files)
+      for (const item of mode === "merge" ? [] : archive.manifest.files)
         await fs.copyFile(
           archive.staged.get(item.entry),
           path.join(files, sha(item.key) + ".object"),
@@ -1045,13 +1119,23 @@ function createDataImporter({
         if (!pausedEligibility.eligible) fail(pausedEligibility.reason);
       }
       onProgress(
-        mode === "replace"
+        mode === "replace" || mode === "merge"
           ? "Сохраняем резервную копию текущих локальных данных…"
           : "Сохраняем резервную копию новой локальной базы…",
       );
       backup = await runtime.backup(
-        mode === "replace" ? "before-data-refresh" : "before-data-import",
+        mode === "merge"
+          ? "before-data-merge"
+          : mode === "replace"
+            ? "before-data-refresh"
+            : "before-data-import",
       );
+      if (mode === "merge")
+        fileKeys = await require("./data-merge.cjs").prepareMergedFiles({
+          archive,
+          currentDirectory: path.join(runtime.dataDir, "files"),
+          destination: files,
+        });
       await writeJson(path.join(runtime.userData, "data-import-pending.json"), {
         schemaVersion: 1,
         backup,
@@ -1072,13 +1156,21 @@ function createDataImporter({
       client = await connection();
       try {
         modified = true;
-        await restoreDatabase(
-          client,
-          archive,
-          await databaseMetadata(client),
-          limits,
-          onProgress,
-        );
+        if (mode === "merge")
+          mergeResult = await require("./data-merge.cjs").mergeDatabase(
+            client,
+            archive,
+            await databaseMetadata(client),
+            { limits, rowsFromFile, fileKeys, onProgress, reconciliation },
+          );
+        else
+          await restoreDatabase(
+            client,
+            archive,
+            await databaseMetadata(client),
+            limits,
+            onProgress,
+          );
       } finally {
         await client.end();
       }
@@ -1100,11 +1192,46 @@ function createDataImporter({
       );
       await writeJson(path.join(runtime.dataDir, "app-state.json"), {
         ...appState,
-        importedData: true,
-        dataSourceUrl: summary.sourceUrl,
+        ...(mode === "merge"
+          ? {
+              lastMergeSourceUrl: summary.sourceUrl,
+              lastMergedAt: new Date().toISOString(),
+            }
+          : { importedData: true, dataSourceUrl: summary.sourceUrl }),
       });
       onProgress("Запускаем приложение с перенесёнными данными…");
       await runtime.start();
+      let reportPath;
+      if (mode === "merge") {
+        if (
+          reconciliation?.planId &&
+          (mergeResult.appliedWalletIds.length ||
+            mergeResult.appliedOrderIds.length ||
+            mergeResult.appliedWarehousePairs.length)
+        )
+          await require("./data-merge.cjs").controlRequest(runtime, "apply", {
+            planId: reconciliation.planId,
+            walletIds: mergeResult.appliedWalletIds,
+            warehouses: mergeResult.appliedWarehousePairs,
+            orderIds: mergeResult.appliedOrderIds,
+          });
+        const reports = path.join(runtime.userData, "merge-reports");
+        await fs.mkdir(reports, { recursive: true, mode: 0o700 });
+        reportPath = path.join(
+          reports,
+          new Date().toISOString().replace(/[:.]/g, "-") +
+            "-" +
+            randomUUID() +
+            ".json",
+        );
+        await writeJson(reportPath, {
+          schemaVersion: 1,
+          sourceInstanceId: archive.manifest.sync.instanceId,
+          ...summary,
+          mergedAt: new Date().toISOString(),
+          merge: mergeResult,
+        });
+      }
       await fs.rm(path.join(runtime.userData, "data-import-pending.json"), {
         force: true,
       });
@@ -1113,6 +1240,7 @@ function createDataImporter({
         mode,
         ...summary,
         backup,
+        ...(mode === "merge" ? { merge: mergeResult, reportPath } : {}),
       };
     } catch (error) {
       if (backup && modified) {
@@ -1128,8 +1256,19 @@ function createDataImporter({
             "Перенос прерван. Резервная копия сохранена; требуется восстановить локальные данные перед запуском",
           );
         }
-        fail(
-          "Перенос не завершён. Локальные данные восстановлены из резервной копии",
+        throw Object.assign(
+          controlledError(
+            "Перенос не завершён. Локальные данные восстановлены из резервной копии",
+          ),
+          {
+            // Private diagnostics expose only a class/state/constraint, never SQL
+            // values, source credentials or arbitrary driver error messages.
+            cause: {
+              name: error.name,
+              code: error.code,
+              constraint: error.constraint,
+            },
+          },
         );
       }
       if (backendPaused && !runtime.started)

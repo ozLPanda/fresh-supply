@@ -23,7 +23,9 @@ const SEEDED_TABLES = new Set([
 
 function excludedTable(name) {
   return (
-    EXCLUDED_TABLES.has(name) || name.startsWith("external_api_request_logs_")
+    EXCLUDED_TABLES.has(name) ||
+    name.startsWith("external_api_request_logs_") ||
+    name.startsWith("sync_")
   );
 }
 

@@ -1,6 +1,7 @@
 package kz.company.shop.datatransfer;
 
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.DataOutputStream;
 import java.io.FilterOutputStream;
@@ -40,7 +41,8 @@ public class DataTransferExportService {
                     "external_api_credential_permissions",
                     "external_api_request_logs",
                     "flyway_schema_history",
-                    "web_push_subscriptions");
+                    "web_push_subscriptions",
+                    "sync_instance", "sync_rows", "sync_table_policies");
     private static final Map<String, String> FILE_COLUMNS =
             Map.of(
                     "categories",
@@ -72,6 +74,13 @@ public class DataTransferExportService {
     }
 
     public Archive export() {
+        return export(1);
+    }
+
+    public Archive export(int formatVersion) {
+        if (formatVersion != 1 && formatVersion != 2) {
+            throw new AppExceptions.BadRequest("Неподдерживаемый формат экспорта");
+        }
         Path archive = null;
         try (var ignored = barrier.snapshot();
                 var connection = dataSource.getConnection()) {
@@ -86,7 +95,7 @@ public class DataTransferExportService {
             connection.setAutoCommit(false);
             try (var zip =
                     new ZipOutputStream(Files.newOutputStream(archive), StandardCharsets.UTF_8)) {
-                writeSnapshot(connection, zip);
+                writeSnapshot(connection, zip, formatVersion);
             } finally {
                 connection.rollback();
             }
@@ -108,9 +117,13 @@ public class DataTransferExportService {
     }
 
     void writeSnapshot(Connection connection, ZipOutputStream zip) throws Exception {
+        writeSnapshot(connection, zip, 1);
+    }
+
+    void writeSnapshot(Connection connection, ZipOutputStream zip, int formatVersion) throws Exception {
         var tables = new ArrayList<TableManifest>();
         var references = new TreeMap<String, FileReference>();
-        String schemaVersion = schemaVersion(connection);
+        String schemaVersion = schemaVersion(connection, formatVersion);
         List<SequenceManifest> sequences = sequences(connection);
         List<String> excludedTables = excludedTables(connection);
         int index = 0;
@@ -157,6 +170,7 @@ public class DataTransferExportService {
                 files.add(new FileManifest(key, entry, output.size, output.hash()));
             }
         }
+        SyncManifest sync = formatVersion == 2 ? writeSync(connection, zip) : null;
         zip.putNextEntry(new ZipEntry("manifest.json"));
         var generator = mapper.getFactory().createGenerator(zip);
         generator.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
@@ -164,15 +178,73 @@ public class DataTransferExportService {
                 generator,
                 new Manifest(
                         "ovoshi-help-data-transfer",
-                        1,
+                        formatVersion,
                         Instant.now().toString(),
                         schemaVersion,
                         excludedTables,
                         tables,
                         files,
-                        sequences));
+                        sequences, sync));
         generator.close();
         zip.closeEntry();
+    }
+
+    private SyncManifest writeSync(Connection connection, ZipOutputStream zip) throws Exception {
+        String instanceId;
+        try (var statement = connection.prepareStatement("select instance_id::text from public.sync_instance where singleton");
+                var rows = statement.executeQuery()) {
+            if (!rows.next()) throw new IllegalStateException("Missing sync instance");
+            instanceId = rows.getString(1);
+        }
+        String entry = "sync/rows.jsonl";
+        zip.putNextEntry(new ZipEntry(entry));
+        var output = new EntryOutput(zip);
+        long count = 0;
+        try (var statement = connection.prepareStatement("""
+                select table_name,uid::text,pk::text,
+                    (extract(epoch from modified_at)*1000000)::bigint::text as modified_micros,
+                    deleted,generation,
+                    aggregate_table,aggregate_pk::text,
+                    (extract(epoch from observed_at)*1000000)::bigint::text as observed_micros
+                from public.sync_rows order by table_name,uid
+                """, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
+            statement.setFetchSize(500);
+            try (var rows = statement.executeQuery(); var generator = mapper.getFactory().createGenerator(output)) {
+                generator.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
+                generator.setRootValueSeparator(null);
+                while (rows.next()) {
+                    String table = rows.getString(1);
+                    if (EXCLUDED_TABLES.contains(table) || table.startsWith("sync_")) continue;
+                    generator.writeStartObject();
+                    generator.writeStringField("table", table);
+                    generator.writeStringField("uid", rows.getString(2));
+                    generator.writeFieldName("key");
+                    generator.writeTree(mapper.readTree(rows.getString(3)));
+                    String modified = rows.getString(4);
+                    if (modified == null) generator.writeNullField("modifiedAt");
+                    else generator.writeStringField("modifiedAt", modified);
+                    generator.writeBooleanField("deleted", rows.getBoolean(5));
+                    generator.writeNumberField("generation", rows.getLong(6));
+                    String parent = rows.getString(7);
+                    if (parent != null) {
+                        generator.writeObjectFieldStart("aggregate");
+                        generator.writeStringField("table", parent);
+                        generator.writeFieldName("key");
+                        generator.writeTree(mapper.readTree(rows.getString(8)));
+                        generator.writeEndObject();
+                    }
+                    String observed = rows.getString(9);
+                    if (observed == null) generator.writeNullField("observedAt");
+                    else generator.writeStringField("observedAt", observed);
+                    generator.writeBooleanField("timestampUncertain", modified == null);
+                    generator.writeEndObject();
+                    generator.writeRaw('\n');
+                    count++;
+                }
+            }
+        }
+        zip.closeEntry();
+        return new SyncManifest(instanceId,entry,count,output.size,output.hash());
     }
 
     private List<String> excludedTables(Connection connection) throws Exception {
@@ -185,7 +257,11 @@ public class DataTransferExportService {
                 join pg_catalog.pg_class parent on parent.oid = i.inhparent
                 join pg_catalog.pg_namespace n on n.oid = parent.relnamespace
                 where n.nspname = 'public' and parent.relname = 'external_api_request_logs'
-                order by child.relname
+                union
+                select c.relname from pg_catalog.pg_class c
+                join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+                where n.nspname='public' and starts_with(c.relname,'sync_')
+                order by 1
                 """);
                 var rows = statement.executeQuery()) {
             while (rows.next()) excluded.add(rows.getString(1));
@@ -206,7 +282,7 @@ public class DataTransferExportService {
                 var rows = statement.executeQuery()) {
             while (rows.next()) {
                 String name = rows.getString(1);
-                if (!EXCLUDED_TABLES.contains(name)) tables.add(name);
+                if (!EXCLUDED_TABLES.contains(name) && !name.startsWith("sync_")) tables.add(name);
             }
         }
         return tables;
@@ -321,10 +397,12 @@ public class DataTransferExportService {
                 });
     }
 
-    private String schemaVersion(Connection connection) throws Exception {
+    private String schemaVersion(Connection connection, int formatVersion) throws Exception {
         try (var statement =
                         connection.prepareStatement(
-                                "select version from public.flyway_schema_history where success and version is not null order by installed_rank desc limit 1");
+                                "select version from public.flyway_schema_history where success and version is not null "
+                                        + (formatVersion == 1 ? "and version <> '135' " : "")
+                                        + "order by installed_rank desc limit 1");
                 var rows = statement.executeQuery()) {
             if (!rows.next()) throw new IllegalStateException("No migrated schema");
             return rows.getString(1);
@@ -338,7 +416,7 @@ public class DataTransferExportService {
                                 """
                 select c.relname from pg_catalog.pg_class c
                 join pg_catalog.pg_namespace n on n.oid = c.relnamespace
-                where n.nspname = 'public' and c.relkind = 'S' order by c.relname
+                where n.nspname = 'public' and c.relkind = 'S' and not starts_with(c.relname,'sync_') order by c.relname
                 """);
                 var rows = statement.executeQuery()) {
             while (rows.next()) names.add(rows.getString(1));
@@ -424,6 +502,7 @@ public class DataTransferExportService {
 
     public record SequenceManifest(String name, String lastValue, boolean isCalled) {}
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record Manifest(
             String format,
             int formatVersion,
@@ -432,7 +511,9 @@ public class DataTransferExportService {
             List<String> excludedTables,
             List<TableManifest> tables,
             List<FileManifest> files,
-            List<SequenceManifest> sequences) {}
+            List<SequenceManifest> sequences, SyncManifest sync) {}
+
+    public record SyncManifest(String instanceId, String entry, long rowCount, long size, String sha256) {}
 
     public record Archive(Path path, long size) implements AutoCloseable {
         @Override

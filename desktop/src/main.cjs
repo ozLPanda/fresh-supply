@@ -484,21 +484,23 @@ async function openDataImport(mode = "initial") {
         detail:
           (eligibility.reason ||
             "В базе уже есть данные или настройки изменены.") +
-          "\n\nДля замены локальной копии используйте «Файл → Обновить данные с сайта». Перед заменой сохраните изменения в открытых формах.",
+          "\n\nДля объединения с локальной копией используйте «Файл → Обновить данные с сайта». Перед обновлением сохраните изменения в открытых формах.",
         buttons: ["OK"],
       });
       busy = false;
       installMenu();
       return;
     }
-    if (mode === "replace") {
+    if (["merge", "replace"].includes(mode)) {
       const choice = await dialog.showMessageBox(window, {
         type: "warning",
         title: "Обновить данные с сайта",
         message: "Перед обновлением сохраните изменения в открытых формах.",
         detail:
           "Программа откроет форму загрузки с сайта. Несохранённый ввод в текущем окне не попадёт в резервную копию.\n\n" +
-          "После скачивания и проверки копии отдельно попросим подтвердить замену локальных данных.",
+          (mode === "merge"
+            ? "Новые записи сайта добавятся в приложение. При совпадении будет сохранено более позднее изменение; локальные заказы сохранятся."
+            : "После скачивания и проверки копии отдельно попросим подтвердить замену локальных данных."),
         buttons: ["Продолжить", "Отмена"],
         defaultId: 1,
         cancelId: 1,
@@ -581,26 +583,37 @@ ipcMain.handle("desktop:import", async (event, payload) => {
       return { cancelled: true };
     }
     const replaced = importMode === "replace";
+    const merged = importMode === "merge";
+    const returnUrl = importReturnUrl;
     importFormActive = false;
     importMode = "initial";
     importReturnUrl = undefined;
-    await session.defaultSession.clearStorageData({
-      storages: ["cookies", "serviceworkers", "cachestorage"],
-    });
+    if (!merged)
+      await session.defaultSession.clearStorageData({
+        storages: ["cookies", "serviceworkers", "cachestorage"],
+      });
     await dialog.showMessageBox(window, {
       type: "info",
       title: "Перенос данных",
-      message: replaced
-        ? "Локальные данные обновлены из сайта."
-        : "Данные сайта загружены.",
+      message: merged
+        ? "Данные сайта объединены с локальными."
+        : replaced
+          ? "Локальные данные обновлены из сайта."
+          : "Данные сайта загружены.",
       detail:
-        "Теперь войдите с телефоном и паролем своей учётной записи на сайте. Дальнейшие изменения сохраняются в локальной копии." +
+        (merged
+          ? `Добавлено: ${result.merge?.inserted || 0}. Обновлено: ${result.merge?.updated || 0}. Сохранено локальных: ${result.merge?.keptLocal || 0}. Конфликтов: ${result.merge?.conflictCount ?? result.merge?.conflicts?.length ?? 0}.` +
+            (result.reportPath ? `\nОтчёт: ${result.reportPath}` : "") +
+            `\nРезервная копия: ${result.backup}`
+          : "Теперь войдите с телефоном и паролем своей учётной записи на сайте. Дальнейшие изменения сохраняются в локальной копии.") +
         (replaced
           ? `\n\nРезервная копия прежних данных: ${result.backup}`
           : ""),
       buttons: ["OK"],
     });
-    await window.loadURL(`${runtime.url}/admin/login`);
+    await window.loadURL(
+      merged && isLocal(returnUrl) ? returnUrl : `${runtime.url}/admin/login`,
+    );
     busy = false;
     return { ok: true };
   } catch (error) {
@@ -624,7 +637,7 @@ ipcMain.handle("desktop:import-cancel", async (event) => {
   importFormActive = false;
   busy = false;
   const returnUrl =
-    importMode === "replace" && isLocal(importReturnUrl)
+    ["merge", "replace"].includes(importMode) && isLocal(importReturnUrl)
       ? importReturnUrl
       : `${runtime.url}/admin/login`;
   importMode = "initial";
@@ -749,6 +762,11 @@ function installMenu() {
         },
         {
           label: "Обновить данные с сайта…",
+          enabled: ready,
+          click: () => void openDataImport("merge"),
+        },
+        {
+          label: "Заменить все данные копией сайта…",
           enabled: ready,
           click: () => void openDataImport("replace"),
         },

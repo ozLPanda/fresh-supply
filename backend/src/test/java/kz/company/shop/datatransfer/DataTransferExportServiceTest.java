@@ -88,6 +88,8 @@ class DataTransferExportServiceTest {
             var manifest = mapper.readTree(zip.getInputStream(zip.getEntry("manifest.json")));
             assertThat(manifest.path("format").asText()).isEqualTo("ovoshi-help-data-transfer");
             assertThat(manifest.path("schemaVersion").asText()).isEqualTo("134");
+            assertThat(manifest.has("sync")).isFalse();
+            assertThat(manifest.path("formatVersion").asInt()).isEqualTo(1);
             assertThat(manifest.path("tables").size()).isEqualTo(3);
             assertThat(manifest.path("sequences").get(0).path("isCalled").asBoolean()).isTrue();
             assertThat(manifest.path("sequences").get(0).path("lastValue").asText())
@@ -135,6 +137,44 @@ class DataTransferExportServiceTest {
         verify(tableStatements.get("products")).setFetchSize(1);
         verify(tableStatements.get("categories")).setFetchSize(500);
         verify(source.getConnection()).rollback();
+    }
+
+    @Test
+    void v2StreamsIdentityClocksTombstonesAndUncertaintyOutsideBusinessTables() throws Exception {
+        var storage = new DesktopObjectStorageService(temporary.resolve("files").toString());
+        var service = service(source(Map.of("categories", new Fixture(
+                List.<String[]>of(new String[]{"id", "bigint"}),
+                List.<String[]>of(new String[]{"9007199254740993"})))), storage);
+        try (var archive = service.export(2); var zip = new ZipFile(archive.path().toFile())) {
+            var manifest = mapper.readTree(zip.getInputStream(zip.getEntry("manifest.json")));
+            assertThat(manifest.path("formatVersion").asInt()).isEqualTo(2);
+            assertThat(manifest.path("schemaVersion").asText()).isEqualTo("135");
+            var descriptor = manifest.path("sync");
+            assertThat(descriptor.path("instanceId").asText()).isEqualTo("00000000-0000-4000-8000-000000000001");
+            byte[] bytes = zip.getInputStream(zip.getEntry(descriptor.path("entry").asText())).readAllBytes();
+            assertThat(descriptor.path("sha256").asText()).isEqualTo(hash(bytes));
+            assertThat(descriptor.path("size").asLong()).isEqualTo(bytes.length);
+            assertThat(descriptor.path("rowCount").asLong()).isEqualTo(2);
+            var lines = new String(bytes, StandardCharsets.UTF_8).lines().toList();
+            var historical = mapper.readTree(lines.get(0));
+            assertThat(historical.path("modifiedAt").isNull()).isTrue();
+            assertThat(historical.path("timestampUncertain").asBoolean()).isTrue();
+            assertThat(historical.path("observedAt").asText()).isEqualTo("1791857884000001");
+            assertThat(historical.path("key").path("id").asText()).isEqualTo("9007199254740993");
+            var removed = mapper.readTree(lines.get(1));
+            assertThat(removed.path("deleted").asBoolean()).isTrue();
+            assertThat(removed.path("modifiedAt").asText()).isEqualTo("1791857884000002");
+            assertThat(removed.path("aggregate").path("key").path("id").asText()).isEqualTo("9007199254740993");
+            assertThat(manifest.path("tables").size()).isEqualTo(1);
+        }
+    }
+
+    @Test
+    void unsupportedFormatFailsBeforeReadingAnyDatabase() {
+        var source = mock(DataSource.class);
+        assertThatThrownBy(() -> service(source, mock(ObjectStorageService.class)).export(3))
+                .isInstanceOf(AppExceptions.BadRequest.class);
+        verifyNoInteractions(source);
     }
 
     @Test
@@ -210,13 +250,16 @@ class DataTransferExportServiceTest {
                         call -> {
                             String sql = call.getArgument(0);
                             var statement = mock(PreparedStatement.class);
-                            if (sql.contains("select version"))
+                            if (sql.contains("select instance_id"))
+                                when(statement.executeQuery()).thenAnswer(ignored -> rows(List.<String[]>of(
+                                    new String[]{"00000000-0000-4000-8000-000000000001"})));
+                            else if (sql.contains("select version"))
                                 when(statement.executeQuery())
                                         .thenAnswer(
                                                 ignored ->
                                                         rows(
                                                                 List.<String[]>of(
-                                                                        new String[] {"134"})));
+                                                                        new String[] {sql.contains("version <> '135'") ? "134" : "135"})));
                             else if (sql.contains("pg_inherits"))
                                 when(statement.executeQuery())
                                         .thenAnswer(
@@ -272,6 +315,14 @@ class DataTransferExportServiceTest {
                 .thenAnswer(
                         call -> {
                             String sql = call.getArgument(0);
+                            if (sql.contains("from public.sync_rows")) {
+                                var statement = mock(PreparedStatement.class);
+                                when(statement.executeQuery()).thenAnswer(ignored -> rows(List.of(
+                                    new String[]{"categories","00000000-0000-4000-8000-000000000002","{\"id\":\"9007199254740993\"}",null,"false","1",null,null,"1791857884000001"},
+                                    new String[]{"product_images","00000000-0000-4000-8000-000000000003","{\"id\":\"9223372036854775807\"}","1791857884000002","true","1","products","{\"id\":\"9007199254740993\"}","1791857884000002"}
+                                )));
+                                return statement;
+                            }
                             for (var fixture : fixtures.entrySet())
                                 if (sql.endsWith("public.\"" + fixture.getKey() + "\"")) {
                                     var statement = mock(PreparedStatement.class);
@@ -291,6 +342,7 @@ class DataTransferExportServiceTest {
         when(result.next()).thenAnswer(ignored -> index.incrementAndGet() < values.size());
         when(result.getString(anyInt()))
                 .thenAnswer(call -> values.get(index.get())[(Integer) call.getArgument(0) - 1]);
+        when(result.getLong(anyInt())).thenAnswer(call -> Long.parseLong(values.get(index.get())[(Integer) call.getArgument(0) - 1]));
         when(result.getBoolean(anyInt()))
                 .thenAnswer(
                         call ->
