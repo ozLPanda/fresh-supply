@@ -72,6 +72,7 @@
       ]
     },
     "nsis": {
+      "packElevateHelper": false,
       "include": "installer/windows-install.nsh",
       "oneClick": false,
       "perMachine": false,

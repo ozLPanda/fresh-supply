@@ -353,7 +353,7 @@ async function main() {
     const rejectedStage=[...rejectionLog.matchAll(/Preserved failed stage for diagnostics: (.+)/g)].at(-1)?.[1].trim();
     if(rejectedStage) {
       const relative=path.relative(temporary,rejectedStage);
-      assert.ok(relative && !relative.startsWith('..') && !path.isAbsolute(relative) && /^nsi[a-z0-9]+\.tmp$/i.test(path.basename(rejectedStage)),'Rejected stage belongs to the disposable installer test');
+      assert.ok(relative && !relative.startsWith('..') && !path.isAbsolute(relative) && /^ns[a-z0-9]+\.tmp$/i.test(path.basename(rejectedStage)),'Rejected stage belongs to the disposable installer test');
       await fs.rm(rejectedStage,{recursive:true,force:true,maxRetries:8,retryDelay:250});
     }
     assert.deepEqual(

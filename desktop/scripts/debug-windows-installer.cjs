@@ -177,9 +177,11 @@ async function main() {
       let match, last;
       while ((match = stage.exec(body))) last = match[1].trim();
       if(code!==0 && !last) {
-        const candidates=(await fs.readdir(parent).catch(()=>[])).filter(name=>!before.has(name)&&/^nsi[a-z0-9]+\.tmp$/i.test(name));
+        const candidates=(await fs.readdir(parent).catch(()=>[])).filter(name=>!before.has(name)&&/^ns[a-z0-9]+\.tmp$/i.test(name));
         for(const name of candidates) {
           const candidate=path.join(parent,name);
+          const stat=await fs.lstat(candidate).catch(()=>null);
+          if(!stat?.isDirectory()||stat.isSymbolicLink())continue;
           const stageMetadata=JSON.parse(await fs.readFile(path.join(candidate,'resources/package-integrity.json'),'utf8').catch(()=>'null'));
           if(stageMetadata?.version===pkg.version && stageMetadata.files?.length===metadata.files.length){last=candidate;break;}
         }

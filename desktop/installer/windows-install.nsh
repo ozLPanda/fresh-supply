@@ -46,6 +46,7 @@
   CreateDirectory "$LOCALAPPDATA\fresh-supply-desktop-updater"
   FileOpen $0 "$LOCALAPPDATA\fresh-supply-desktop-updater\installation.log" a
   ${ifNot} ${Errors}
+    FileSeek $0 0 END
     FileWrite $0 "${MESSAGE}$\r$\n"
     FileClose $0
   ${endif}
