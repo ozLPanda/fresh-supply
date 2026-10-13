@@ -61,6 +61,15 @@ async function main() {
     );
   if (config.afterSign !== "./scripts/package-integrity.cjs")
     throw Error("Missing final Windows package integrity hook");
+  if (
+    config.nsis?.packElevateHelper !== false ||
+    config.nsis?.perMachine === true
+  )
+    throw Error(
+      "Late NSIS elevation helper would escape the final package integrity manifest",
+    );
+  if (config.nsis?.preCompressedFileExtensions?.length !== 0)
+    throw Error("All application files must be inside the checked archive");
   const builder = require("app-builder-lib/package.json");
   if (builder.version !== "26.15.3")
     throw Error("Unsupported electron-builder version");
@@ -69,6 +78,32 @@ async function main() {
     "templates/nsis/installSection.nsh",
   );
   await fs.writeFile(file, patch(await fs.readFile(file, "utf8")));
+  // The NSIS Nsis7z plugin distributed by electron-builder was built in 2019.
+  // Modern archives use ARM64 filters (including pip's ARM64 launcher files),
+  // which that old decoder cannot extract. Ship the matching pinned decoder.
+  const {
+    downloadBuilderToolset,
+  } = require("app-builder-lib/out/util/electronGet");
+  const source = await downloadBuilderToolset({
+    releaseName: "7zip@1.0.0",
+    filenameWithExt: "7zip-win-x64.tar.gz",
+    checksums: {
+      "7zip-win-x64.tar.gz":
+        "be071f15bd6da2f78fe81c6ddef2009b0c4d8a51f36b780cb806c7e6df95e1b3",
+    },
+    githubOrgRepo: "electron-userland/electron-builder-binaries",
+  });
+  const decoder = path.join(source, "bin/7za.exe");
+  if (
+    createHash("sha256")
+      .update(await fs.readFile(decoder))
+      .digest("hex") !==
+    "223b873c50380fe9a39f1a22b6abf8d46db506e1c08d08312902f6f3cd1f7ac3"
+  )
+    throw Error("Pinned Windows archive decoder SHA256 mismatch");
+  const destination = path.resolve(__dirname, "../.cache/windows-installer");
+  await fs.mkdir(destination, { recursive: true });
+  await fs.copyFile(decoder, path.join(destination, "7za.exe"));
 }
 if (require.main === module)
   main().catch((e) => {

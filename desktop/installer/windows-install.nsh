@@ -94,8 +94,19 @@
     SetCompress "${COMPRESS}"
   !endif
   SetOutPath "$freshStage"
-  Nsis7z::Extract "$PLUGINSDIR\app-$packageArch.7z"
   SetOutPath "$PLUGINSDIR"
+  File /oname=7za.exe "${PROJECT_DIR}\.cache\windows-installer\7za.exe"
+  File /oname=7-Zip-LICENSE.txt "${PROJECT_DIR}\licenses\7-Zip.txt"
+  File /oname=7-Zip-LGPL.txt "${PROJECT_DIR}\licenses\7-Zip-LGPL.txt"
+  nsExec::ExecToStack '"$PLUGINSDIR\7za.exe" x "$PLUGINSDIR\app-$packageArch.7z" -o"$freshStage" -y -bd -bb0'
+  Pop $R0
+  Pop $R1
+  !insertmacro freshInstallLog "Extractor exit code: $R0"
+  !insertmacro freshInstallLog "$R1"
+  ${if} $R0 != 0
+    !insertmacro freshDiscardFailedStage
+    !insertmacro freshInstallError "Не удалось распаковать обновление. Программа и ваши данные сохранены." 22
+  ${endif}
   File /oname=verify-install.py "${PROJECT_DIR}\installer\verify-install.py"
   ${StdUtils.GetParameter} $freshUserSid "fresh-supply-user-sid" ""
   !insertmacro freshInstallLog "Validating stage $freshStage using $freshStage\resources\runtime\python\python.exe"
@@ -106,12 +117,7 @@
   !insertmacro freshInstallLog "Validator exit code: $R0"
   !insertmacro freshInstallLog "$R1"
   ${if} $R0 != 0
-    ReadEnvStr $R2 "FRESH_SUPPLY_INSTALLER_KEEP_FAILED_STAGE"
-    ${if} $R2 == "1"
-      !insertmacro freshInstallLog "Preserved failed stage for diagnostics: $freshStage"
-    ${else}
-      RMDir /r "$freshStage"
-    ${endif}
+    !insertmacro freshDiscardFailedStage
     !insertmacro freshInstallError "Проверка обновления не пройдена. Программа и ваши данные сохранены." 22
   ${endif}
   ; Refuse to relocate another registered installation implicitly. The updater
@@ -121,6 +127,15 @@
   ${andIf} $R0 != $INSTDIR
     RMDir /r "$freshStage"
     !insertmacro freshInstallError "Программа уже установлена в другом каталоге. Выберите его для обновления или восстановления." 23
+  ${endif}
+!macroend
+
+!macro freshDiscardFailedStage
+  ReadEnvStr $R2 "FRESH_SUPPLY_INSTALLER_KEEP_FAILED_STAGE"
+  ${if} $R2 == "1"
+    !insertmacro freshInstallLog "Preserved failed stage for diagnostics: $freshStage"
+  ${else}
+    RMDir /r "$freshStage"
   ${endif}
 !macroend
 
