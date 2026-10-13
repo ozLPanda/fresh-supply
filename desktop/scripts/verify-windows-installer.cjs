@@ -56,6 +56,13 @@ async function ps(script, env = {}) {
   return r.stdout.trim();
 }
 
+function comparableDacl(sddl) {
+  // SetAccessControl may mark an unchanged inherited DACL as auto-inherited.
+  // Ignore only that header bookkeeping flag. Protection P, request AR and
+  // every ACE (including its inheritance flags) remain byte-for-byte checked.
+  return sddl.replace(/^D:((?:AI|AR|P)*)(?=\(|$)/, (_, flags) => "D:" + flags.replace(/AI/g, ""));
+}
+
 // Test-only, non-inheriting denies: changing an open directory's zero-access
 // sharing flags did not reliably deny Rename on the native runner. Save the
 // exact original DACL and prove the replacement fixture denies a real rename.
@@ -86,7 +93,8 @@ async function denyInstallationRename(directory, privateRoot) {
       "if($failures.Count){throw ($failures -join '; ')}",
       "@{directory=[System.IO.Directory]::GetAccessControl($env:FRESH_SUPPLY_ACL_DIRECTORY,$section).GetSecurityDescriptorSddlForm($section);parent=[System.IO.Directory]::GetAccessControl($env:FRESH_SUPPLY_ACL_PARENT,$section).GetSecurityDescriptorSddlForm($section)}|ConvertTo-Json -Compress",
     ].join(";"), { ...environment, FRESH_SUPPLY_ACL_DIRECTORY: actualDirectory, FRESH_SUPPLY_ACL_SAVED: JSON.stringify(saved) }));
-    assert.deepEqual(current, saved, "Fixture restores the exact original directory and parent DACLs");
+    for (const key of ["directory", "parent"])
+      assert.equal(comparableDacl(current[key]), comparableDacl(saved[key]), "Fixture restores original permissions and inheritance protection: " + key);
     restored = true;
   };
   const probe = path.join(parent, ".fresh-supply-rename-probe-" + randomBytes(12).toString("hex"));
@@ -668,4 +676,4 @@ if (require.main === module)
     console.error(e.message);
     process.exitCode = 1;
   });
-module.exports = { verify, snapshot, main, run, ps, denyInstallationRename };
+module.exports = { verify, snapshot, main, run, ps, denyInstallationRename, comparableDacl };
