@@ -1,6 +1,6 @@
 {
   "name": "fresh-supply-desktop",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "private": true,
   "description": "fresh-supply — локальное приложение для Windows и macOS",
   "author": "fresh-supply",
@@ -12,7 +12,7 @@
     "prepare:runtime": "node scripts/prepare-runtime.cjs",
     "pack": "electron-builder --dir --publish never",
     "dist:mac": "electron-builder --mac dmg zip --publish never",
-    "dist:win": "electron-builder --win nsis --publish never"
+    "dist:win": "node scripts/prepare-windows-installer.cjs && electron-builder --win nsis --publish never"
   },
   "dependencies": {
     "electron-updater": "6.8.9",
@@ -28,6 +28,7 @@
     "productName": "fresh-supply",
     "icon": "../frontend/public/pwa-512x512.png",
     "asar": true,
+    "afterSign": "./scripts/package-integrity.cjs",
     "directories": {
       "output": "dist"
     },
@@ -71,6 +72,7 @@
       ]
     },
     "nsis": {
+      "include": "installer/windows-install.nsh",
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,

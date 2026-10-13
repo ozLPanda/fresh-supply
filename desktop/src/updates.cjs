@@ -131,9 +131,9 @@ function createUpdateManager({
         } });
       assertActive();
       phase("preparing");
-      onProgress({ phase: "preparing" });
+      onProgress({ phase: "preparing", requiresElevation: Boolean(prepared.requiresElevation) });
       if (typeof prepareUpdate !== "function") throw new Error("Update preparation is unavailable.");
-      await prepareUpdate();
+      await prepareUpdate({ requiresElevation: Boolean(prepared.requiresElevation) });
       assertActive();
       phase("installing");
       await prepared.install();

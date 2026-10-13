@@ -189,11 +189,29 @@ class LocalRuntime extends EventEmitter {
   }
 
   async loadManifest() {
-    this.manifest = await readJson(path.join(this.root, "manifest.json"), null);
-    if (!this.manifest || this.manifest.schemaVersion !== 1) {
-      throw new Error(
-        "Нет подготовленной локальной сборки. Выполните npm run prepare:runtime перед упаковкой.",
+    const incomplete = (missingFiles) =>
+      Object.assign(
+        new Error(
+          "Установка приложения неполная или повреждена. Повторно запустите установщик fresh-supply.\n" +
+            `Недоступные файлы: ${missingFiles.join(", ")}.`,
+        ),
+        { code: "DESKTOP_RUNTIME_INCOMPLETE", missingFiles },
       );
+    try {
+      this.manifest = await readJson(
+        path.join(this.root, "manifest.json"),
+        null,
+      );
+    } catch (error) {
+      if (
+        error instanceof SyntaxError ||
+        ["ENOENT", "EACCES", "EPERM"].includes(error.code)
+      )
+        throw incomplete(["manifest.json"]);
+      throw error;
+    }
+    if (!this.manifest || this.manifest.schemaVersion !== 1) {
+      throw incomplete(["manifest.json"]);
     }
     if (
       this.manifest.platform !== this.platform ||
@@ -203,6 +221,24 @@ class LocalRuntime extends EventEmitter {
         "Сборка локальных компонентов не соответствует этому компьютеру",
       );
     }
+    const missing = [];
+    const check = async (relative, directory = false) => {
+      let file;
+      try {
+        file = bundlePath(this.root, relative);
+      } catch {
+        throw incomplete(["manifest.json"]);
+      }
+      try {
+        const stat = await fs.stat(file);
+        if (directory ? !stat.isDirectory() : !stat.isFile() || stat.size === 0)
+          missing.push(relative);
+      } catch (error) {
+        if (["ENOENT", "EACCES", "EPERM", "ENOTDIR"].includes(error.code))
+          missing.push(relative);
+        else throw error;
+      }
+    };
     for (const key of [
       "java",
       "python",
@@ -212,11 +248,17 @@ class LocalRuntime extends EventEmitter {
       "embeddingService",
       "model",
     ]) {
-      await fs.access(bundlePath(this.root, this.manifest[key]));
+      await check(
+        this.manifest[key],
+        ["frontend", "embeddingService", "model"].includes(key),
+      );
     }
     for (const key of ["initdb", "pgCtl", "psql", "pgDump"]) {
-      await fs.access(bundlePath(this.root, this.manifest.postgres[key]));
+      await check(this.manifest.postgres?.[key]);
     }
+    if (this.manifest.postgres?.pgRestore)
+      await check(this.manifest.postgres.pgRestore);
+    if (missing.length) throw incomplete(missing);
   }
 
   start(options = {}) {

@@ -28,6 +28,9 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: desktop/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: Install desktop dependencies
         working-directory: desktop
         run: npm ci

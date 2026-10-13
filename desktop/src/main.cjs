@@ -19,6 +19,10 @@ const {
   confirmMacUpdateStarted,
 } = require("./mac-update.cjs");
 const { prepareWindowsUpdate } = require("./windows-update.cjs");
+const {
+  readInstallResult,
+  acknowledgeInstallResult,
+} = require("./installation-status.cjs");
 
 app.setName("fresh-supply");
 // Keep the pre-rename location so updates retain the existing database and lock.
@@ -136,6 +140,24 @@ async function external(url) {
 }
 
 async function initialize() {
+  const installResult = await readInstallResult({
+    userData: app.getPath("userData"),
+    platform: process.platform,
+  });
+  if (installResult?.status === "failed") {
+    const choice = await dialog.showMessageBox({
+      type: "warning",
+      title: "Обновление fresh-supply",
+      message: `Обновление до версии ${installResult.version} не завершено.`,
+      detail: `${installResult.message}\n\nЖурналы: ${path.join(app.getPath("userData"), "logs")}`,
+      buttons: ["Продолжить", "Открыть журналы"],
+      defaultId: 0,
+      cancelId: 0,
+    });
+    if (choice.response === 1)
+      await shell.openPath(path.join(app.getPath("userData"), "logs"));
+  }
+  if (installResult) await acknowledgeInstallResult(app.getPath("userData"));
   const root = app.isPackaged
     ? path.join(process.resourcesPath, "runtime")
     : path.resolve(
@@ -320,13 +342,13 @@ async function beginUpdate() {
   updateProgress({ phase: "downloading", percent: 0 });
 }
 
-function updateProgress({ phase, percent }) {
+function updateProgress({ phase, percent, requiresElevation = false }) {
   if (!window || window.isDestroyed()) return;
   const downloading = phase === "downloading";
   const progress = Number.isFinite(percent)
     ? Math.max(0, Math.min(100, percent))
     : null;
-  const key = `${phase}:${progress === null ? "" : Math.floor(progress)}`;
+  const key = `${phase}:${progress === null ? "" : Math.floor(progress)}:${requiresElevation}`;
   if (key === updateProgressKey) return;
   updateProgressKey = key;
   window.setProgressBar(downloading && progress !== null ? progress / 100 : 2);
@@ -338,7 +360,10 @@ function updateProgress({ phase, percent }) {
       ? `Скачиваем обновление${progress === null ? "…" : `: ${Math.floor(progress)}%`}`
       : phase === "staging"
         ? "Проверяем и готовим установку…"
-        : "Создаём резервную копию перед установкой…",
+        : "Создаём резервную копию перед установкой…" +
+          (requiresElevation
+            ? " Для установки Windows запросит права администратора."
+            : ""),
   });
 }
 
@@ -616,12 +641,12 @@ ipcMain.handle("desktop:update-cancel", (event) => {
   return { cancelled: updates.cancelDownload() };
 });
 
-async function prepareUpdate() {
+async function prepareUpdate({ requiresElevation = false } = {}) {
   if ((busy && !updateInProgress) || !runtime.started)
     throw new Error("Приложение ещё не готово к обновлению");
   busy = true;
   installMenu();
-  updateProgress({ phase: "preparing" });
+  updateProgress({ phase: "preparing", requiresElevation });
   await runtime.backup("before-install");
 }
 
@@ -794,12 +819,35 @@ async function showFailure(error) {
   const options = {
     type: "error",
     title: "fresh-supply",
-    message: "Не удалось запустить приложение.",
-    detail: `${String(error.message).slice(0, 1400)}\n\nЖурналы: ${logPath}`,
-    buttons: ["Закрыть"],
+    message:
+      error.code === "DESKTOP_RUNTIME_INCOMPLETE"
+        ? "Необходимо восстановить установку приложения."
+        : "Не удалось запустить приложение.",
+    detail:
+      `${String(error.message).slice(0, 1400)}\n\n` +
+      (error.code === "DESKTOP_RUNTIME_INCOMPLETE"
+        ? "Установщик заменяет файлы программы. Не удаляйте папку данных: " +
+          app.getPath("userData") +
+          "\n\n"
+        : "") +
+      `Журналы: ${logPath}`,
+    buttons: [
+      "Закрыть",
+      ...(error.code === "DESKTOP_RUNTIME_INCOMPLETE"
+        ? ["Скачать установщик"]
+        : []),
+      "Открыть журналы",
+    ],
+    defaultId: 0,
+    cancelId: 0,
   };
-  if (window && !window.isDestroyed())
-    await dialog.showMessageBox(window, options);
-  else await dialog.showMessageBox(options);
+  const choice =
+    window && !window.isDestroyed()
+      ? await dialog.showMessageBox(window, options)
+      : await dialog.showMessageBox(options);
+  if (error.code === "DESKTOP_RUNTIME_INCOMPLETE" && choice.response === 1)
+    await external("https://github.com/ozLPanda/fresh-supply/releases/latest");
+  if (choice.response === options.buttons.length - 1)
+    await shell.openPath(logPath);
   app.quit();
 }

@@ -26,6 +26,107 @@ test("manifest paths stay inside the runtime bundle", () => {
     assert.throws(() => bundlePath(root, invalid));
 });
 
+test("an installed runtime missing Python fails before touching the existing database", async () => {
+  const dir = await fs.mkdtemp(
+    path.join(os.tmpdir(), "fresh-incomplete-runtime-"),
+  );
+  const root = path.join(dir, "runtime"),
+    userData = path.join(dir, "userdata");
+  const runtime = new LocalRuntime({
+    root,
+    userData,
+    version: "0.1.9",
+    platform: "win32",
+    arch: "x64",
+  });
+  try {
+    await fs.mkdir(root);
+    await fs.writeFile(path.join(root, "present"), "fixture");
+    await fs.mkdir(path.join(root, "assets"));
+    await writeJson(path.join(root, "manifest.json"), {
+      schemaVersion: 1,
+      platform: "win32",
+      arch: "x64",
+      java: "present",
+      python: "python/python.exe",
+      backend: "present",
+      frontend: "assets",
+      importer: "present",
+      embeddingService: "assets",
+      model: "assets",
+      postgres: {
+        initdb: "present",
+        pgCtl: "present",
+        psql: "present",
+        pgDump: "missing-dump.exe",
+      },
+    });
+    await fs.mkdir(runtime.dataDir, { recursive: true });
+    await fs.writeFile(
+      path.join(runtime.dataDir, "database"),
+      "existing orders",
+    );
+    await assert.rejects(runtime.start(), (error) => {
+      assert.equal(error.code, "DESKTOP_RUNTIME_INCOMPLETE");
+      assert.deepEqual(error.missingFiles, [
+        "python/python.exe",
+        "missing-dump.exe",
+      ]);
+      assert.match(error.message, /Повторно запустите установщик/);
+      assert.equal(error.message.includes("npm"), false);
+      return true;
+    });
+    assert.equal(
+      await fs.readFile(path.join(runtime.dataDir, "database"), "utf8"),
+      "existing orders",
+    );
+    assert.equal(runtime.children.size, 0);
+    assert.equal(runtime.pgRunning, false);
+    const repairedManifest = await readJson(path.join(root, "manifest.json"));
+    repairedManifest.python = "damaged-python.exe";
+    repairedManifest.postgres.pgDump = "present";
+    await writeJson(path.join(root, "manifest.json"), repairedManifest);
+    for (const kind of ["empty", "directory"]) {
+      const damaged = path.join(root, "damaged-python.exe");
+      if (kind === "empty") await fs.writeFile(damaged, "");
+      else await fs.mkdir(damaged);
+      await assert.rejects(runtime.start(), (error) => {
+        assert.equal(error.code, "DESKTOP_RUNTIME_INCOMPLETE");
+        assert.deepEqual(error.missingFiles, ["damaged-python.exe"]);
+        return true;
+      });
+      await fs.rm(damaged, { recursive: true, force: true });
+    }
+    await assert.rejects(
+      fs.access(path.join(runtime.dataDir, "app-state.json")),
+    );
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("a missing or malformed runtime manifest produces a repairable installation error", async () => {
+  const dir = await fs.mkdtemp(
+    path.join(os.tmpdir(), "fresh-missing-manifest-"),
+  );
+  try {
+    const runtime = new LocalRuntime({
+      root: dir,
+      userData: path.join(dir, "userdata"),
+      version: "0.1.9",
+    });
+    await assert.rejects(runtime.loadManifest(), {
+      code: "DESKTOP_RUNTIME_INCOMPLETE",
+    });
+    await fs.writeFile(path.join(dir, "manifest.json"), "{");
+    await assert.rejects(runtime.loadManifest(), {
+      code: "DESKTOP_RUNTIME_INCOMPLETE",
+    });
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("occupied preferred port selects another loopback port", async () => {
   const server = net.createServer();
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -149,6 +250,7 @@ test("failed upgrade restores the complete previous data and version marker", as
   try {
     await fs.mkdir(root);
     await fs.writeFile(path.join(root, "placeholder"), "not executable");
+    await fs.mkdir(path.join(root, "assets"));
     await writeJson(path.join(root, "manifest.json"), {
       schemaVersion: 1,
       platform: process.platform,
@@ -156,10 +258,10 @@ test("failed upgrade restores the complete previous data and version marker", as
       java: "placeholder",
       python: "placeholder",
       backend: "placeholder",
-      frontend: "placeholder",
+      frontend: "assets",
       importer: "placeholder",
-      embeddingService: "placeholder",
-      model: "placeholder",
+      embeddingService: "assets",
+      model: "assets",
       postgres: {
         initdb: "placeholder",
         pgCtl: "placeholder",
