@@ -143,33 +143,40 @@ async function prepareWindowsUpdate({
   const installDirectory = path.dirname(installedExecutable);
   if (
     /["\r\n\0]/.test(installDirectory) ||
+    /["\r\n\0]/.test(userDataReal) ||
     inside(installDirectory, userDataReal) ||
     inside(userDataReal, installDirectory) ||
     installDirectory === userDataReal
   ) {
     throw updateFailure("Каталог установки приложения недействителен.");
   }
-  const probe = path.join(
-    installDirectory,
-    `.fresh-supply-update-${crypto.randomUUID()}`,
-  );
   let requiresElevation = false;
-  try {
-    await fs.writeFile(probe, "", { flag: "wx", mode: 0o600 });
-  } catch (error) {
-    if (!["EACCES", "EPERM"].includes(error.code)) {
-      throw updateFailure(
-        `Не удалось проверить каталог установки: ${error.message}`,
-      );
-    }
-    // Elevate only the hash-checked installer; the helper and database retain
-    // the original user token even when the application lives in Program Files.
-    requiresElevation = true;
-  } finally {
-    await fs.rm(probe, { force: true }).catch((error) => {
-      if (!["EACCES", "EPERM"].includes(error.code)) throw error;
+  // Transactional NSIS needs a writable sibling directory as well as the app
+  // directory. Custom ACLs can permit writes inside an app under Program Files
+  // while still protecting its parent.
+  for (const directoryToProbe of [
+    installDirectory,
+    path.dirname(installDirectory),
+  ]) {
+    const probe = path.join(
+      directoryToProbe,
+      `.fresh-supply-update-${crypto.randomUUID()}`,
+    );
+    try {
+      await fs.writeFile(probe, "", { flag: "wx", mode: 0o600 });
+    } catch (error) {
+      if (!["EACCES", "EPERM"].includes(error.code)) {
+        throw updateFailure(
+          `Не удалось проверить каталог установки: ${error.message}`,
+        );
+      }
       requiresElevation = true;
-    });
+    } finally {
+      await fs.rm(probe, { force: true }).catch((error) => {
+        if (!["EACCES", "EPERM"].includes(error.code)) throw error;
+        requiresElevation = true;
+      });
+    }
   }
   const systemRoot = env.SystemRoot || env.SYSTEMROOT;
   if (
@@ -209,6 +216,7 @@ async function prepareWindowsUpdate({
     downloadDirectory,
     cacheDirectory: cacheReal,
     requiresElevation,
+    userData: userDataReal,
     readyPath,
     commitPath,
     acceptedPath,

@@ -1,3 +1,4 @@
+﻿# UTF-8 BOM is required for Windows PowerShell 5.1 ParseFile to read Cyrillic.
 # Static updater helper. All variable values come from a private JSON config;
 # none is evaluated as PowerShell code or through a command shell.
 $ErrorActionPreference = 'Stop'
@@ -156,6 +157,8 @@ try {
         $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
         try { $start.Arguments += ' /fresh-supply-user-sid=' + $identity.User.Value } finally { $identity.Dispose() }
     }
+    # The installer guards the actual data directory before replacing binaries.
+    $start.Arguments += ' /fresh-supply-data-dir="' + $configuration.userData + '"'
     $start.Arguments += ' /D=' + $configuration.installDirectory
     $start.WorkingDirectory = $configuration.installDirectory
     $start.UseShellExecute = [bool] $configuration.requiresElevation

@@ -151,6 +151,11 @@ async function launch({
         };
       if (["./mac-update.cjs", "./windows-update.cjs"].includes(name))
         return {};
+      if (name === "./installation-status.cjs")
+        return {
+          readInstallResult: async () => null,
+          acknowledgeInstallResult: async () => {},
+        };
       return require(
         name.startsWith("./") ? path.resolve(__dirname, "../src", name) : name,
       );

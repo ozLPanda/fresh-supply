@@ -244,6 +244,29 @@ test("Windows disk errors cannot be mistaken for a need to elevate", async (t) =
   }
 });
 
+test("Windows requests installer elevation when only the installation parent is protected", async (t) => {
+  const f = await fixture(t),
+    original = fs.writeFile;
+  fs.writeFile = async (file, ...args) => {
+    if (
+      path.dirname(file) === path.dirname(f.installDirectory) &&
+      path.basename(file).startsWith(".fresh-supply-update-")
+    )
+      throw Object.assign(new Error("Protected installation parent"), {
+        code: "EPERM",
+      });
+    return original(file, ...args);
+  };
+  try {
+    const prepared = await prepareWindowsUpdate(f.settings);
+    assert.equal(prepared.requiresElevation, true);
+    await prepared.dispose();
+    assert.equal(await present(f.execPath), true);
+  } finally {
+    fs.writeFile = original;
+  }
+});
+
 test("Windows helper launch error cannot authorize application shutdown", async (t) => {
   const fixtureData = await fixture(t);
   const fake = spawnFixture();
