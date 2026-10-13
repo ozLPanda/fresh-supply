@@ -55,6 +55,71 @@ async function ps(script, env = {}) {
   assert.equal(r.code, 0, r.stderr || r.stdout);
   return r.stdout.trim();
 }
+
+// Test-only, non-inheriting denies: changing an open directory's zero-access
+// sharing flags did not reliably deny Rename on the native runner. Save the
+// exact original DACL and prove the replacement fixture denies a real rename.
+async function denyInstallationRename(directory, privateRoot) {
+  assert.equal(process.platform, "win32");
+  assert.equal(process.env.GITHUB_ACTIONS, "true");
+  assert.equal(process.env.RUNNER_OS, "Windows");
+  const root = await fs.realpath(privateRoot), target = await fs.realpath(directory);
+  assert.match(path.basename(root), /^(fresh-supply-(?:native-installed|installer-debug)-|fsdiag-)/);
+  const relative = path.relative(root, target);
+  assert.ok(relative && relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative), "ACL fixture is confined to its disposable test directory");
+  const parent = path.dirname(target);
+  const environment = { FRESH_SUPPLY_ACL_DIRECTORY: target, FRESH_SUPPLY_ACL_PARENT: parent };
+  const saved = JSON.parse(await ps([
+    "$ErrorActionPreference='Stop'",
+    "$section=[System.Security.AccessControl.AccessControlSections]::Access",
+    "@{directory=[System.IO.Directory]::GetAccessControl($env:FRESH_SUPPLY_ACL_DIRECTORY,$section).GetSecurityDescriptorSddlForm($section);parent=[System.IO.Directory]::GetAccessControl($env:FRESH_SUPPLY_ACL_PARENT,$section).GetSecurityDescriptorSddlForm($section)}|ConvertTo-Json -Compress",
+  ].join(";"), environment));
+  let restored = false;
+  const restore = async (actualDirectory = target) => {
+    if (restored) return;
+    const current = JSON.parse(await ps([
+      "$ErrorActionPreference='Stop'",
+      "$section=[System.Security.AccessControl.AccessControlSections]::Access",
+      "$saved=$env:FRESH_SUPPLY_ACL_SAVED|ConvertFrom-Json",
+      "$failures=New-Object 'System.Collections.Generic.List[string]'",
+      "foreach($item in @(@{path=$env:FRESH_SUPPLY_ACL_DIRECTORY;sddl=$saved.directory},@{path=$env:FRESH_SUPPLY_ACL_PARENT;sddl=$saved.parent})){try{$acl=New-Object System.Security.AccessControl.DirectorySecurity;$acl.SetSecurityDescriptorSddlForm($item.sddl,$section);[System.IO.Directory]::SetAccessControl($item.path,$acl)}catch{$failures.Add($_.Exception.Message)}}",
+      "if($failures.Count){throw ($failures -join '; ')}",
+      "@{directory=[System.IO.Directory]::GetAccessControl($env:FRESH_SUPPLY_ACL_DIRECTORY,$section).GetSecurityDescriptorSddlForm($section);parent=[System.IO.Directory]::GetAccessControl($env:FRESH_SUPPLY_ACL_PARENT,$section).GetSecurityDescriptorSddlForm($section)}|ConvertTo-Json -Compress",
+    ].join(";"), { ...environment, FRESH_SUPPLY_ACL_DIRECTORY: actualDirectory, FRESH_SUPPLY_ACL_SAVED: JSON.stringify(saved) }));
+    assert.deepEqual(current, saved, "Fixture restores the exact original directory and parent DACLs");
+    restored = true;
+  };
+  const probe = path.join(parent, ".fresh-supply-rename-probe-" + randomBytes(12).toString("hex"));
+  let renamed = false;
+  try {
+    await ps([
+      "$ErrorActionPreference='Stop'",
+      "$section=[System.Security.AccessControl.AccessControlSections]::Access",
+      "$sid=[System.Security.Principal.WindowsIdentity]::GetCurrent().User",
+      "$none=[System.Security.AccessControl.InheritanceFlags]::None",
+      "$propagation=[System.Security.AccessControl.PropagationFlags]::None",
+      "$deny=[System.Security.AccessControl.AccessControlType]::Deny",
+      "$acl=[System.IO.Directory]::GetAccessControl($env:FRESH_SUPPLY_ACL_DIRECTORY,$section)",
+      "$rule=New-Object System.Security.AccessControl.FileSystemAccessRule($sid,[System.Security.AccessControl.FileSystemRights]::Delete,$none,$propagation,$deny)",
+      "$acl.AddAccessRule($rule)",
+      "[System.IO.Directory]::SetAccessControl($env:FRESH_SUPPLY_ACL_DIRECTORY,$acl)",
+      "$acl=[System.IO.Directory]::GetAccessControl($env:FRESH_SUPPLY_ACL_PARENT,$section)",
+      "$rule=New-Object System.Security.AccessControl.FileSystemAccessRule($sid,[System.Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles,$none,$propagation,$deny)",
+      "$acl.AddAccessRule($rule)",
+      "[System.IO.Directory]::SetAccessControl($env:FRESH_SUPPLY_ACL_PARENT,$acl)",
+    ].join(";"), environment);
+    let rejection;
+    try { await fs.rename(target, probe); renamed = true; } catch (error) { rejection = error; }
+    assert.ok(rejection && ["EPERM", "EACCES"].includes(rejection.code), "Native rename must be denied before testing installer failure");
+    console.log("Disposable installation rename denial proved: " + rejection.code);
+    return { restore, proof: { code: rejection.code, syscall: rejection.syscall } };
+  } catch (error) {
+    await restore(renamed ? probe : target);
+    if (renamed) await fs.rename(probe, target);
+    throw error;
+  }
+}
+
 async function snapshot(directory) {
   const files = [];
   async function walk(relative = "") {
@@ -395,73 +460,16 @@ async function main() {
     );
     assert.deepEqual(await shortcut(), links);
     assert.equal(await fs.readFile(sentinel, "utf8"), "preserve-user-data");
-    // Lock the directory itself without FILE_SHARE_DELETE: an open child file
-    // does not reliably prevent a parent-directory rename on Windows.
-    // This tests the installer's failed-rename recovery without replacing the
-    // production application's separate running-process check.
-    const lockReady = path.join(temporary, "lock-ready");
-    let lockError = "";
-    lock = spawn(
-      powershell,
-      [
-        "-NoLogo",
-        "-NoProfile",
-        "-NonInteractive",
-        "-EncodedCommand",
-        Buffer.from(
-          [
-            "$ErrorActionPreference='Stop'",
-            "$source=@'",
-            "using System;",
-            "using System.Runtime.InteropServices;",
-            "public static class FreshSupplyDirectoryLock {",
-            ' [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]',
-            " public static extern IntPtr CreateFileW(string name, uint access, uint share, IntPtr security, uint disposition, uint flags, IntPtr template);",
-            ' [DllImport("kernel32.dll", SetLastError=true)]',
-            " public static extern bool CloseHandle(IntPtr handle);",
-            "}",
-            "'@",
-            "Add-Type -TypeDefinition $source",
-            "$handle=[FreshSupplyDirectoryLock]::CreateFileW($env:FRESH_SUPPLY_LOCK_DIRECTORY,0,0,[IntPtr]::Zero,3,0x02000000,[IntPtr]::Zero)",
-            "if($handle.ToInt64() -eq -1){throw ('Cannot lock installation directory: '+[Runtime.InteropServices.Marshal]::GetLastWin32Error())}",
-            "try{[System.IO.File]::WriteAllText($env:FRESH_SUPPLY_LOCK_READY,'ready');while($true){Start-Sleep -Milliseconds 200}}finally{[void][FreshSupplyDirectoryLock]::CloseHandle($handle)}",
-          ].join("\n"),
-          "utf16le",
-        ).toString("base64"),
-      ],
-      {
-        stdio: ["ignore", "ignore", "pipe"],
-        windowsHide: true,
-        env: {
-          ...process.env,
-          FRESH_SUPPLY_LOCK_DIRECTORY: directory,
-          FRESH_SUPPLY_LOCK_READY: lockReady,
-        },
-      },
-    );
-    lock.stderr.on("data", (chunk) => {
-      lockError += chunk.toString();
-    });
-    lock.on("error", (error) => {
-      lockError += error.message;
-    });
-    for (let i = 0; i < 100; i++) {
-      if (await fs.stat(lockReady).catch(() => null)) break;
-      await new Promise((r) => setTimeout(r, 100));
-    }
-    assert.ok(
-      await fs.stat(lockReady).catch(() => null),
-      "Native directory lock was not acquired: " + lockError,
-    );
+    // Deny actual filesystem rename and prove the fixture before launching the
+    // installer. Original private-directory DACLs are restored on every outcome.
+    lock = await denyInstallationRename(directory, temporary);
     const rejected = await install(true);
-    assert.notEqual(
+    assert.equal(
       rejected,
-      0,
-      "Locked installation must fail, not silently delete the old executable",
+      25,
+      "Denied installation rename must fail without deleting the old executable",
     );
-    const lockExited = new Promise((resolve) => lock.once("exit", resolve));
-    lock.kill();
-    await lockExited;
+    await lock.restore();
     lock = null;
     assert.deepEqual(
       await snapshot(directory),
@@ -640,7 +648,7 @@ async function main() {
     }
     throw error;
   } finally {
-    if (lock) lock.kill();
+    if (lock) await lock.restore();
     if (runtime) await runtime.stop();
     if (registered) {
       await uninstall().catch(() => {});
@@ -660,4 +668,4 @@ if (require.main === module)
     console.error(e.message);
     process.exitCode = 1;
   });
-module.exports = { verify, snapshot, main, run, ps };
+module.exports = { verify, snapshot, main, run, ps, denyInstallationRename };

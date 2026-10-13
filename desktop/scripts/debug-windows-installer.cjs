@@ -6,7 +6,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const os = require("node:os");
 const assert = require("node:assert/strict");
-const { run, ps } = require("./verify-windows-installer.cjs");
+const { run, ps, snapshot, denyInstallationRename } = require("./verify-windows-installer.cjs");
 const {
   buildIntegrity,
   hash,
@@ -153,6 +153,14 @@ async function main() {
     },
   ];
   const results = [];
+  const shortcuts = async () => {
+    const links = JSON.parse(await ps(
+      "$ErrorActionPreference='Stop';$s=New-Object -ComObject WScript.Shell;$d=Join-Path $s.SpecialFolders.Item('Desktop') 'fresh-supply.lnk';$m=Join-Path $s.SpecialFolders.Item('Programs') 'fresh-supply.lnk';@{desktopPath=$d;desktopTarget=$s.CreateShortcut($d).TargetPath;menuPath=$m;menuTarget=$s.CreateShortcut($m).TargetPath;registered=(Get-ItemProperty 'HKCU:\\Software\\977d56cb-bf9d-5e99-8e00-f5d825fc9966').InstallLocation}|ConvertTo-Json -Compress",
+    ));
+    links.desktopHash = await hash(links.desktopPath);
+    links.menuHash = await hash(links.menuPath);
+    return links;
+  };
   try {
     assert.equal(
       await ps(
@@ -198,6 +206,31 @@ async function main() {
           else if (stat.size !== f.size || (await hash(file)) !== f.sha256)
             damaged.push(f.path);
         }
+      let renameDenial;
+      if (code === 0) {
+        const oldPayload = await snapshot(item.directory), oldLinks = await shortcuts();
+        const dataDirectory = path.join(temporary, "Separate diagnostic application data");
+        await fs.mkdir(dataDirectory, { recursive: true });
+        const sentinel = path.join(dataDirectory, "preserved-data.txt");
+        await fs.writeFile(sentinel, "never-replace-diagnostic-user-data");
+        const denied = await denyInstallationRename(item.directory, item.name === "short" ? shortParent : temporary);
+        try {
+          const rejectedOutput = await ps(
+            "$ErrorActionPreference='Stop';$p=New-Object System.Diagnostics.ProcessStartInfo;$p.FileName=$env:FRESH_SUPPLY_DEBUG_INSTALLER;$p.Arguments='/S /currentuser --updated /fresh-supply-data-dir=\"'+$env:FRESH_SUPPLY_DEBUG_DATA+'\" /D='+$env:FRESH_SUPPLY_DEBUG_DIRECTORY;$p.UseShellExecute=$false;$c=[System.Diagnostics.Process]::Start($p);$c.WaitForExit();Write-Output $c.ExitCode",
+            { FRESH_SUPPLY_DEBUG_INSTALLER: installer, FRESH_SUPPLY_DEBUG_DIRECTORY: item.directory, FRESH_SUPPLY_DEBUG_DATA: dataDirectory },
+          );
+          const rejectedCode = Number(rejectedOutput.split(/\r?\n/).at(-1));
+          assert.equal(rejectedCode, 25, "Actual NSIS must reject the proved filesystem rename denial");
+          assert.deepEqual(await snapshot(item.directory), oldPayload, "Rejected NSIS replacement preserves every existing payload file");
+          assert.deepEqual(await shortcuts(), oldLinks, "Rejected NSIS replacement preserves shortcuts and registration");
+          assert.equal(await fs.readFile(sentinel, "utf8"), "never-replace-diagnostic-user-data");
+          renameDenial = { proof: denied.proof, rejectedCode, preservedPayloadFiles: oldPayload.length, preservedShortcuts: true, preservedData: true };
+          console.log("Actual small NSIS rename-denial recovery passed: " + JSON.stringify(renameDenial));
+        } finally {
+          await denied.restore();
+          await fs.writeFile(path.join(cache, item.name + "-rename-denial.log"), await fs.readFile(log, "utf8").catch(() => "(log absent)"));
+        }
+      }
       const result = {
         ...item,
         code,
@@ -205,6 +238,7 @@ async function main() {
         missing,
         damaged,
         log: body,
+        renameDenial,
       };
       results.push(result);
       console.log(JSON.stringify(result, null, 2));
