@@ -429,3 +429,104 @@ test("normal stop uses IPC so the native child exits with its wrapper on Windows
     if (wrapper.exitCode === null) wrapper.kill("SIGKILL");
   }
 });
+
+test("runtime shutdown drains both child output streams before closing its log", async () => {
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "ovoshi-log-drain-"));
+  const runtime = new LocalRuntime({ root: temporary, userData: temporary, version: "0.1.14" });
+  const size = 3 * 1024 * 1024;
+  try {
+    await fs.mkdir(runtime.logsDir, { recursive: true });
+    const child = runtime.startProcess("backend", process.execPath, ["-e", `
+      process.stdout.write("O".repeat(${size}), () => {
+        process.stderr.write("E".repeat(${size}), () => process.exit(0));
+      });
+    `], { env: process.env });
+    // exit can precede the final stdio data and pending filesystem writes.
+    await new Promise((resolve, reject) => {
+      child.once("exit", resolve);
+      child.once("error", reject);
+    });
+    await runtime.stopApplications();
+    const output = await fs.readFile(path.join(runtime.logsDir, "backend.log"), "utf8");
+    // Independent pipes do not guarantee ordering between stdout and stderr.
+    assert.equal(output.length, size * 2);
+    assert.equal(output.replaceAll("E", ""), "O".repeat(size));
+    assert.equal(output.replaceAll("O", ""), "E".repeat(size));
+    assert.equal(runtime.children.size, 0);
+  } finally {
+    await runtime.stopApplications();
+    await fs.rm(temporary, { recursive: true, force: true });
+  }
+});
+
+test("a failed log destination drains the child without an unhandled stream error", async () => {
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "ovoshi-log-error-"));
+  const runtime = new LocalRuntime({ root: temporary, userData: temporary, version: "0.1.14" });
+  try {
+    await fs.mkdir(path.join(runtime.logsDir, "backend.log"), { recursive: true });
+    const logError = new Promise((resolve) => runtime.once("component-log-error", (...args) => resolve(args)));
+    const child = runtime.startProcess("backend", process.execPath, ["-e", `
+      process.stdout.write("O".repeat(1024 * 1024), () => {
+        process.stderr.write("E".repeat(1024 * 1024), () => process.exit(0));
+      });
+    `], { env: process.env });
+    const [component, code] = await logError;
+    assert.equal(component, "backend");
+    assert.equal(code, "EISDIR");
+    await runtime.childCompletions.get(child);
+    assert.equal(child.exitCode, 0);
+    assert.equal(runtime.children.size, 0);
+  } finally {
+    await runtime.stopApplications();
+    await fs.rm(temporary, { recursive: true, force: true });
+  }
+});
+
+test("output buffered until after process exit is still written to the runtime log", async () => {
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "ovoshi-log-after-exit-"));
+  const runtime = new LocalRuntime({ root: temporary, userData: temporary, version: "0.1.14" });
+  try {
+    await fs.mkdir(runtime.logsDir, { recursive: true });
+    const child = runtime.startProcess("backend", process.execPath, ["-e", `
+      process.stdout.write("O".repeat(4096), () => {
+        process.stderr.write("E".repeat(4096), () => process.exit(0));
+      });
+    `], { env: process.env });
+    // Keep bytes in the OS pipes until ChildProcess resumes them after exit.
+    // Ending the destination on exit loses this output or writes after end.
+    child.stdout.pause();
+    child.stderr.pause();
+    await runtime.childCompletions.get(child);
+    const output = await fs.readFile(path.join(runtime.logsDir, "backend.log"), "utf8");
+    assert.equal(output.length, 8192);
+    assert.equal(output.replaceAll("E", ""), "O".repeat(4096));
+    assert.equal(output.replaceAll("O", ""), "E".repeat(4096));
+  } finally {
+    await runtime.stopApplications();
+    await fs.rm(temporary, { recursive: true, force: true });
+  }
+});
+
+test("an old child closing cannot remove or report failure for its replacement", async () => {
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "ovoshi-child-generation-"));
+  const runtime = new LocalRuntime({ root: temporary, userData: temporary, version: "0.1.14" });
+  try {
+    await fs.mkdir(runtime.logsDir, { recursive: true });
+    const failed = [];
+    runtime.started = true;
+    runtime.on("component-failed", (...args) => failed.push(args));
+    const oldChild = runtime.startProcess("backend", process.execPath,
+      ["-e", "setTimeout(() => process.exit(1), 100);"], { env: process.env });
+    const replacement = runtime.startProcess("backend", process.execPath,
+      ["-e", 'console.log("ready"); setInterval(() => {}, 1000);'], { env: process.env });
+    await runtime.childCompletions.get(oldChild);
+    assert.equal(runtime.children.get("backend"), replacement);
+    assert.deepEqual(failed, []);
+    await runtime.stopApplications();
+    assert.equal(runtime.children.size, 0);
+    assert.deepEqual(failed, []);
+  } finally {
+    await runtime.stopApplications();
+    await fs.rm(temporary, { recursive: true, force: true });
+  }
+});

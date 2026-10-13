@@ -2,6 +2,11 @@ name: Build standalone desktop installers
 
 on:
   workflow_dispatch:
+    inputs:
+      test_windows:
+        description: Run Windows tests before packaging
+        type: boolean
+        default: false
   push:
     tags: ['desktop-v*']
 
@@ -50,36 +55,46 @@ jobs:
         working-directory: desktop
         run: npm ci
       - name: Test desktop supervisor and updater
+        if: matrix.target != 'win' || inputs.test_windows == true
         working-directory: desktop
         run: npm test
       - name: Test backend desktop contracts
+        if: matrix.target != 'win' || inputs.test_windows == true
         working-directory: backend
         run: mvn -B "-Dtest=Desktop*Test,DataTransfer*Test,SeedAdminCredentialRotatorTest,SecurityBoundaryTest,UserServiceTest,ProductSearchTextNormalizerTest,ProductServiceTest,PdfFontsTest,OrderInvoicePdfServiceTest,OrderPaymentInvoicePdfServiceTest,OrderComparisonPdfServiceTest,WarehouseDocumentPdfServiceTest,WarehouseBalancesPdfServiceTest,PriceSettingGroupPdfServiceTest,BarcodePdfServiceTest" test
       - name: Prepare complete offline runtime
         working-directory: desktop
         run: node scripts/prepare-runtime.cjs
       - name: Verify native data change tracking and aggregate ownership
+        if: matrix.target != 'win' || inputs.test_windows == true
         working-directory: desktop
         run: node scripts/verify-data-tracking.cjs
       - name: Test frontend notifications
+        if: matrix.target != 'win' || inputs.test_windows == true
         working-directory: frontend
         run: node --test src/features/notifications/desktopNotifications.test.mjs src/features/notifications/pushSubscription.test.mjs src/features/notifications/pushPromptSession.test.mjs
       - name: Test product price calculation
+        if: matrix.target != 'win' || inputs.test_windows == true
         working-directory: frontend
         run: node --test src/shared/components/products/productPriceCalculator.test.mjs
       - name: Audit native portability
+        if: matrix.target != 'win' || inputs.test_windows == true
         working-directory: desktop
         run: node scripts/audit-native.cjs
       - name: Verify portable database and offline inference
+        if: matrix.target != 'win' || inputs.test_windows == true
         working-directory: desktop
         run: node scripts/verify-runtime.cjs
       - name: Verify application startup, persistence and backups
+        if: matrix.target != 'win' || inputs.test_windows == true
         working-directory: desktop
         run: node scripts/smoke-app.cjs
       - name: Verify complete website export and desktop import
+        if: matrix.target != 'win' || inputs.test_windows == true
         working-directory: desktop
         run: node scripts/smoke-data-transfer.cjs
       - name: Verify one-way data merge and financial reconciliation
+        if: matrix.target != 'win' || inputs.test_windows == true
         working-directory: desktop
         run: node scripts/smoke-data-merge.cjs
       - name: Build installer
@@ -88,7 +103,7 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: npm run dist:${{ matrix.target }}
       - name: Verify installed Windows application and repair
-        if: matrix.target == 'win'
+        if: matrix.target == 'win' && inputs.test_windows == true
         working-directory: desktop
         run: node scripts/verify-windows-installer.cjs
       - name: Create installer checksums

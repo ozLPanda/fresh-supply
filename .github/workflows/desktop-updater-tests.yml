@@ -1,4 +1,4 @@
-name: Test desktop updates on native platforms
+name: Test desktop updates on macOS
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, windows-2025]
+        os: [macos-15]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:

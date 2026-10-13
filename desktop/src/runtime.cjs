@@ -156,6 +156,7 @@ class LocalRuntime extends EventEmitter {
     this.platform = platform;
     this.arch = arch;
     this.children = new Map();
+    this.childCompletions = new WeakMap();
     this.pgRunning = false;
     this.stopping = false;
     this.started = false;
@@ -576,6 +577,7 @@ class LocalRuntime extends EventEmitter {
       flags: "a",
       mode: 0o600,
     });
+    const logClosed = new Promise((resolve) => log.once("close", resolve));
     // The wrapper observes IPC disconnection and terminates the native process
     // even if Electron is killed without executing before-quit.
     const child = spawn(
@@ -588,17 +590,49 @@ class LocalRuntime extends EventEmitter {
         stdio: ["ignore", "pipe", "pipe", "ipc"],
       },
     );
+    log.once("error", (error) => {
+      // A failed destination must not crash Electron or back-pressure the
+      // native process forever. Drain both pipes without attempting more writes.
+      child.stdout.unpipe(log);
+      child.stderr.unpipe(log);
+      child.stdout.resume();
+      child.stderr.resume();
+      if (this.children.get(name) === child)
+        this.emit("component-log-error", name, error.code || "UNKNOWN");
+    });
     child.stdout.pipe(log, { end: false });
     child.stderr.pipe(log, { end: false });
     this.children.set(name, child);
+    let failureReported = false;
     child.once("error", () => {
-      log.end();
-      this.emit("component-failed", name);
+      if (this.children.get(name) === child && !this.stopping) {
+        failureReported = true;
+        this.emit("component-failed", name);
+      }
     });
     child.once("exit", () => {
-      log.end();
-      if (!this.stopping && this.started) this.emit("component-failed", name);
+      if (
+        !failureReported &&
+        this.children.get(name) === child &&
+        !this.stopping &&
+        this.started
+      )
+        this.emit("component-failed", name);
     });
+    this.childCompletions.set(
+      child,
+      new Promise((resolve) => {
+        // exit/error can precede buffered stdout/stderr. close guarantees both
+        // pipes have drained; then end and await the destination's file close.
+        child.once("close", () => {
+          if (!log.destroyed) log.end();
+          logClosed.then(() => {
+            if (this.children.get(name) === child) this.children.delete(name);
+            resolve();
+          });
+        });
+      }),
+    );
     return child;
   }
 
@@ -699,7 +733,8 @@ class LocalRuntime extends EventEmitter {
         }
       }
       await stopChild(child);
-      this.children.delete(name);
+      if (child) await this.childCompletions.get(child);
+      if (this.children.get(name) === child) this.children.delete(name);
     }
   }
 
