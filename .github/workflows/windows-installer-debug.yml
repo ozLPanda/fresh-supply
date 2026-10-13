@@ -1,0 +1,34 @@
+name: Diagnose Windows installer on native Windows
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - name: Install build dependencies
+        working-directory: desktop
+        run: npm ci
+      - name: Diagnose actual NSIS with a small native Python package
+        working-directory: desktop
+        run: node scripts/debug-windows-installer.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-installer-diagnostics
+          path: |
+            desktop/.cache/installer-debug/*.log
+            desktop/.cache/installer-debug/*.json
+          if-no-files-found: ignore
+          retention-days: 7

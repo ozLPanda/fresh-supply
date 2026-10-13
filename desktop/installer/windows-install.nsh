@@ -85,13 +85,20 @@
   SetOutPath "$PLUGINSDIR"
   File /oname=verify-install.py "${PROJECT_DIR}\installer\verify-install.py"
   ${StdUtils.GetParameter} $freshUserSid "fresh-supply-user-sid" ""
+  !insertmacro freshInstallLog "Validating stage $freshStage using $freshStage\resources\runtime\python\python.exe"
   nsExec::ExecToStack '"$freshStage\resources\runtime\python\python.exe" -I "$PLUGINSDIR\verify-install.py" "$freshStage" "${VERSION}" "$freshUserSid"'
   Pop $R0
   Pop $R1
   DetailPrint "$R1"
+  !insertmacro freshInstallLog "Validator exit code: $R0"
   !insertmacro freshInstallLog "$R1"
   ${if} $R0 != 0
-    RMDir /r "$freshStage"
+    ReadEnvStr $R2 "FRESH_SUPPLY_INSTALLER_KEEP_FAILED_STAGE"
+    ${if} $R2 == "1"
+      !insertmacro freshInstallLog "Preserved failed stage for diagnostics: $freshStage"
+    ${else}
+      RMDir /r "$freshStage"
+    ${endif}
     !insertmacro freshInstallError "Проверка обновления не пройдена. Программа и ваши данные сохранены." 22
   ${endif}
   ; Refuse to relocate another registered installation implicitly. The updater

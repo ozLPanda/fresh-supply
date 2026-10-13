@@ -190,6 +190,7 @@ async function main() {
         FRESH_SUPPLY_TEST_DIRECTORY: target,
         FRESH_SUPPLY_TEST_DATA: userData,
         FRESH_SUPPLY_TEST_SID: sid,
+        FRESH_SUPPLY_INSTALLER_KEEP_FAILED_STAGE: "1",
       },
     );
     return Number(output.split(/\r?\n/).at(-1));
@@ -516,6 +517,57 @@ async function main() {
     console.log(
       "Actual Windows installer, rejected replacement, upgrade, repair, shortcuts and local data persistence passed",
     );
+  } catch (error) {
+    const log = path.join(
+      process.env.LOCALAPPDATA,
+      "fresh-supply-desktop-updater/installation.log",
+    );
+    const body = await fs
+      .readFile(log, "utf8")
+      .catch(() => "(installer log not found)");
+    console.error("Native installer diagnostic log:\n" + body);
+    const diagnostics = path.join(desktop, ".cache", "installer-diagnostics");
+    await fs.mkdir(diagnostics, { recursive: true });
+    await fs.writeFile(path.join(diagnostics, "installation.log"), body);
+    await fs.writeFile(
+      path.join(diagnostics, "failure.json"),
+      JSON.stringify(
+        { error: error.message, temporary, directory, userData, version },
+        null,
+        2,
+      ) + "\n",
+    );
+    const matches = [
+      ...body.matchAll(/Preserved failed stage for diagnostics: (.+)/g),
+    ];
+    const stage = matches.at(-1)?.[1].trim();
+    if (stage && (await fs.stat(stage).catch(() => null))) {
+      const packageRoot = path.join(desktop, "dist/win-unpacked");
+      const metadata = JSON.parse(
+        await fs.readFile(path.join(packageRoot, METADATA), "utf8"),
+      );
+      const missing = [],
+        damaged = [],
+        changedBeforePackaging = [];
+      for (const f of metadata.files) {
+        const installed = path.join(stage, f.path),
+          source = path.join(packageRoot, f.path);
+        const stat = await fs.stat(installed).catch(() => null);
+        if (!stat?.isFile())
+          missing.push({ path: f.path, absoluteLength: installed.length });
+        else if (stat.size !== f.size || (await hash(installed)) !== f.sha256)
+          damaged.push(f.path);
+        if ((await hash(source).catch(() => null)) !== f.sha256)
+          changedBeforePackaging.push(f.path);
+      }
+      const inventory = { stage, missing, damaged, changedBeforePackaging };
+      console.error("Staging inventory: " + JSON.stringify(inventory));
+      await fs.writeFile(
+        path.join(diagnostics, "stage-inventory.json"),
+        JSON.stringify(inventory, null, 2) + "\n",
+      );
+    }
+    throw error;
   } finally {
     if (lock) lock.kill();
     if (runtime) await runtime.stop();
@@ -537,4 +589,4 @@ if (require.main === module)
     console.error(e.message);
     process.exitCode = 1;
   });
-module.exports = { verify, snapshot, main };
+module.exports = { verify, snapshot, main, run, ps };
