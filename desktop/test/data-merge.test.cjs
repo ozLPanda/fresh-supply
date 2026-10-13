@@ -13,6 +13,8 @@ const {
   provesLegacyIdentity,
   resolveCompositeIdentity,
   financialWarehousePair,
+  resolveSourceLifecycles,
+  provenDeletedReference,
   readSyncRows,
   prepareMergedFiles,
   rewriteFileReferences,
@@ -439,6 +441,78 @@ test("warehouse audit revisions require the approved pair of their actual immuta
       () => null,
     ),
     null,
+  );
+});
+
+test("source reincarnation wins over older tombstones independent of JSONL UID order and remapped numeric collisions remain separate", () => {
+  const make = (
+    uid,
+    deleted,
+    generation,
+    clock,
+    key = { user_id: "1", role_id: "1" },
+  ) => ({
+    source: {
+      table: "user_roles",
+      uid,
+      key,
+      deleted,
+      generation,
+      modifiedAt: clock,
+    },
+    targetKey: key,
+  });
+  const live = make("00000000-0000-0000-0000-000000000001", false, 3, "30"),
+    old = make(randomUUID(), true, 2, "20");
+  for (const plans of [
+    [live, old],
+    [old, live],
+  ]) {
+    const result = resolveSourceLifecycles(plans);
+    assert.deepEqual([...result.obsolete], [old]);
+    assert.equal(result.ambiguous.size, 0);
+  }
+  const deletedAgain = make(live.source.uid, true, 4, "40");
+  assert.deepEqual(
+    [...resolveSourceLifecycles([old, deletedAgain]).obsolete],
+    [old],
+  );
+  const unknown = make(randomUUID(), false, 2, null);
+  assert.equal(resolveSourceLifecycles([old, unknown]).ambiguous.size, 2);
+  const inconsistent = make(randomUUID(), false, 3, "10");
+  assert.equal(resolveSourceLifecycles([old, inconsistent]).ambiguous.size, 2);
+  const remapped = { ...live, targetKey: { user_id: "3", role_id: "1" } };
+  assert.equal(resolveSourceLifecycles([old, remapped]).obsolete.size, 0);
+  const differentSourceSlot = {
+    ...live,
+    source: { ...live.source, key: { user_id: "2", role_id: "1" } },
+  };
+  assert.equal(
+    resolveSourceLifecycles([old, differentSourceSlot]).ambiguous.size,
+    2,
+  );
+});
+
+test("deleted-reference remapping requires an actually retained local identity", () => {
+  const key = { id: "2" };
+  const retained = {
+    source: { table: "roles", key, deleted: true },
+    localExists: true,
+    local: { uid: randomUUID() },
+    targetKey: { id: "3" },
+  };
+  assert.equal(provenDeletedReference([retained], "roles", key), retained);
+  assert.equal(
+    provenDeletedReference([{ ...retained, localExists: false }], "roles", key),
+    undefined,
+  );
+  assert.equal(
+    provenDeletedReference([{ ...retained, local: undefined }], "roles", key),
+    undefined,
+  );
+  assert.equal(
+    provenDeletedReference([retained], "roles", { id: "4" }),
+    undefined,
   );
 });
 

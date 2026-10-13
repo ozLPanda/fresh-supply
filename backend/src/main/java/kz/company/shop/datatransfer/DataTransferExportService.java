@@ -401,7 +401,7 @@ public class DataTransferExportService {
         try (var statement =
                         connection.prepareStatement(
                                 "select version from public.flyway_schema_history where success and version is not null "
-                                        + (formatVersion == 1 ? "and version <> '135' " : "")
+                                        + (formatVersion == 1 ? "and version not in ('135','136') " : "")
                                         + "order by installed_rank desc limit 1");
                 var rows = statement.executeQuery()) {
             if (!rows.next()) throw new IllegalStateException("No migrated schema");

@@ -214,6 +214,70 @@ function financialWarehousePair(table, row, movement, resolveId) {
     product = resolveId("products", row.product_id);
   return warehouse && product ? warehouse + ":" + product : null;
 }
+function laterIncarnation(candidate, previous) {
+  if (
+    candidate.source.uid === previous.source.uid ||
+    canonicalKey(candidate.source.key) !== canonicalKey(previous.source.key)
+  )
+    return false;
+  const newer = timestampMicros(candidate.source.modifiedAt),
+    older = timestampMicros(previous.source.modifiedAt);
+  return (
+    (candidate.source.generation > previous.source.generation &&
+      (newer === null || older === null || newer >= older)) ||
+    (newer !== null &&
+      older !== null &&
+      newer > older &&
+      candidate.source.generation >= previous.source.generation)
+  );
+}
+function resolveSourceLifecycles(plans) {
+  const groups = new Map(),
+    obsolete = new Set(),
+    ambiguous = new Set();
+  for (const plan of plans) {
+    if (!plan.targetKey || plan.conflict) continue;
+    const key = keyString(plan.source.table, plan.targetKey);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(plan);
+  }
+  for (const group of groups.values()) {
+    if (group.length < 2 || !group.some((p) => p.source.deleted)) continue;
+    const active = group.filter((p) => !p.source.deleted);
+    const winner =
+      active.length === 1
+        ? active[0]
+        : active.length
+          ? null
+          : group.find((candidate) =>
+              group.every(
+                (other) =>
+                  other === candidate || laterIncarnation(candidate, other),
+              ),
+            );
+    if (
+      winner &&
+      group.every(
+        (other) =>
+          other === winner ||
+          (other.source.deleted && laterIncarnation(winner, other)),
+      )
+    )
+      group.filter((p) => p !== winner).forEach((p) => obsolete.add(p));
+    else group.forEach((p) => ambiguous.add(p));
+  }
+  return { obsolete, ambiguous };
+}
+function provenDeletedReference(plans, table, key) {
+  return plans.find(
+    (p) =>
+      p.source.table === table &&
+      p.source.deleted &&
+      p.localExists &&
+      p.local &&
+      canonicalKey(p.source.key) === canonicalKey(key),
+  );
+}
 
 async function readSyncRows(archive, maximumRows = 250_000) {
   const sync = archive.manifest.sync;
@@ -1182,12 +1246,15 @@ async function mergeDatabase(
             row[foreign.columns[i]],
           ]),
         );
-        const referenced = bySourceKey.get(
-          keyString(foreign.referenced_table, sourceKey),
-        );
+        const referenced =
+          bySourceKey.get(keyString(foreign.referenced_table, sourceKey)) ||
+          (plan.source.deleted
+            ? provenDeletedReference(plans, foreign.referenced_table, sourceKey)
+            : null);
         if (!referenced)
-          throw failure(
-            "Не найдена ссылка исходной строки: " + plan.source.table,
+          throw Object.assign(
+            failure("Не найдена ссылка исходной строки: " + plan.source.table),
+            { mergeReason: "deleted-reference-remapping-required" },
           );
         foreign.columns.forEach((column, i) => {
           rewritten[column] =
@@ -1295,7 +1362,16 @@ async function mergeDatabase(
             plan.source.key,
             relations.get(plan.source.table),
           );
-      const rewritten = remapRow(plan, sourceRow);
+      let rewritten;
+      try {
+        rewritten = remapRow(plan, sourceRow);
+      } catch (error) {
+        if (plan.source.deleted && error.mergeReason) {
+          conflict(plan, error.mergeReason);
+          continue;
+        }
+        throw error;
+      }
       const key = Object.fromEntries(
         plan.table.primary.map((column) => [column, rewritten[column]]),
       );
@@ -1318,6 +1394,15 @@ async function mergeDatabase(
         }
       }
     }
+    // Source JSONL order is not lifecycle order. Old tombstones must not delete
+    // a later incarnation occupying the same final physical relation slot.
+    const lifecycles = resolveSourceLifecycles(plans);
+    for (const plan of lifecycles.obsolete) {
+      plan.action = "keep";
+      plan.suppressedTombstone = true;
+    }
+    for (const plan of lifecycles.ambiguous)
+      conflict(plan, "ambiguous-row-lifecycle");
     // Resolve all identities first: FK rewrites cannot depend on archive table order.
     for (const plan of plans) {
       if (plan.conflict || plan.action === "keep") continue;
@@ -1975,6 +2060,8 @@ module.exports = {
   provesLegacyIdentity,
   resolveCompositeIdentity,
   financialWarehousePair,
+  resolveSourceLifecycles,
+  provenDeletedReference,
   readSyncRows,
   prepareMergedFiles,
   rewriteFileReferences,

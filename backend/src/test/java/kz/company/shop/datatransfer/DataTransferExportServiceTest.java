@@ -148,7 +148,7 @@ class DataTransferExportServiceTest {
         try (var archive = service.export(2); var zip = new ZipFile(archive.path().toFile())) {
             var manifest = mapper.readTree(zip.getInputStream(zip.getEntry("manifest.json")));
             assertThat(manifest.path("formatVersion").asInt()).isEqualTo(2);
-            assertThat(manifest.path("schemaVersion").asText()).isEqualTo("135");
+            assertThat(manifest.path("schemaVersion").asText()).isEqualTo("136");
             var descriptor = manifest.path("sync");
             assertThat(descriptor.path("instanceId").asText()).isEqualTo("00000000-0000-4000-8000-000000000001");
             byte[] bytes = zip.getInputStream(zip.getEntry(descriptor.path("entry").asText())).readAllBytes();
@@ -259,7 +259,7 @@ class DataTransferExportServiceTest {
                                                 ignored ->
                                                         rows(
                                                                 List.<String[]>of(
-                                                                        new String[] {sql.contains("version <> '135'") ? "134" : "135"})));
+                                                                        new String[] {sql.contains("version not in ('135','136')") ? "134" : "136"})));
                             else if (sql.contains("pg_inherits"))
                                 when(statement.executeQuery())
                                         .thenAnswer(

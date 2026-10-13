@@ -47,15 +47,17 @@ class DataTransferTrackingIntegrationTest {
             create table stock_documents(id uuid primary key,source_order_id uuid references orders(id),price_setting_group_id uuid references price_setting_groups(id),label text,created_at timestamptz,updated_at timestamptz);
             create table stock_document_versions(id bigint primary key,document_id uuid references stock_documents(id),action text,created_at timestamptz);
             create table flyway_schema_history(installed_rank integer primary key,version text,success boolean);
-            insert into flyway_schema_history values(1,'134',true),(2,'135',true);
+            insert into flyway_schema_history values(1,'134',true),(2,'135',true),(3,'136',true);
             insert into products values(1,'old one','2020-01-01 00:00:00+00','2020-01-02 00:00:00+00'),(2,'old two','2020-01-01 00:00:00+00','2020-01-02 00:00:00+00');
             insert into procurement_projects values(10,'project','2020-01-01 00:00:00+00','2020-01-02 00:00:00+00');
             insert into procurement_files values(11,10,4,'2020-01-01 00:00:00+00');
             insert into price_setting_groups values('00000000-0000-4000-8000-000000000002','group','2020-01-01 00:00:00+00','2020-01-02 00:00:00+00');
             insert into orders values('00000000-0000-4000-8000-000000000001','old order','2020-01-01 00:00:00+00','2020-01-02 00:00:00+00');
             """);
-        try (var stream = getClass().getResourceAsStream("/db/migration/V135__data_transfer_change_tracking.sql")) {
-            execute(new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+        for (String migration : new String[] {"V135__data_transfer_change_tracking.sql", "V136__preserve_recreated_sync_records.sql"}) {
+            try (var stream = getClass().getResourceAsStream("/db/migration/" + migration)) {
+                execute(new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+            }
         }
     }
 
@@ -211,10 +213,37 @@ class DataTransferTrackingIntegrationTest {
         }
         try (var archive = service.export(2); var zip = new ZipFile(archive.path().toFile())) {
             var manifest = mapper.readTree(zip.getInputStream(zip.getEntry("manifest.json")));
-            assertThat(manifest.path("schemaVersion").asText()).isEqualTo("135");
+            assertThat(manifest.path("schemaVersion").asText()).isEqualTo("136");
             assertThat(manifest.path("sync").path("rowCount").asLong()).isEqualTo(6);
             assertThat(zip.getEntry("sync/rows.jsonl")).isNotNull();
         }
+    }
+
+    @Test
+    void historicalTombstoneSeededAfterRecreatedRowKeepsTheActiveIncarnation() throws Exception {
+        String currentUid = "00000000-0000-4000-8000-000000000003";
+        String historicalUid = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+        execute("set local ovoshi.sync_tracking='off'");
+        try (var statement = connection.prepareStatement(
+                "select sync_seed('products',?::uuid,'{\"id\":\"1\"}'::jsonb,?, ?,?,null,null,null)")) {
+            statement.setString(1,currentUid); statement.setString(2,"2000000");
+            statement.setBoolean(3,false); statement.setLong(4,3); statement.execute();
+            // Export ordering by UID can place an older deleted generation after the active one.
+            statement.setString(1,historicalUid); statement.setString(2,"1000000");
+            statement.setBoolean(3,true); statement.setLong(4,2); statement.execute();
+        }
+        assertThat(text("select uid::text from sync_rows where table_name='products' and pk=jsonb_build_object('id','1') and not deleted")).isEqualTo(currentUid);
+        assertThat(number("select generation from sync_rows where uid='"+currentUid+"'::uuid")).isEqualTo(3);
+        assertThat(number("select count(*) from sync_rows where uid='"+historicalUid+"'::uuid and deleted and generation=2")).isEqualTo(1);
+        assertThat(number("select count(*) from products where id=1")).isEqualTo(1);
+        // A deletion of the current UID must still work; only a different historical UID is harmless.
+        execute("delete from products where id=1");
+        try (var statement = connection.prepareStatement(
+                "select sync_seed('products',?::uuid,'{\"id\":\"1\"}'::jsonb,'3000000',true,3,null,null,null)")) {
+            statement.setString(1,currentUid); statement.execute();
+        }
+        assertThat(number("select count(*) from sync_rows where table_name='products' and pk=jsonb_build_object('id','1') and not deleted")).isZero();
+        assertThat(number("select count(*) from sync_rows where uid='"+currentUid+"'::uuid and deleted")).isEqualTo(1);
     }
 
     private String clock(String table, String id) throws Exception {

@@ -126,6 +126,10 @@ async function main() {
     };
     await importer.captureBaseline();
     a = await connect(source);
+    // Give the shared owner a known clock before copying its memberships.
+    await a.query(
+      "UPDATE users SET name='Shared merge administrator' WHERE id=1",
+    );
     const createOrder = async (c, id, num, comment) =>
       c.query(
         "INSERT INTO orders(id,user_id,status,payment_status,payment_method,fulfillment_type,contact_phone,total,paid_total,order_number_date,daily_number,comment) VALUES($1,1,'NEW','PENDING','ON_RECEIPT','DELIVERY',$2,0,0,CURRENT_DATE,$3,$4)",
@@ -190,6 +194,23 @@ async function main() {
     });
     console.log("Initial v2 import passed");
     b = await connect(target);
+    const recreatedRole = (
+      await a.query(
+        "SELECT role_id::text FROM user_roles WHERE user_id=1 ORDER BY role_id LIMIT 1",
+      )
+    ).rows[0].role_id;
+    // Force the live incarnation to sort before its historical deletion in
+    // JSONL. Archive order must never decide which membership survives.
+    await a.query("DELETE FROM user_roles WHERE user_id=1 AND role_id=$1", [
+      recreatedRole,
+    ]);
+    await a.query("INSERT INTO user_roles(user_id,role_id) VALUES(1,$1)", [
+      recreatedRole,
+    ]);
+    await a.query(
+      "UPDATE sync_rows SET uid='00000000-0000-0000-0000-000000000001'::uuid WHERE table_name='user_roles' AND pk=jsonb_build_object('user_id','1','role_id',$1::text) AND NOT deleted",
+      [recreatedRole],
+    );
     const newUser = async (client, name, number) =>
       (
         await client.query(
@@ -331,6 +352,9 @@ async function main() {
     };
     await credit(b, "50.00", "LOCAL CREDIT");
     await credit(a, "100.00", "SOURCE CREDIT");
+    await a.query(
+      "UPDATE users SET name='Newer site administrator' WHERE id=1",
+    );
     await b.end();
     b = null;
     const result = await importer.importFromSource({
@@ -342,6 +366,26 @@ async function main() {
     });
     assert.equal(result.imported, true);
     b = await connect(target);
+    assert.equal(
+      (
+        await b.query(
+          "SELECT count(*)::int n FROM user_roles WHERE user_id=1 AND role_id=$1",
+          [recreatedRole],
+        )
+      ).rows[0].n,
+      1,
+      "a recreated site grant survives its old tombstone regardless of UID order",
+    );
+    assert.equal(
+      (
+        await b.query(
+          "SELECT count(*)::int n FROM sync_rows WHERE table_name='user_roles' AND pk=jsonb_build_object('user_id','1','role_id',$1::text) AND NOT deleted",
+          [recreatedRole],
+        )
+      ).rows[0].n,
+      1,
+      "recreated membership retains one active local identity",
+    );
     const orders = (await b.query("SELECT id::text,comment FROM orders")).rows;
     const comments = new Map(orders.map((row) => [row.id, row.comment]));
     const remappedUser = (
