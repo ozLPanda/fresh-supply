@@ -347,6 +347,15 @@ async function main() {
       22,
       "Real installer refuses an alternate Windows owner before replacement",
     );
+    // Expected rejection deliberately preserves a stage for diagnostics, but
+    // this successful assertion no longer needs another full runtime on disk.
+    const rejectionLog=await fs.readFile(path.join(process.env.LOCALAPPDATA,'fresh-supply-desktop-updater/installation.log'),'utf8');
+    const rejectedStage=[...rejectionLog.matchAll(/Preserved failed stage for diagnostics: (.+)/g)].at(-1)?.[1].trim();
+    if(rejectedStage) {
+      const relative=path.relative(temporary,rejectedStage);
+      assert.ok(relative && !relative.startsWith('..') && !path.isAbsolute(relative) && /^nsi[a-z0-9]+\.tmp$/i.test(path.basename(rejectedStage)),'Rejected stage belongs to the disposable installer test');
+      await fs.rm(rejectedStage,{recursive:true,force:true,maxRetries:8,retryDelay:250});
+    }
     assert.deepEqual(
       await snapshot(directory),
       oldPayload,

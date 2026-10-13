@@ -135,13 +135,12 @@ async function main() {
   const temporary = await fs.mkdtemp(
     path.join(os.tmpdir(), "fresh-supply-installer-debug-"),
   );
+  const shortParent=path.join(process.env.SystemDrive+'\\','fsdiag-'+path.basename(temporary).slice(-6));
+  await fs.mkdir(shortParent);
   const cases = [
     {
       name: "short",
-      directory: path.join(
-        process.env.SystemDrive + "\\",
-        "fs-debug-" + path.basename(temporary),
-      ),
+      directory: path.join(shortParent,'app'),
     },
     {
       name: "long",
@@ -163,6 +162,7 @@ async function main() {
       "Diagnostic VM must have no fresh-supply installation",
     );
     for (const item of cases) {
+      const parent=path.dirname(item.directory),before=new Set(await fs.readdir(parent).catch(()=>[]));
       const output = await ps(
         "$ErrorActionPreference='Stop';$p=New-Object System.Diagnostics.ProcessStartInfo;$p.FileName=$env:FRESH_SUPPLY_DEBUG_INSTALLER;$p.Arguments='/S /currentuser /D='+$env:FRESH_SUPPLY_DEBUG_DIRECTORY;$p.UseShellExecute=$false;$c=[System.Diagnostics.Process]::Start($p);$c.WaitForExit();Write-Output $c.ExitCode",
         {
@@ -176,6 +176,14 @@ async function main() {
       const stage = /Preserved failed stage for diagnostics: (.+)/g;
       let match, last;
       while ((match = stage.exec(body))) last = match[1].trim();
+      if(code!==0 && !last) {
+        const candidates=(await fs.readdir(parent).catch(()=>[])).filter(name=>!before.has(name)&&/^nsi[a-z0-9]+\.tmp$/i.test(name));
+        for(const name of candidates) {
+          const candidate=path.join(parent,name);
+          const stageMetadata=JSON.parse(await fs.readFile(path.join(candidate,'resources/package-integrity.json'),'utf8').catch(()=>'null'));
+          if(stageMetadata?.version===pkg.version && stageMetadata.files?.length===metadata.files.length){last=candidate;break;}
+        }
+      }
       const root = code === 0 ? item.directory : last;
       const missing = [],
         damaged = [];
@@ -222,6 +230,7 @@ async function main() {
       });
     }
   } finally {
+    await fs.rm(shortParent,{recursive:true,force:true,maxRetries:8,retryDelay:250});
     await fs.rm(temporary, {
       recursive: true,
       force: true,

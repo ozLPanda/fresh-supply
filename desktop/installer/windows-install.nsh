@@ -37,12 +37,24 @@
 
 !macro freshInstallLog MESSAGE
   Push $0
+  Push $3
+  StrCpy $3 "false"
+  ${if} ${Errors}
+    StrCpy $3 "true"
+  ${endif}
+  ClearErrors
   CreateDirectory "$LOCALAPPDATA\fresh-supply-desktop-updater"
   FileOpen $0 "$LOCALAPPDATA\fresh-supply-desktop-updater\installation.log" a
   ${ifNot} ${Errors}
     FileWrite $0 "${MESSAGE}$\r$\n"
     FileClose $0
   ${endif}
+  ${if} $3 == "true"
+    SetErrors
+  ${else}
+    ClearErrors
+  ${endif}
+  Pop $3
   Pop $0
 !macroend
 
@@ -86,7 +98,7 @@
   File /oname=verify-install.py "${PROJECT_DIR}\installer\verify-install.py"
   ${StdUtils.GetParameter} $freshUserSid "fresh-supply-user-sid" ""
   !insertmacro freshInstallLog "Validating stage $freshStage using $freshStage\resources\runtime\python\python.exe"
-  nsExec::ExecToStack '"$freshStage\resources\runtime\python\python.exe" -I "$PLUGINSDIR\verify-install.py" "$freshStage" "${VERSION}" "$freshUserSid"'
+  nsExec::ExecToStack '"$freshStage\resources\runtime\python\python.exe" -I -B "$PLUGINSDIR\verify-install.py" "$freshStage" "${VERSION}" "$freshUserSid"'
   Pop $R0
   Pop $R1
   DetailPrint "$R1"
