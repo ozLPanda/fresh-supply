@@ -3,11 +3,13 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { createReadStream } = require("node:fs");
 const { createHash } = require("node:crypto");
+const { verifyUpdateArtifacts } = require("./verify-update-artifacts.cjs");
 (async () => {
   const directory = path.resolve(
     process.argv[2] || path.join(__dirname, "../dist"),
   );
   const { version } = require("../package.json");
+  await verifyUpdateArtifacts({ directory, version });
   const entries = (await fs.readdir(directory))
     .filter(
       (name) =>

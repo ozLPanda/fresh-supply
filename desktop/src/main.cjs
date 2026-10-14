@@ -342,13 +342,13 @@ async function beginUpdate() {
   updateProgress({ phase: "downloading", percent: 0 });
 }
 
-function updateProgress({ phase, percent, requiresElevation = false }) {
+function updateProgress({ phase, percent, mode, requiresElevation = false }) {
   if (!window || window.isDestroyed()) return;
   const downloading = phase === "downloading";
   const progress = Number.isFinite(percent)
     ? Math.max(0, Math.min(100, percent))
     : null;
-  const key = `${phase}:${progress === null ? "" : Math.floor(progress)}:${requiresElevation}`;
+  const key = `${phase}:${progress === null ? "" : Math.floor(progress)}:${requiresElevation}:${mode || "full"}`;
   if (key === updateProgressKey) return;
   updateProgressKey = key;
   window.setProgressBar(downloading && progress !== null ? progress / 100 : 2);
@@ -357,7 +357,7 @@ function updateProgress({ phase, percent, requiresElevation = false }) {
     cancellable: ["downloading", "staging"].includes(phase),
     percent: downloading ? progress : null,
     message: downloading
-      ? `Скачиваем обновление${progress === null ? "…" : `: ${Math.floor(progress)}%`}`
+      ? `${mode === "differential" ? "Скачиваем изменённые части" : "Скачиваем обновление"}${progress === null ? "…" : `: ${Math.floor(progress)}%`}`
       : phase === "staging"
         ? "Проверяем и готовим установку…"
         : "Создаём резервную копию перед установкой…" +
